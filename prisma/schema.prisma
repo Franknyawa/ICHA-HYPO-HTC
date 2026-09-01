@@ -1,0 +1,550 @@
+// ============================================================================
+// ICHA IMPORT — HYPO / HTC — Schéma Prisma (PostgreSQL)
+// Conçu pour : scalabilité (index, pas de valeurs codées en dur),
+// idempotence (uuid_client sur les opérations terrain), et séparation
+// données transactionnelles / analytiques (voir docs/architecture.md).
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // URL "directe" (non poolée) requise par Prisma pour les migrations
+  // quand DATABASE_URL passe par un pooler (PgBouncer / Neon / Supabase pooler).
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// RÉFÉRENTIELS (peu modifiés → candidats au cache applicatif, cf. §19 CDC)
+// ---------------------------------------------------------------------------
+
+model Ville {
+  id        String     @id @default(uuid())
+  nom       String     @unique
+  createdAt DateTime   @default(now()) @map("created_at")
+  quartiers Quartier[]
+  pointsVente PointVente[]
+
+  @@map("villes")
+}
+
+model Quartier {
+  id        String   @id @default(uuid())
+  nom       String
+  villeId   String   @map("ville_id")
+  ville     Ville    @relation(fields: [villeId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pointsVente PointVente[]
+
+  @@index([villeId])
+  @@unique([villeId, nom])
+  @@map("quartiers")
+}
+
+model TypePointVente {
+  id          String       @id @default(uuid())
+  nom         String       @unique
+  pointsVente PointVente[]
+
+  @@map("types_point_vente")
+}
+
+model Produit {
+  id                String   @id @default(uuid())
+  code              String   @unique // "HYPO" | "HTC" — extensible, pas d'enum en dur
+  nom               String
+  volumeMl          Int      @map("volume_ml")
+  sachetsParFilet   Int?     @map("sachets_par_filet")   // null pour HYPO (pas de filet)
+  filetsParCarton   Int?     @map("filets_par_carton")
+  sachetsParCarton  Int      @map("sachets_par_carton")  // conversion de référence
+  // Prix par unité de vente — trois grandeurs distinctes car un même
+  // produit se vend à l'unité (sachet), au demi-gros (filet, HTC
+  // uniquement) ou en gros (carton). Permet le calcul automatique du
+  // montant dans le formulaire terrain.
+  prixSachet        Decimal  @default(0) @map("prix_sachet") @db.Decimal(10, 2)
+  prixFilet         Decimal? @map("prix_filet") @db.Decimal(10, 2) // null pour HYPO
+  prixCarton        Decimal  @default(0) @map("prix_carton") @db.Decimal(10, 2)
+  actif             Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  venteLignes    VenteLigne[]
+  commandeLignes CommandeLigne[]
+  stock          Stock?
+  mouvementsStock MouvementStock[]
+
+  @@map("produits")
+}
+
+// ---------------------------------------------------------------------------
+// UTILISATEURS / ÉQUIPES
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  COMMERCIAL
+}
+
+model Binome {
+  id        String   @id @default(uuid())
+  nom       String
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  membres   User[]
+  objectifs Objectif[]
+  visites   Visite[]
+
+  @@map("binomes")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role
+  nom          String
+  prenom       String
+  telephone    String?
+  avatarUrl    String?  @map("avatar_url")
+  actif        Boolean  @default(true)
+  binomeId     String?  @map("binome_id")
+  binome       Binome?  @relation(fields: [binomeId], references: [id])
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  pointsVenteCrees PointVente[]     @relation("PointVenteCreateur")
+  visites          Visite[]
+  ventes           Vente[]
+  commandes        Commande[]
+  photos           Photo[]
+  notifications    Notification[]
+  loginAttempts    LoginAttempt[]
+
+  @@index([binomeId])
+  @@index([role])
+  @@map("users")
+}
+
+model LoginAttempt {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id])
+  username  String
+  succes    Boolean
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([username, createdAt])
+  @@map("login_attempts")
+}
+
+// ---------------------------------------------------------------------------
+// TERRAIN : POINTS DE VENTE / PROSPECTS / CLIENTS
+// ---------------------------------------------------------------------------
+
+enum StatutProspect {
+  NOUVEAU
+  A_RELANCER
+  CONVERTI
+  ABANDONNE
+}
+
+enum StatutClient {
+  ACTIF
+  INACTIF
+}
+
+model PointVente {
+  id            String    @id @default(uuid())
+  nom           String
+  vendeur       String?
+  telephoneVendeur String? @map("telephone_vendeur")
+  villeId       String    @map("ville_id")
+  ville         Ville     @relation(fields: [villeId], references: [id])
+  quartierId    String?   @map("quartier_id")
+  quartier      Quartier? @relation(fields: [quartierId], references: [id])
+  repere        String?
+  typeId        String?   @map("type_id")
+  type          TypePointVente? @relation(fields: [typeId], references: [id])
+  presentoir    Boolean   @default(false)
+  latitude      Decimal?  @db.Decimal(10, 7)
+  longitude     Decimal?  @db.Decimal(10, 7)
+  precisionGps  Decimal?  @map("precision_gps") @db.Decimal(6, 2)
+  createdById   String    @map("created_by")
+  createdBy     User      @relation("PointVenteCreateur", fields: [createdById], references: [id])
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  prospects Prospect[]
+  clients   Client[]
+  visites   Visite[]
+  photos    Photo[]
+  ventes    Vente[]
+  commandes Commande[]
+
+  @@index([villeId])
+  @@index([quartierId])
+  @@index([nom])
+  @@index([createdAt])
+  @@map("points_vente")
+}
+
+model Prospect {
+  id           String         @id @default(uuid())
+  pointVenteId String         @map("point_vente_id")
+  pointVente   PointVente     @relation(fields: [pointVenteId], references: [id])
+  nom          String
+  telephone    String?
+  statut       StatutProspect @default(NOUVEAU)
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  @@index([pointVenteId])
+  @@index([statut])
+  @@map("prospects")
+}
+
+model Client {
+  id           String       @id @default(uuid())
+  pointVenteId String       @map("point_vente_id")
+  pointVente   PointVente   @relation(fields: [pointVenteId], references: [id])
+  nom          String
+  telephone    String?
+  statut       StatutClient @default(ACTIF)
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  ventes    Vente[]
+  commandes Commande[]
+
+  @@index([pointVenteId])
+  @@index([statut])
+  @@map("clients")
+}
+
+// ---------------------------------------------------------------------------
+// VISITES (avec uuidClient pour idempotence PWA offline — cf. §15/16 infra doc)
+// ---------------------------------------------------------------------------
+
+model Visite {
+  id           String     @id @default(uuid())
+  uuidClient   String     @unique @map("uuid_client") // généré côté PWA avant sync
+  commercialId String     @map("commercial_id")
+  commercial   User       @relation(fields: [commercialId], references: [id])
+  binomeId     String?    @map("binome_id")
+  binome       Binome?    @relation(fields: [binomeId], references: [id])
+  pointVenteId String     @map("point_vente_id")
+  pointVente   PointVente @relation(fields: [pointVenteId], references: [id])
+  dateVisite   DateTime   @map("date_visite")
+  latitude     Decimal?   @db.Decimal(10, 7)
+  longitude    Decimal?   @db.Decimal(10, 7)
+  precisionGps Decimal?   @map("precision_gps") @db.Decimal(6, 2)
+  observation  String?
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  photos Photo[]
+  ventes Vente[]
+
+  @@index([commercialId])
+  @@index([binomeId])
+  @@index([pointVenteId])
+  @@index([dateVisite])
+  @@map("visites")
+}
+
+model Photo {
+  id           String     @id @default(uuid())
+  uuidClient   String     @unique @map("uuid_client")
+  visiteId     String?    @map("visite_id")
+  visite       Visite?    @relation(fields: [visiteId], references: [id])
+  pointVenteId String     @map("point_vente_id")
+  pointVente   PointVente @relation(fields: [pointVenteId], references: [id])
+  url          String     // URL objet de stockage externe (jamais le fichier lui-même)
+  type         String     @default("POINT_VENTE")
+  uploadedById String     @map("uploaded_by")
+  uploadedBy   User       @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  @@index([pointVenteId])
+  @@index([visiteId])
+  @@map("photos")
+}
+
+// ---------------------------------------------------------------------------
+// VENTES / COMMANDES / PAIEMENTS (transactionnel, idempotent, cohérent)
+// ---------------------------------------------------------------------------
+
+model Vente {
+  id           String       @id @default(uuid())
+  uuidClient   String       @unique @map("uuid_client")
+  visiteId     String?      @map("visite_id")
+  visite       Visite?      @relation(fields: [visiteId], references: [id])
+  pointVenteId String       @map("point_vente_id")
+  pointVente   PointVente   @relation(fields: [pointVenteId], references: [id])
+  clientId     String?      @map("client_id")
+  client       Client?      @relation(fields: [clientId], references: [id])
+  commercialId String       @map("commercial_id")
+  commercial   User         @relation(fields: [commercialId], references: [id])
+  dateVente    DateTime     @default(now()) @map("date_vente")
+  montantTotal Decimal      @default(0) @map("montant_total") @db.Decimal(12, 2)
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  lignes    VenteLigne[]
+  paiements Paiement[]
+
+  @@index([pointVenteId])
+  @@index([commercialId])
+  @@index([clientId])
+  @@index([dateVente])
+  @@map("ventes")
+}
+
+model VenteLigne {
+  id         String  @id @default(uuid())
+  venteId    String  @map("vente_id")
+  vente      Vente   @relation(fields: [venteId], references: [id], onDelete: Cascade)
+  produitId  String  @map("produit_id")
+  produit    Produit @relation(fields: [produitId], references: [id])
+  nbSachets  Int     @default(0) @map("nb_sachets")
+  nbFilets   Int     @default(0) @map("nb_filets")
+  nbCartons  Int     @default(0) @map("nb_cartons")
+  montant    Decimal @default(0) @db.Decimal(12, 2)
+
+  @@index([venteId])
+  @@index([produitId])
+  @@map("ventes_lignes")
+}
+
+enum StatutCommande {
+  EN_ATTENTE
+  LIVREE
+  ANNULEE
+}
+
+model Commande {
+  id                  String         @id @default(uuid())
+  uuidClient          String         @unique @map("uuid_client")
+  pointVenteId        String         @map("point_vente_id")
+  pointVente          PointVente     @relation(fields: [pointVenteId], references: [id])
+  clientId            String?        @map("client_id")
+  client              Client?        @relation(fields: [clientId], references: [id])
+  commercialId        String         @map("commercial_id")
+  commercial          User           @relation(fields: [commercialId], references: [id])
+  statut              StatutCommande @default(EN_ATTENTE)
+  dateCommande         DateTime      @default(now()) @map("date_commande")
+  dateLivraisonPrevue DateTime?      @map("date_livraison_prevue")
+  createdAt           DateTime       @default(now()) @map("created_at")
+
+  lignes    CommandeLigne[]
+  paiements Paiement[]
+
+  @@index([pointVenteId])
+  @@index([commercialId])
+  @@index([statut])
+  @@index([dateCommande])
+  @@map("commandes")
+}
+
+model CommandeLigne {
+  id         String   @id @default(uuid())
+  commandeId String   @map("commande_id")
+  commande   Commande @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+  produitId  String   @map("produit_id")
+  produit    Produit  @relation(fields: [produitId], references: [id])
+  nbSachets  Int      @default(0) @map("nb_sachets")
+  nbFilets   Int      @default(0) @map("nb_filets")
+  nbCartons  Int      @default(0) @map("nb_cartons")
+
+  @@index([commandeId])
+  @@index([produitId])
+  @@map("commandes_lignes")
+}
+
+enum ModePaiement {
+  ESPECES
+  MOBILE_MONEY
+  CREDIT_PARTIEL
+  CREDIT_TOTAL
+}
+
+model Paiement {
+  id           String       @id @default(uuid())
+  uuidClient   String       @unique @map("uuid_client")
+  venteId      String?      @map("vente_id")
+  vente        Vente?       @relation(fields: [venteId], references: [id])
+  commandeId   String?      @map("commande_id")
+  commande     Commande?    @relation(fields: [commandeId], references: [id])
+  montant      Decimal      @db.Decimal(12, 2)
+  modePaiement ModePaiement @map("mode_paiement")
+  estCredit    Boolean      @default(false) @map("est_credit")
+  datePaiement DateTime     @default(now()) @map("date_paiement")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  @@index([venteId])
+  @@index([commandeId])
+  @@index([estCredit])
+  @@index([datePaiement])
+  @@map("paiements")
+}
+
+// ---------------------------------------------------------------------------
+// STOCK (protégé contre la concurrence — cf. §18 infra doc)
+// ---------------------------------------------------------------------------
+
+model Stock {
+  id             String   @id @default(uuid())
+  produitId      String   @unique @map("produit_id")
+  produit        Produit  @relation(fields: [produitId], references: [id])
+  quantiteSachets Int     @default(0) @map("quantite_sachets") // unité canonique de calcul
+  seuilAlerte    Int      @default(0) @map("seuil_alerte")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  // version = verrou optimiste pour éviter les écritures concurrentes incohérentes
+  version        Int      @default(0)
+
+  @@map("stock")
+}
+
+enum TypeMouvementStock {
+  ENTREE
+  SORTIE
+}
+
+model MouvementStock {
+  id             String             @id @default(uuid())
+  uuidClient     String             @unique @map("uuid_client")
+  produitId      String             @map("produit_id")
+  produit        Produit            @relation(fields: [produitId], references: [id])
+  type           TypeMouvementStock
+  quantiteSachets Int               @map("quantite_sachets")
+  referenceType  String?            @map("reference_type") // "VENTE" | "COMMANDE" | "AJUSTEMENT"
+  referenceId    String?            @map("reference_id")
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  @@index([produitId])
+  @@index([createdAt])
+  @@index([referenceType, referenceId])
+  @@map("mouvements_stock")
+}
+
+// ---------------------------------------------------------------------------
+// OBJECTIFS / ALERTES / NOTIFICATIONS
+// ---------------------------------------------------------------------------
+
+enum PeriodeObjectif {
+  JOURNALIER
+  HEBDOMADAIRE
+  MENSUEL
+}
+
+model Objectif {
+  id           String          @id @default(uuid())
+  binomeId     String          @map("binome_id")
+  binome       Binome          @relation(fields: [binomeId], references: [id])
+  periode      PeriodeObjectif
+  valeurCartons Int            @map("valeur_cartons")
+  dateDebut    DateTime        @map("date_debut")
+  dateFin      DateTime        @map("date_fin")
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  @@index([binomeId])
+  @@index([dateDebut, dateFin])
+  @@map("objectifs")
+}
+
+enum TypeAlerte {
+  STOCK_FAIBLE
+  COMMANDE_EN_ATTENTE
+  LIVRAISON_RETARD
+  CREDIT_RETARD
+  PROSPECT_A_RELANCER
+  CLIENT_INACTIF
+  OBJECTIF_NON_ATTEINT
+}
+
+model Alerte {
+  id         String     @id @default(uuid())
+  type       TypeAlerte
+  message    String
+  entiteType String?    @map("entite_type")
+  entiteId   String?    @map("entite_id")
+  resolue    Boolean    @default(false)
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  @@index([type, resolue])
+  @@index([createdAt])
+  @@map("alertes")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  message   String
+  lu        Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, lu])
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// SYNCHRONISATION / IDEMPOTENCE (§15/16 infra doc)
+// ---------------------------------------------------------------------------
+
+enum StatutSync {
+  RECU
+  EN_ATTENTE
+  CONFLIT
+  VALIDE
+  REJETE
+}
+
+model SyncLog {
+  id            String     @id @default(uuid())
+  uuidClient    String     @unique @map("uuid_client")
+  userId        String     @map("user_id")
+  typeOperation String     @map("type_operation") // "VISITE" | "VENTE" | "COMMANDE" | "PAIEMENT" | "PHOTO"
+  statut        StatutSync @default(RECU)
+  payloadHash   String?    @map("payload_hash")
+  erreur        String?
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([typeOperation, statut])
+  @@map("sync_logs")
+}
+
+// ---------------------------------------------------------------------------
+// AGRÉGATION / ANALYTIQUE (tables pré-calculées — cf. §9 infra doc)
+// Mises à jour par job (cron Vercel / worker), jamais recalculées à la volée.
+// ---------------------------------------------------------------------------
+
+model VentesJournalieres {
+  id            String   @id @default(uuid())
+  date          DateTime @db.Date
+  villeId       String?  @map("ville_id")
+  commercialId  String?  @map("commercial_id")
+  binomeId      String?  @map("binome_id")
+  produitId     String?  @map("produit_id")
+  cartonsVendus Int      @default(0) @map("cartons_vendus")
+  montantTotal  Decimal  @default(0) @map("montant_total") @db.Decimal(14, 2)
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([date, villeId, commercialId, binomeId, produitId])
+  @@index([date])
+  @@map("agg_ventes_journalieres")
+}
+
+model PerformanceBinome {
+  id           String   @id @default(uuid())
+  binomeId     String   @map("binome_id")
+  periode      String   // "2026-08" ou "2026-W35" etc.
+  cartonsVendus Int     @default(0) @map("cartons_vendus")
+  visites      Int      @default(0)
+  nouveauxClients Int   @default(0) @map("nouveaux_clients")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([binomeId, periode])
+  @@map("agg_performance_binome")
+}
