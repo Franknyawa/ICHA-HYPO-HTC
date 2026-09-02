@@ -53,8 +53,10 @@ function KpiCard({
 export default async function AdminDashboardPage() {
   const session = await getSession();
   const kpis = await getDashboardKpis();
-  const { parBinome, parVendeur } = await getCaParBinomeEtVendeur();
-  const observations = await getObservationsRecentes();
+  const [{ parBinome, parVendeur }, observations] = await Promise.all([
+    getCaParBinomeEtVendeur(),
+    getObservationsRecentes(),
+  ]);
 
   return (
     <main className="pb-10">

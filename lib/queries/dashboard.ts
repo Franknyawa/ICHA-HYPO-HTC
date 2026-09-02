@@ -11,32 +11,41 @@ function todayRange() {
 export async function getDashboardKpis() {
   const today = todayRange();
 
-  // Requêtes séquentielles plutôt qu'en Promise.all : le plan gratuit
-  // Supabase (pooler PgBouncer) n'autorise que quelques connexions
-  // simultanées. 9 requêtes en parallèle épuisaient le pool Prisma dès
-  // qu'une autre requête (ex. soumission de visite) tournait en même temps.
-  // Pour notre volume actuel (6 commerciaux), le coût en latence est
-  // négligeable — à revisiter si le trafic admin grossit significativement.
-  const visitesAujourdhui = await prisma.visite.count({ where: { dateVisite: today } });
-  const prospectsTotal = await prisma.prospect.count();
-  const clientsTotal = await prisma.client.count();
-  const ventesAujourdhui = await prisma.vente.count({ where: { createdAt: today } });
-  const commandesEnAttente = await prisma.commande.count({ where: { statut: "EN_ATTENTE" } });
-  const lignesVenteAujourdhui = await prisma.venteLigne.findMany({
-    where: { vente: { createdAt: today } },
-    select: { nbCartons: true, produit: { select: { code: true } } },
-  });
-  const caAujourdhui = await prisma.vente.aggregate({
-    where: { createdAt: today },
-    _sum: { montantTotal: true },
-  });
-  const paiementsAujourdhui = await prisma.paiement.findMany({
-    where: { createdAt: today },
-    select: { montant: true, estCredit: true },
-  });
-  const stocks = await prisma.stock.findMany({
-    include: { produit: { select: { code: true, sachetsParCarton: true } } },
-  });
+  // Regroupées en 3 lots de 3 requêtes en parallèle (Promise.all), plutôt
+  // que 9 requêtes strictement séquentielles ou 9 en parallèle d'un coup.
+  // Nécessite connection_limit >= 3 dans DATABASE_URL — avec limit=1
+  // (réglage précédent), ce lot repasserait de toute façon en file
+  // d'attente côté Prisma, sans bénéfice ; avec limit=9+ d'un coup, on
+  // recrée le risque de saturation du pool qu'on avait rencontré au
+  // lancement. 3 est un compromis raisonnable pour le volume actuel.
+  const [visitesAujourdhui, prospectsTotal, clientsTotal] = await Promise.all([
+    prisma.visite.count({ where: { dateVisite: today } }),
+    prisma.prospect.count(),
+    prisma.client.count(),
+  ]);
+
+  const [ventesAujourdhui, commandesEnAttente, lignesVenteAujourdhui] = await Promise.all([
+    prisma.vente.count({ where: { createdAt: today } }),
+    prisma.commande.count({ where: { statut: "EN_ATTENTE" } }),
+    prisma.venteLigne.findMany({
+      where: { vente: { createdAt: today } },
+      select: { nbCartons: true, produit: { select: { code: true } } },
+    }),
+  ]);
+
+  const [caAujourdhui, paiementsAujourdhui, stocks] = await Promise.all([
+    prisma.vente.aggregate({
+      where: { createdAt: today },
+      _sum: { montantTotal: true },
+    }),
+    prisma.paiement.findMany({
+      where: { createdAt: today },
+      select: { montant: true, estCredit: true },
+    }),
+    prisma.stock.findMany({
+      include: { produit: { select: { code: true, sachetsParCarton: true } } },
+    }),
+  ]);
 
   const cartonsHypo = lignesVenteAujourdhui
     .filter((l) => l.produit.code === "HYPO")
