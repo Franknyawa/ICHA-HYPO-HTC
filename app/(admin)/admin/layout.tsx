@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogoutButton } from "@/components/LogoutButton";
 import {
   LayoutDashboard,
   Store,
@@ -63,10 +64,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             );
           })}
         </nav>
+
+        <div className="border-t border-slate-100 p-3">
+          <LogoutButton />
+        </div>
       </aside>
 
       {/* Contenu */}
-      <div className="min-h-screen flex-1 pb-20 md:pb-0">{children}</div>
+      <div className="min-h-screen flex-1 pb-20 md:pb-0">
+        {/* Bouton déconnexion flottant — mobile uniquement (la sidebar,
+            hors écran sur mobile, porte déjà le bouton sur desktop) */}
+        <div className="fixed right-3 top-3 z-40 md:hidden">
+          <LogoutButton className="flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-xs font-medium text-slate-500 shadow-sm ring-1 ring-slate-200 backdrop-blur" />
+        </div>
+        {children}
+      </div>
 
       {/* Barre de navigation — mobile uniquement */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
