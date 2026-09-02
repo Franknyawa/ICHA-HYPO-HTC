@@ -30,12 +30,15 @@ export async function aggregateVentesDuJour(date: Date) {
   type Cle = string;
   const groupes = new Map<
     Cle,
-    { villeId: string | null; commercialId: string; binomeId: string | null; cartons: number; montant: number }
+    { villeId: string; commercialId: string; binomeId: string; cartons: number; montant: number }
   >();
 
   for (const v of ventes) {
     const villeId = v.pointVente.villeId;
-    const binomeId = v.commercial.binomeId;
+    // Substitut "" pour "aucun binôme" — la clé composite Prisma générée
+    // pour la contrainte unique n'accepte pas `null` dans son type
+    // TypeScript, même si la colonne elle-même est nullable en base.
+    const binomeId = v.commercial.binomeId ?? "";
     const cle = `${villeId}|${v.commercialId}|${binomeId}`;
     const existant = groupes.get(cle) ?? {
       villeId,
@@ -58,7 +61,7 @@ export async function aggregateVentesDuJour(date: Date) {
           villeId: g.villeId,
           commercialId: g.commercialId,
           binomeId: g.binomeId,
-          produitId: null,
+          produitId: "",
         },
       },
       update: { cartonsVendus: g.cartons, montantTotal: g.montant },
@@ -67,7 +70,7 @@ export async function aggregateVentesDuJour(date: Date) {
         villeId: g.villeId,
         commercialId: g.commercialId,
         binomeId: g.binomeId,
-        produitId: null,
+        produitId: "",
         cartonsVendus: g.cartons,
         montantTotal: g.montant,
       },

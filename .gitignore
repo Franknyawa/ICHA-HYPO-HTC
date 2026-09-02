@@ -1,11 +1,26 @@
-﻿node_modules
-.next
-out
+# Dépendances
+/node_modules
+
+# Next.js
+/.next/
+/out/
+
+# Variables d'environnement — NE JAMAIS committer (mots de passe, secrets)
 .env
 .env*.local
+
+# Logs
 *.log
 log.txt
+
+# Système
 .DS_Store
 Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts

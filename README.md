@@ -331,7 +331,12 @@ historiques sont désormais pré-agrégées chaque nuit.
   ville/commercial/binôme — pas par produit, car le montant n'est pas
   ventilé par produit sur les lignes de vente) et
   `aggregerPerformanceBinome(anneeMois)` (remplit `PerformanceBinome` :
-  cartons vendus, visites, nouveaux clients par binôme et par mois)
+  cartons vendus, visites, nouveaux clients par binôme et par mois).
+  **Convention à connaître** : les colonnes optionnelles de la clé
+  composite (`binomeId`, `produitId`) utilisent `""` plutôt que `null`
+  pour représenter "aucun/tous" — Prisma exige des valeurs non-null dans
+  le type généré pour une recherche par contrainte unique composite, même
+  quand les colonnes elles-mêmes sont nullable en base.
 - `GET /api/cron/aggregate` — protégée par `CRON_SECRET`, agrège la
   journée d'hier (aujourd'hui reste calculé en direct, il n'est pas
   terminé) et le mois en cours
