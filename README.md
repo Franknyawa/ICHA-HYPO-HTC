@@ -359,6 +359,20 @@ curl https://ton-domaine.vercel.app/api/cron/aggregate \
   -H "Authorization: Bearer TA_VALEUR_CRON_SECRET"
 ```
 
+### ✅ Module Commandes (suivi admin)
+- `lib/queries/commandes.ts` — liste paginée, filtrable par statut, ville,
+  commercial, période
+- `GET /api/commandes` — liste
+- `PATCH /api/commandes/[id]` (admin uniquement) — change le statut
+  (En attente / Livrée / Annulée), réversible
+- Page `/admin/commandes` — chaque commande affiche le client/point de
+  vente, les lignes produit (HYPO/HTC avec quantités), les dates commande
+  et livraison prévue, un lien WhatsApp direct, et les boutons d'action
+  (Marquer livrée / Annuler / Réactiver)
+- Ajoutée à la navigation (sidebar desktop + barre mobile)
+
+Aucun changement de schéma — pas de migration nécessaire.
+
 ### 📋 Plan pour les fonctionnalités admin restantes
 Dans l'ordre où elles seront abordées :
 1. **Objectifs & progression** — Réalisé/Objectif × 100 par binôme, jour et
@@ -369,9 +383,7 @@ Dans l'ordre où elles seront abordées :
 3. **Gestion du stock** — vue et ajustement manuel par produit
 4. **Tracking par binôme** — carte des positions GPS des visites (les
    coordonnées sont déjà enregistrées à chaque visite)
-5. **Page admin Commandes** — liste/suivi des commandes créées depuis le
-   terrain (marquer comme livrée, etc.)
-6. **Historique des visites** côté commercial — actuellement un texte
+5. **Historique des visites** côté commercial — actuellement un texte
    "à venir" sur son dashboard
 
 ### ⏳ À suivre
