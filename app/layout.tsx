@@ -6,6 +6,15 @@ export const metadata: Metadata = {
   title: "ICHA IMPORT — HYPO/HTC",
   description: "Plateforme de suivi commercial terrain ICHA IMPORT",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ICHA IMPORT",
+  },
 };
 
 export const viewport = {

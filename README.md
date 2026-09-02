@@ -373,6 +373,19 @@ curl https://ton-domaine.vercel.app/api/cron/aggregate \
 
 Aucun changement de schéma — pas de migration nécessaire.
 
+### ✅ Correctif installation PWA (icônes manquantes)
+Le `manifest.json` référençait `/icons/icon-192.png` et
+`/icons/icon-512.png` depuis le tout début, mais ces fichiers n'avaient
+jamais été créés — un navigateur refuse d'installer une PWA sans ses
+icônes déclarées, c'est un critère bloquant. Corrigé :
+- `public/icons/icon-192.png` et `icon-512.png` — icône goutte d'eau sur
+  fond dégradé bleu marque, générée pour coller à l'identité déjà en place
+- `public/apple-touch-icon.png` — Safari iOS ne lit pas les icônes du
+  manifest de la même façon qu'Android, il lui faut ce fichier séparé
+- `app/layout.tsx` — métadonnées `icons` et `appleWebApp` ajoutées
+
+Aucun changement de schéma — pas de migration nécessaire.
+
 ### 📋 Plan pour les fonctionnalités admin restantes
 Dans l'ordre où elles seront abordées :
 1. **Objectifs & progression** — Réalisé/Objectif × 100 par binôme, jour et
