@@ -132,7 +132,7 @@ export async function getStatsBinome(binomeId: string) {
 
 /** Commandes en attente du commercial connecté, pour rappel sur son accueil. */
 export async function getCommandesEnAttente(commercialId: string) {
-  return prisma.commande.findMany({
+  const commandes = await prisma.commande.findMany({
     where: { commercialId, statut: "EN_ATTENTE" },
     orderBy: { dateLivraisonPrevue: "asc" },
     take: 10,
@@ -140,6 +140,31 @@ export async function getCommandesEnAttente(commercialId: string) {
       id: true,
       dateLivraisonPrevue: true,
       pointVente: { select: { nom: true } },
+      lignes: {
+        select: {
+          nbSachets: true,
+          nbFilets: true,
+          nbCartons: true,
+          produit: { select: { prixSachet: true, prixFilet: true, prixCarton: true } },
+        },
+      },
     },
   });
+
+  // La commande elle-même n'a pas de montant enregistré (aucun prix n'est
+  // saisi au moment de la prise de commande) — on l'estime ici à partir
+  // des prix produits actuels, pour l'affichage sur le dashboard.
+  return commandes.map((c) => ({
+    id: c.id,
+    dateLivraisonPrevue: c.dateLivraisonPrevue,
+    pointVente: c.pointVente,
+    montantEstime: c.lignes.reduce(
+      (s, l) =>
+        s +
+        l.nbSachets * Number(l.produit.prixSachet) +
+        l.nbFilets * Number(l.produit.prixFilet ?? 0) +
+        l.nbCartons * Number(l.produit.prixCarton),
+      0
+    ),
+  }));
 }

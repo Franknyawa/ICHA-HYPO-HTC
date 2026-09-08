@@ -169,11 +169,16 @@ export default async function CommercialDashboardPage() {
                 </div>
                 <div className="space-y-1.5 pl-1">
                   {commandesEnAttente.slice(0, 4).map((c) => (
-                    <div key={c.id} className="flex items-center justify-between rounded-lg bg-amber-50/60 px-3 py-2 text-sm">
-                      <span className="font-medium text-slate-700">{c.pointVente.nom}</span>
+                    <div key={c.id} className="rounded-lg bg-amber-50/60 px-3 py-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-slate-700">{c.pointVente.nom}</span>
+                        <span className="font-bold text-amber-800">
+                          {c.montantEstime.toLocaleString("fr-FR")} FCFA
+                        </span>
+                      </div>
                       {c.dateLivraisonPrevue && (
                         <span className="text-xs text-slate-400">
-                          {new Date(c.dateLivraisonPrevue).toLocaleDateString("fr-FR")}
+                          Livraison le {new Date(c.dateLivraisonPrevue).toLocaleDateString("fr-FR")}
                         </span>
                       )}
                     </div>
