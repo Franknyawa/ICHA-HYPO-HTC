@@ -386,6 +386,128 @@ icônes déclarées, c'est un critère bloquant. Corrigé :
 
 Aucun changement de schéma — pas de migration nécessaire.
 
+### ✅ Module Back Office — Paramètres (`/admin/parametres`)
+Rend modifiables, sans passer par du SQL manuel, les données qui
+structurent le formulaire terrain :
+- **Villes** et **Types de boutique** — ajout, renommage, activation/
+  désactivation (nouveau champ `actif` ajouté aux deux modèles — **cette
+  fois il y a bien un changement de schéma**, migration nécessaire)
+- **Produits** — modification des prix (sachet/filet/carton) uniquement ;
+  le champ `code` (HYPO/HTC) reste verrouillé côté API car il sert
+  d'identifiant dans toute la logique métier (calcul de prix, conversions)
+- **Binômes** — ajout, renommage, activation/désactivation
+- **Objectifs** — modification directe du nombre de cartons/jour et
+  cartons/semaine en vigueur pour chaque binôme (crée l'objectif de la
+  période en cours s'il n'existe pas encore)
+- `/api/referentiels` filtre désormais villes/types par `actif: true` —
+  désactiver une ville ou un type la retire immédiatement des listes du
+  formulaire terrain, sans supprimer l'historique qui y fait référence
+- Ajouté à la navigation (sidebar + barre mobile)
+
+**Limitations volontaires** : pas de suppression physique nulle part (une
+ville/un type/un binôme déjà utilisé ne peut être que désactivé, jamais
+supprimé — cohérent avec le reste de l'app). Les modes de paiement et la
+structure même du formulaire (ordre des sections, champs) restent codés en
+dur — les rendre configurables demanderait un vrai "form builder", hors
+scope pour l'instant.
+
+**⚠️ Cette fois il y a un changement de schéma** (`actif` sur `Ville` et
+`TypePointVente`) — migration à faire avant de tester :
+```sql
+ALTER TABLE villes ADD COLUMN IF NOT EXISTS actif BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE types_point_vente ADD COLUMN IF NOT EXISTS actif BOOLEAN NOT NULL DEFAULT true;
+```
+
+### ✅ Grosse mise à jour — Back office, sessions, dashboard commercial, formulaire terrain
+
+**Sessions serveur (au lieu de JWT sans état)**
+- Nouveau modèle `Session` — chaque connexion crée une ligne en base ; le
+  JWT référence son id. `getSession()` vérifie maintenant aussi que la
+  session n'est pas révoquée/expirée côté serveur, ce qui rend une
+  déconnexion à distance immédiatement effective (impossible avec un JWT
+  seul, qui resterait valide jusqu'à expiration naturelle).
+- Durée configurable en back office (`ParametreSysteme`, clé
+  `duree_session_heures`) — `/admin/parametres`
+- `/admin/utilisateurs` — bouton "Sessions actives" par utilisateur :
+  liste (appareil, dernière activité), déconnexion individuelle ou globale
+
+**Objectifs individuels + dashboard commercial refait**
+- Nouveau modèle `ObjectifIndividuel` — cartons/jour, /semaine, /mois,
+  appliqués à tous les commerciaux (distinct des objectifs par binôme déjà
+  en place), modifiable en back office (42/192/768 par défaut)
+- `lib/queries/commercial-stats.ts` — stats perso (jour/semaine/mois) et
+  binôme (jour/semaine), avec code couleur rouge (<50%) / orange (50-79%) /
+  vert (≥80%) — seuils choisis faute d'indication précise, ajustables dans
+  ce fichier si besoin
+- Dashboard commercial reconstruit : "Nouveau recensement" (renommé),
+  2 boutons "Visite de rotation et d'achalandage" / "Visite de réassort"
+  (visuellement présents, intentionnellement inertes — pas encore de page
+  dédiée), barres de progression colorées, rappels des commandes en
+  attente, **changement de mot de passe retiré**
+
+**Formulaire terrain**
+- Bouton retour vers l'accueil
+- Binôme affiché en lecture seule (vient du profil assigné par l'admin,
+  plus de sélection manuelle)
+- Quartier : liste déroulante des quartiers connus pour la ville
+  sélectionnée, avec repli "+ Autre / nouveau quartier" en texte libre.
+  **Limitation assumée** : ce n'est pas une détection GPS automatique —
+  sans coordonnées par quartier (qu'on n'a pas), une vraie auto-détection
+  ne serait pas fiable. C'est une liste contrainte, pas une automatisation.
+- Nouveau champ "Numéro WhatsApp du patron (si différent)"
+- **Deux photos de devanture** au lieu d'une (types `DEVANTURE_1`/`DEVANTURE_2`)
+- Présentoir déplacé après "Achat du jour", **suggéré automatiquement**
+  ("Oui") si sachets > 30 ET cartons > 1 pour HYPO ou HTC — reste modifiable
+- Types de boutique désormais triés par un champ `ordre` géré en back
+  office (au lieu de l'ordre alphabétique) — ordre initial du seed :
+  Boutique du quartier, Vendeur ambulant, Table Call Box/Kiosque,
+  Mini supermarché/Supérette, Grossiste
+- **Génération de facture PDF** après une vente — bouton "Télécharger la
+  facture" sur l'écran de confirmation (jsPDF, généré côté téléphone,
+  partageable/imprimable pour le client)
+
+**⚠️ Changement de schéma important — migration nécessaire avant de tester :**
+```sql
+ALTER TABLE villes ADD COLUMN IF NOT EXISTS actif BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE types_point_vente ADD COLUMN IF NOT EXISTS actif BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE types_point_vente ADD COLUMN IF NOT EXISTS ordre INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE points_vente ADD COLUMN IF NOT EXISTS telephone_patron TEXT;
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  user_agent TEXT,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP(3) NOT NULL,
+  last_seen_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  revoked BOOLEAN NOT NULL DEFAULT false
+);
+CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions (user_id);
+
+CREATE TABLE IF NOT EXISTS parametres_systeme (
+  cle TEXT PRIMARY KEY,
+  valeur TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS objectifs_individuels (
+  periode TEXT PRIMARY KEY,
+  valeur_cartons INTEGER NOT NULL,
+  updated_at TIMESTAMP(3) NOT NULL
+);
+```
+Puis relance le seed pour appliquer le nouvel ordre des types de boutique :
+```bash
+npm run prisma:seed
+```
+
+**Reste à faire dans ce lot** (pas encore fait, à reprendre) :
+- Les boutons "Visite de rotation et d'achalandage" / "Visite de réassort"
+  n'ont aucune page derrière — en attente de la structure que Victor doit
+  fournir
+- Pas d'interface pour lister/gérer manuellement les quartiers en back
+  office (ils se créent à la volée depuis le terrain, mais ne peuvent pas
+  encore être renommés/fusionnés depuis `/admin/parametres`)
+
 ### 📋 Plan pour les fonctionnalités admin restantes
 Dans l'ordre où elles seront abordées :
 1. **Objectifs & progression** — Réalisé/Objectif × 100 par binôme, jour et

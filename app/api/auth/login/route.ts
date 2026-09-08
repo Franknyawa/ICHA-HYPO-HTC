@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/auth/password";
-import { createSessionToken, setSessionCookie } from "@/lib/auth/session";
+import {
+  createSessionToken,
+  setSessionCookie,
+  getDureeSessionHeures,
+} from "@/lib/auth/session";
 
 // Node runtime requis : bcrypt et Prisma ne tournent pas sur l'Edge Runtime.
 export const runtime = "nodejs";
@@ -45,7 +49,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const user = await prisma.user.findUnique({ where: { username } });
+  const user = await prisma.user.findUnique({
+    where: { username },
+    include: { binome: { select: { nom: true } } },
+  });
   const isValid =
     user && user.actif ? await verifyPassword(password, user.passwordHash) : false;
 
@@ -65,16 +72,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const token = await createSessionToken({
-    userId: user.id,
-    username: user.username,
-    role: user.role,
-    binomeId: user.binomeId,
-    nom: user.nom,
-    prenom: user.prenom,
+  const dureeHeures = await getDureeSessionHeures();
+  const dureeSecondes = dureeHeures * 3600;
+
+  const session = await prisma.session.create({
+    data: {
+      userId: user.id,
+      userAgent: req.headers.get("user-agent") ?? undefined,
+      expiresAt: new Date(Date.now() + dureeSecondes * 1000),
+    },
   });
 
-  setSessionCookie(token);
+  const token = await createSessionToken(
+    {
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      binomeId: user.binomeId,
+      binomeNom: user.binome?.nom ?? null,
+      nom: user.nom,
+      prenom: user.prenom,
+      sessionId: session.id,
+    },
+    dureeSecondes
+  );
+
+  setSessionCookie(token, dureeSecondes);
 
   return NextResponse.json({
     role: user.role,

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Users,
   Store,
@@ -16,6 +17,8 @@ import {
   Sparkles,
   ChevronDown,
   NotebookPen,
+  ArrowLeft,
+  Download,
 } from "lucide-react";
 import { queuePendingVisite } from "@/lib/offline/db";
 import { syncPendingVisites } from "@/lib/offline/sync";
@@ -23,7 +26,6 @@ import { compressImage } from "@/lib/utils/image";
 
 type Ville = { id: string; nom: string };
 type TypePV = { id: string; nom: string };
-type Binome = { id: string; nom: string };
 type Produit = {
   id: string;
   code: "HYPO" | "HTC";
@@ -31,7 +33,7 @@ type Produit = {
   prixFilet: number | null;
   prixCarton: number;
 };
-type Session = { nom: string; prenom: string; binomeId: string | null };
+type Session = { nom: string; prenom: string; binomeId: string | null; binomeNom: string | null };
 
 function uuid() {
   return crypto.randomUUID();
@@ -192,30 +194,33 @@ function ToggleOuiNon({
 
 export default function NouvelleVisitePage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
   const [session, setSession] = useState<Session | null>(null);
   const [villes, setVilles] = useState<Ville[]>([]);
+  const [quartiers, setQuartiers] = useState<{ id: string; nom: string }[]>([]);
+  const [quartierModeLibre, setQuartierModeLibre] = useState(false);
   const [types, setTypes] = useState<TypePV[]>([]);
-  const [binomes, setBinomes] = useState<Binome[]>([]);
   const [produits, setProduits] = useState<Produit[]>([]);
 
   const [now] = useState(() => new Date());
 
-  const [binomeId, setBinomeId] = useState("");
-
   const [nom, setNom] = useState("");
   const [vendeur, setVendeur] = useState("");
   const [telephoneVendeur, setTelephoneVendeur] = useState("");
+  const [telephonePatron, setTelephonePatron] = useState("");
   const [villeId, setVilleId] = useState("");
   const [quartierNom, setQuartierNom] = useState("");
   const [repere, setRepere] = useState("");
   const [typeId, setTypeId] = useState("");
   const [presentoir, setPresentoir] = useState<boolean | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [photoUuid, setPhotoUuid] = useState<string | null>(null);
-  const [photoUploading, setPhotoUploading] = useState(false);
+  const [presentoirAuto, setPresentoirAuto] = useState(false);
+  // Deux photos de devanture (demande de Victor) — tableaux de taille 2,
+  // chaque index traité indépendamment (compression + upload propres).
+  const [photoPreviews, setPhotoPreviews] = useState<(string | null)[]>([null, null]);
+  const [photoUrls, setPhotoUrls] = useState<(string | null)[]>([null, null]);
+  const [photoUuids, setPhotoUuids] = useState<(string | null)[]>([null, null]);
+  const [photoUploading, setPhotoUploading] = useState<boolean[]>([false, false]);
   const [gps, setGps] = useState<{ lat: number; lng: number; precision: number } | null>(
     null
   );
@@ -255,19 +260,29 @@ export default function NouvelleVisitePage() {
   useEffect(() => {
     fetch("/api/me")
       .then((r) => r.json())
-      .then((d) => {
-        setSession(d);
-        if (d.binomeId) setBinomeId(d.binomeId);
-      });
+      .then((d) => setSession(d));
     fetch("/api/referentiels")
       .then((r) => r.json())
       .then((d) => {
         setVilles(d.villes ?? []);
         setTypes(d.types ?? []);
-        setBinomes(d.binomes ?? []);
         setProduits(d.produits ?? []);
       });
   }, []);
+
+  // Quartiers rechargés dès que la ville change — le quartier n'est plus un
+  // champ texte libre mais une liste contrainte à ceux déjà connus pour la
+  // ville (limitation assumée : sans coordonnées GPS par quartier, une
+  // vraie détection automatique du quartier n'est pas fiable — voir README).
+  useEffect(() => {
+    if (!villeId) {
+      setQuartiers([]);
+      return;
+    }
+    fetch(`/api/referentiels?villeId=${villeId}`)
+      .then((r) => r.json())
+      .then((d) => setQuartiers(d.quartiers ?? []));
+  }, [villeId]);
 
   function captureGps() {
     setGpsError(null);
@@ -294,15 +309,16 @@ export default function NouvelleVisitePage() {
     );
   }
 
-  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoChange(index: number, e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const dataUrl = await compressImage(file, 1280, 0.7);
-    setPhotoPreview(dataUrl);
-    setPhotoUrl(null);
+
+    setPhotoPreviews((prev) => prev.map((p, i) => (i === index ? dataUrl : p)));
+    setPhotoUrls((prev) => prev.map((p, i) => (i === index ? null : p)));
 
     const newUuid = uuid();
-    setPhotoUuid(newUuid);
+    setPhotoUuids((prev) => prev.map((p, i) => (i === index ? newUuid : p)));
 
     // Upload immédiat vers le stockage objet si le réseau est disponible —
     // seule l'URL réelle sera envoyée avec la visite, jamais le contenu de
@@ -311,7 +327,7 @@ export default function NouvelleVisitePage() {
     // visite continue de fonctionner, avec la limitation documentée dans le
     // README (photo alors stockée en base, à éviter en usage prolongé).
     if (navigator.onLine) {
-      setPhotoUploading(true);
+      setPhotoUploading((prev) => prev.map((p, i) => (i === index ? true : p)));
       try {
         const res = await fetch("/api/upload", {
           method: "POST",
@@ -320,12 +336,12 @@ export default function NouvelleVisitePage() {
         });
         if (res.ok) {
           const data = await res.json();
-          setPhotoUrl(data.url);
+          setPhotoUrls((prev) => prev.map((p, i) => (i === index ? data.url : p)));
         }
       } catch {
         // Échec silencieux : le data URL en mémoire prend le relais.
       } finally {
-        setPhotoUploading(false);
+        setPhotoUploading((prev) => prev.map((p, i) => (i === index ? false : p)));
       }
     }
   }
@@ -428,15 +444,40 @@ export default function NouvelleVisitePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [montantEffectivementRecu]);
 
+  // Auto-détection du présentoir (demande de Victor) : si les sachets
+  // dépassent 30 ET les cartons dépassent 1 pour l'un des deux produits,
+  // on marque "Oui" automatiquement. Reste modifiable ensuite — c'est une
+  // suggestion, pas un verrou.
+  useEffect(() => {
+    const hypoQualifie = hypoSachets > 30 && hypoCartons > 1;
+    const htcQualifie = htcSachets > 30 && htcCartons > 1;
+    if ((hypoQualifie || htcQualifie) && presentoir !== true) {
+      setPresentoir(true);
+      setPresentoirAuto(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hypoSachets, hypoCartons, htcSachets, htcCartons]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
 
     const visiteUuid = uuid();
+    const photosPayload = photoUrls
+      .map((url, i) => {
+        const finalUrl = url ?? photoPreviews[i];
+        if (!finalUrl) return null;
+        return {
+          uuidClient: photoUuids[i] ?? uuid(),
+          url: finalUrl,
+          type: i === 0 ? "DEVANTURE_1" : "DEVANTURE_2",
+        };
+      })
+      .filter(Boolean) as { uuidClient: string; url: string; type: string }[];
+
     const payload = {
       uuidClient: visiteUuid,
-      binomeId: binomeId || undefined,
       dateVisite: new Date().toISOString(),
       latitude: gps?.lat ?? null,
       longitude: gps?.lng ?? null,
@@ -446,6 +487,7 @@ export default function NouvelleVisitePage() {
         nom,
         vendeur: vendeur || undefined,
         telephoneVendeur: telephoneVendeur || undefined,
+        telephonePatron: telephonePatron || undefined,
         villeId,
         quartierNom: quartierNom || undefined,
         typeId: typeId || undefined,
@@ -480,11 +522,7 @@ export default function NouvelleVisitePage() {
             },
           }
         : {}),
-      photos: photoUrl
-        ? [{ uuidClient: photoUuid!, url: photoUrl, type: "DEVANTURE" }]
-        : photoPreview
-        ? [{ uuidClient: photoUuid ?? uuid(), url: photoPreview, type: "DEVANTURE" }]
-        : [],
+      photos: photosPayload,
       observation: observation || undefined,
     };
 
@@ -509,13 +547,83 @@ export default function NouvelleVisitePage() {
       }
 
       setSuccess(true);
-      setTimeout(() => router.push("/dashboard"), 1200);
+      if (lignesVente.length === 0) {
+        setTimeout(() => router.push("/dashboard"), 1200);
+      }
     } catch {
       await queuePendingVisite(visiteUuid, payload);
       setQueuedOffline(true);
       syncPendingVisites();
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  const [facturePdfLoading, setFacturePdfLoading] = useState(false);
+
+  async function telechargerFacture() {
+    setFacturePdfLoading(true);
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
+
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.setTextColor(30, 64, 175);
+      doc.text("HYPO / HTC / ICHA IMPORT", 14, 18);
+
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text("Reçu de vente", 14, 25);
+      doc.text(`Point de vente : ${nom || "—"}`, 14, 31);
+      doc.text(`Vendeur : ${vendeur || "—"}`, 14, 36);
+      doc.text(`Date : ${new Date().toLocaleDateString("fr-FR")}`, 14, 41);
+      doc.text(
+        `Agent : ${session ? `${session.prenom} ${session.nom}` : "—"}`,
+        14,
+        46
+      );
+
+      autoTable(doc, {
+        startY: 52,
+        head: [["Produit", "Sachets", "Filets", "Cartons"]],
+        body: lignesVente.map((l) => [
+          l.produitCode,
+          String(l.nbSachets),
+          String(l.nbFilets),
+          String(l.nbCartons),
+        ]),
+        headStyles: { fillColor: [30, 64, 175] },
+        styles: { fontSize: 9 },
+      });
+
+      const finTableauY = (doc as any).lastAutoTable.finalY + 8;
+
+      const modeLabel = {
+        ESPECES: "Espèces",
+        MOBILE_MONEY: "Mobile Money",
+        CREDIT_PARTIEL: "Crédit partiel",
+        CREDIT_TOTAL: "Crédit total",
+      }[modePaiement];
+
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`Montant total : ${montantCalcule.toLocaleString("fr-FR")} FCFA`, 14, finTableauY);
+      doc.text(`Mode de paiement : ${modeLabel}`, 14, finTableauY + 6);
+      doc.text(
+        `Montant reçu : ${montantEffectivementRecu.toLocaleString("fr-FR")} FCFA`,
+        14,
+        finTableauY + 12
+      );
+      if (resteAPayer > 0) {
+        doc.setTextColor(185, 28, 28);
+        doc.text(`Reste à payer : ${resteAPayer.toLocaleString("fr-FR")} FCFA`, 14, finTableauY + 18);
+      }
+
+      doc.save(`facture-${nom.replace(/\s+/g, "-").toLowerCase() || "vente"}.pdf`);
+    } finally {
+      setFacturePdfLoading(false);
     }
   }
 
@@ -526,7 +634,25 @@ export default function NouvelleVisitePage() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-600">
             <CheckCircle2 size={30} />
           </div>
-          <p className="font-semibold text-slate-800">Visite enregistrée avec succès</p>
+          <p className="mb-4 font-semibold text-slate-800">Visite enregistrée avec succès</p>
+          {lignesVente.length > 0 && (
+            <div className="space-y-2">
+              <button
+                onClick={telechargerFacture}
+                disabled={facturePdfLoading}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                <Download size={16} />
+                {facturePdfLoading ? "Génération..." : "Télécharger la facture"}
+              </button>
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="w-full rounded-xl bg-slate-100 py-3 text-sm font-medium text-slate-600"
+              >
+                Retour à l'accueil
+              </button>
+            </div>
+          )}
         </div>
       </main>
     );
@@ -577,15 +703,24 @@ export default function NouvelleVisitePage() {
           }}
         />
         <div className="relative">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
-              <Droplet size={16} />
-            </span>
-            <p className="text-xs font-bold uppercase tracking-widest text-blue-100">
-              HYPO / HTC / ICHA IMPORT
-            </p>
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
+                <Droplet size={16} />
+              </span>
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-100">
+                HYPO / HTC / ICHA IMPORT
+              </p>
+            </div>
+            <Link
+              href="/dashboard"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15"
+              aria-label="Retour à l'accueil"
+            >
+              <ArrowLeft size={16} />
+            </Link>
           </div>
-          <h1 className="text-2xl font-extrabold">Nouvelle visite</h1>
+          <h1 className="text-2xl font-extrabold">Nouveau recensement</h1>
           <p className="mt-1 text-sm text-blue-100">Recensement terrain du jour</p>
 
           <div className="mt-5 flex gap-2">
@@ -622,15 +757,12 @@ export default function NouvelleVisitePage() {
             </p>
           </div>
 
-          <FieldLabel>Binôme</FieldLabel>
-          <Select value={binomeId} onChange={setBinomeId} required>
-            <option value="">Sélectionner...</option>
-            {binomes.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.nom}
-              </option>
-            ))}
-          </Select>
+          <div className="rounded-xl bg-indigo-50/70 px-3 py-2.5">
+            <FieldLabel>Binôme</FieldLabel>
+            <p className="text-sm font-semibold text-slate-700">
+              {session?.binomeNom ?? "Non assigné — contacte ton administrateur"}
+            </p>
+          </div>
         </section>
 
         {/* 2. Point de vente */}
@@ -682,6 +814,16 @@ export default function NouvelleVisitePage() {
               />
             </div>
 
+            <div>
+              <FieldLabel>Numéro WhatsApp du patron (si différent)</FieldLabel>
+              <TextInput
+                type="tel"
+                placeholder="Ex : 6XX XX XX XX"
+                value={telephonePatron}
+                onChange={(e) => setTelephonePatron(e.target.value)}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
@@ -697,6 +839,8 @@ export default function NouvelleVisitePage() {
                   onChange={(v) => {
                     setVilleId(v);
                     setVilleAuto(false);
+                    setQuartierNom("");
+                    setQuartierModeLibre(false);
                   }}
                   required
                 >
@@ -710,11 +854,33 @@ export default function NouvelleVisitePage() {
               </div>
               <div>
                 <FieldLabel>Quartier</FieldLabel>
-                <TextInput
-                  placeholder="Ex : Akwa"
-                  value={quartierNom}
-                  onChange={(e) => setQuartierNom(e.target.value)}
-                />
+                {quartierModeLibre || quartiers.length === 0 ? (
+                  <TextInput
+                    placeholder="Ex : Akwa"
+                    value={quartierNom}
+                    onChange={(e) => setQuartierNom(e.target.value)}
+                  />
+                ) : (
+                  <Select
+                    value={quartierNom}
+                    onChange={(v) => {
+                      if (v === "__autre__") {
+                        setQuartierModeLibre(true);
+                        setQuartierNom("");
+                      } else {
+                        setQuartierNom(v);
+                      }
+                    }}
+                  >
+                    <option value="">Choisir...</option>
+                    {quartiers.map((q) => (
+                      <option key={q.id} value={q.nom}>
+                        {q.nom}
+                      </option>
+                    ))}
+                    <option value="__autre__">+ Autre / nouveau quartier</option>
+                  </Select>
+                )}
               </div>
             </div>
 
@@ -739,55 +905,58 @@ export default function NouvelleVisitePage() {
               </Select>
             </div>
 
-            <div className="flex items-center justify-between rounded-xl bg-blue-50/70 px-3 py-2.5">
-              <span className="text-sm font-semibold text-slate-700">
-                Installation du présentoir
-              </span>
-              <ToggleOuiNon value={presentoir} onChange={setPresentoir} />
-            </div>
-
             <div>
-              <FieldLabel>Photo de la devanture</FieldLabel>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
-              {photoPreview ? (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="relative block w-full overflow-hidden rounded-xl"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photoPreview} alt="Devanture" className="h-40 w-full object-cover" />
-                  <span className="absolute bottom-2 right-2 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white">
-                    Reprendre
-                  </span>
-                  {photoUploading && (
-                    <span className="absolute left-2 top-2 rounded-lg bg-black/60 px-2.5 py-1 text-xs font-medium text-white">
-                      Envoi en cours...
-                    </span>
-                  )}
-                  {photoUrl && !photoUploading && (
-                    <span className="absolute left-2 top-2 rounded-lg bg-green-600/90 px-2.5 py-1 text-xs font-medium text-white">
-                      ✓ Envoyée
-                    </span>
-                  )}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/40 py-7 text-sm font-semibold text-brand"
-                >
-                  <Camera size={22} />
-                  Prendre une photo
-                </button>
-              )}
+              <FieldLabel>Photos de la devanture (2)</FieldLabel>
+              <div className="grid grid-cols-2 gap-2.5">
+                {[0, 1].map((index) => (
+                  <div key={index}>
+                    <input
+                      ref={fileInputRefs[index]}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={(e) => handlePhotoChange(index, e)}
+                      className="hidden"
+                    />
+                    {photoPreviews[index] ? (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRefs[index].current?.click()}
+                        className="relative block w-full overflow-hidden rounded-xl"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={photoPreviews[index]!}
+                          alt={`Devanture ${index + 1}`}
+                          className="h-32 w-full object-cover"
+                        />
+                        <span className="absolute bottom-1.5 right-1.5 rounded-lg bg-black/60 px-2 py-1 text-[10px] font-medium text-white">
+                          Reprendre
+                        </span>
+                        {photoUploading[index] && (
+                          <span className="absolute left-1.5 top-1.5 rounded-lg bg-black/60 px-2 py-1 text-[10px] font-medium text-white">
+                            Envoi...
+                          </span>
+                        )}
+                        {photoUrls[index] && !photoUploading[index] && (
+                          <span className="absolute left-1.5 top-1.5 rounded-lg bg-green-600/90 px-2 py-1 text-[10px] font-medium text-white">
+                            ✓ Envoyée
+                          </span>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRefs[index].current?.click()}
+                        className="flex h-32 w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/40 text-xs font-semibold text-brand"
+                      >
+                        <Camera size={20} />
+                        Photo {index + 1}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -871,6 +1040,29 @@ export default function NouvelleVisitePage() {
                 Sous-total : {sousTotalHtc.toLocaleString("fr-FR")} FCFA
               </p>
             )}
+          </div>
+
+          {/* Présentoir — positionné après l'achat du jour et pré-rempli
+              automatiquement selon les quantités saisies (§ demande de
+              Victor), mais reste modifiable. */}
+          <div className="mb-4 flex items-center justify-between rounded-xl bg-blue-50/70 px-3 py-2.5">
+            <div>
+              <span className="text-sm font-semibold text-slate-700">
+                Installation du présentoir
+              </span>
+              {presentoirAuto && presentoir === true && (
+                <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                  Suggéré automatiquement
+                </span>
+              )}
+            </div>
+            <ToggleOuiNon
+              value={presentoir}
+              onChange={(v) => {
+                setPresentoir(v);
+                setPresentoirAuto(false);
+              }}
+            />
           </div>
 
           {/* Mode de paiement — chaque mode a son propre comportement

@@ -64,6 +64,7 @@ const nouveauPointVenteSchema = z.object({
   nom: z.string().min(2),
   vendeur: z.string().optional(),
   telephoneVendeur: z.string().optional(),
+  telephonePatron: z.string().optional(),
   villeId: z.string().uuid(),
   quartierNom: z.string().optional(),
   repere: z.string().optional(),

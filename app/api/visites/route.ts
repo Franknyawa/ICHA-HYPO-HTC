@@ -125,6 +125,7 @@ export async function POST(req: NextRequest) {
               nom: npv.nom,
               vendeur: npv.vendeur,
               telephoneVendeur: npv.telephoneVendeur,
+              telephonePatron: npv.telephonePatron,
               villeId: npv.villeId,
               quartierId,
               repere: npv.repere,

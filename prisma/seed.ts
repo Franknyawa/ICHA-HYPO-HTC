@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -27,19 +28,19 @@ async function main() {
     create: { nom: "Akwa", villeId: douala.id },
   });
 
-  // Types de point de vente — liste précise donnée par Victor
+  // Types de point de vente — ordre d'affichage précis donné par Victor
   const types = [
     "Boutique du quartier",
-    "Mini super marché / Supérette",
-    "Table Call Box / Kiosque",
-    "Grossiste",
     "Vendeur ambulant",
+    "Table Call Box / Kiosque",
+    "Mini super marché / Supérette",
+    "Grossiste",
   ];
-  for (const nom of types) {
+  for (let i = 0; i < types.length; i++) {
     await prisma.typePointVente.upsert({
-      where: { nom },
-      update: {},
-      create: { nom },
+      where: { nom: types[i] },
+      update: { ordre: i + 1 },
+      create: { nom: types[i], ordre: i + 1 },
     });
   }
 

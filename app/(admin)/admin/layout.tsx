@@ -11,6 +11,7 @@ import {
   UserCog,
   Droplet,
   Truck,
+  Settings,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/admin/commandes", label: "Commandes", icon: Truck },
   { href: "/admin/clients", label: "Clients", icon: Users2 },
   { href: "/admin/rapports", label: "Rapports", icon: FileBarChart },
+  { href: "/admin/parametres", label: "Paramètres", icon: Settings },
   { href: "/admin/utilisateurs", label: "Utilisateurs", icon: UserCog },
 ];
 

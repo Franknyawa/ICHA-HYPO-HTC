@@ -24,6 +24,7 @@ datasource db {
 model Ville {
   id        String     @id @default(uuid())
   nom       String     @unique
+  actif     Boolean    @default(true)
   createdAt DateTime   @default(now()) @map("created_at")
   quartiers Quartier[]
   pointsVente PointVente[]
@@ -48,6 +49,8 @@ model Quartier {
 model TypePointVente {
   id          String       @id @default(uuid())
   nom         String       @unique
+  actif       Boolean      @default(true)
+  ordre       Int          @default(0) // contrôle l'ordre d'affichage, modifiable en back office
   pointsVente PointVente[]
 
   @@map("types_point_vente")
@@ -123,6 +126,7 @@ model User {
   photos           Photo[]
   notifications    Notification[]
   loginAttempts    LoginAttempt[]
+  sessions         Session[]
 
   @@index([binomeId])
   @@index([role])
@@ -140,6 +144,45 @@ model LoginAttempt {
 
   @@index([username, createdAt])
   @@map("login_attempts")
+}
+
+/// Sessions serveur — permet de lister et révoquer individuellement les
+/// connexions actives d'un utilisateur, chose impossible avec un simple
+/// JWT sans état. Le JWT porte l'id de cette session ; chaque vérification
+/// d'authentification (getSession) confirme aussi que la session n'a pas
+/// été révoquée ni expirée côté serveur.
+model Session {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+  expiresAt  DateTime @map("expires_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+  revoked    Boolean  @default(false)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+/// Paramètres système simples, clé/valeur — évite de créer un modèle dédié
+/// pour chaque petit réglage global (ex: durée de session en heures).
+model ParametreSysteme {
+  cle    String @id
+  valeur String
+
+  @@map("parametres_systeme")
+}
+
+/// Objectifs individuels appliqués uniformément à tous les commerciaux
+/// (par opposition aux objectifs par binôme déjà existants) — un seul
+/// enregistrement par période, modifiable en back office.
+model ObjectifIndividuel {
+  periode       PeriodeObjectif @id
+  valeurCartons Int             @map("valeur_cartons")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  @@map("objectifs_individuels")
 }
 
 // ---------------------------------------------------------------------------
@@ -163,6 +206,7 @@ model PointVente {
   nom           String
   vendeur       String?
   telephoneVendeur String? @map("telephone_vendeur")
+  telephonePatron  String? @map("telephone_patron") // "si différent" — optionnel
   villeId       String    @map("ville_id")
   ville         Ville     @relation(fields: [villeId], references: [id])
   quartierId    String?   @map("quartier_id")

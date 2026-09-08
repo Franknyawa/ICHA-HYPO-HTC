@@ -5,8 +5,10 @@ export type SessionPayload = {
   username: string;
   role: "ADMIN" | "COMMERCIAL";
   binomeId: string | null;
+  binomeNom: string | null;
   nom: string;
   prenom: string;
+  sessionId: string; // référence la table Session — permet la révocation
 };
 
 function getSecretKey() {

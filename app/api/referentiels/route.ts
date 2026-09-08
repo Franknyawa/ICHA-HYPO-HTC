@@ -16,12 +16,12 @@ export async function GET(req: NextRequest) {
     const villeId = req.nextUrl.searchParams.get("villeId") ?? undefined;
 
     const [villes, quartiers, types, binomes, produits] = await Promise.all([
-      prisma.ville.findMany({ orderBy: { nom: "asc" } }),
+      prisma.ville.findMany({ where: { actif: true }, orderBy: { nom: "asc" } }),
       prisma.quartier.findMany({
         where: villeId ? { villeId } : undefined,
         orderBy: { nom: "asc" },
       }),
-      prisma.typePointVente.findMany({ orderBy: { nom: "asc" } }),
+      prisma.typePointVente.findMany({ where: { actif: true }, orderBy: { ordre: "asc" } }),
       prisma.binome.findMany({ where: { actif: true }, orderBy: { nom: "asc" } }),
       prisma.produit.findMany({
         where: { actif: true },

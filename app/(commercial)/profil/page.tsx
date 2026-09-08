@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Camera, CreditCard } from "lucide-react";
 import { compressImage } from "@/lib/utils/image";
 
 type CreditDetail = { venteId: string; pointVenteNom: string; montantDu: number; dateVente: string };
 
+// Le changement de mot de passe a été retiré côté commercial (demande de
+// Victor) — seul un admin peut désormais réinitialiser un mot de passe,
+// depuis /admin/utilisateurs.
+
 export default function ProfilPage() {
-  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -16,12 +18,6 @@ export default function ProfilPage() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const [credits, setCredits] = useState<{ total: number; detail: CreditDetail[] } | null>(null);
-
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch("/api/me")
@@ -69,27 +65,6 @@ export default function ProfilPage() {
     } finally {
       setAvatarUploading(false);
     }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSaving(true);
-
-    const res = await fetch("/api/auth/change-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-
-    if (res.ok) {
-      setSuccess(true);
-      setTimeout(() => router.push("/dashboard"), 1200);
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Échec de la mise à jour.");
-    }
-    setSaving(false);
   }
 
   return (
@@ -169,61 +144,6 @@ export default function ProfilPage() {
             </div>
           </div>
         )}
-
-        {/* Mot de passe */}
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-2xl bg-white p-6 shadow-sm"
-        >
-          <h1 className="mb-4 text-lg font-semibold text-blue-800">
-            Changer mon mot de passe
-          </h1>
-
-          {success ? (
-            <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-              Mot de passe mis à jour.
-            </p>
-          ) : (
-            <>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Mot de passe actuel
-              </label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                required
-                className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-base"
-              />
-
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Nouveau mot de passe
-              </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength={6}
-                className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-base"
-              />
-
-              {error && (
-                <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">
-                  {error}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full rounded-lg bg-blue-700 py-2.5 text-base font-medium text-white disabled:opacity-60"
-              >
-                {saving ? "..." : "Mettre à jour"}
-              </button>
-            </>
-          )}
-        </form>
       </div>
     </main>
   );
