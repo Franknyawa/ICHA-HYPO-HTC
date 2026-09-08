@@ -89,10 +89,10 @@ function ReassortContent() {
   }, [pointVenteIdPrefill]);
 
   function updateQty(code: string, field: "sachets" | "filets" | "cartons", value: number) {
-    setQuantites((prev) => ({
-      ...prev,
-      [code]: { sachets: 0, filets: 0, cartons: 0, ...prev[code], [field]: value },
-    }));
+    setQuantites((prev) => {
+      const base = prev[code] ?? { sachets: 0, filets: 0, cartons: 0 };
+      return { ...prev, [code]: { ...base, [field]: value } };
+    });
   }
 
   const lignes = produits
