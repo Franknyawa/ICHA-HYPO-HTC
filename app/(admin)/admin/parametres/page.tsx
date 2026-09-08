@@ -253,6 +253,20 @@ function ProduitsManager() {
   const [editTarget, setEditTarget] = useState<Produit | null>(null);
   const [form, setForm] = useState({ prixSachet: 0, prixFilet: 0, prixCarton: 0 });
   const [saving, setSaving] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    code: "",
+    nom: "",
+    volumeMl: 0,
+    sachetsParCarton: 0,
+    aDesFilets: false,
+    filetsParCarton: 0,
+    sachetsParFilet: 0,
+    prixSachet: 0,
+    prixFilet: 0,
+    prixCarton: 0,
+  });
+  const [createError, setCreateError] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
@@ -263,6 +277,47 @@ function ProduitsManager() {
   }
 
   useEffect(load, []);
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setCreateError(null);
+    const res = await fetch("/api/parametres/produits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: createForm.code.toUpperCase().replace(/\s+/g, "_"),
+        nom: createForm.nom,
+        volumeMl: createForm.volumeMl,
+        sachetsParCarton: createForm.sachetsParCarton,
+        filetsParCarton: createForm.aDesFilets ? createForm.filetsParCarton : null,
+        sachetsParFilet: createForm.aDesFilets ? createForm.sachetsParFilet : null,
+        prixSachet: createForm.prixSachet,
+        prixFilet: createForm.aDesFilets ? createForm.prixFilet : null,
+        prixCarton: createForm.prixCarton,
+      }),
+    });
+    if (res.ok) {
+      setShowCreate(false);
+      setCreateForm({
+        code: "",
+        nom: "",
+        volumeMl: 0,
+        sachetsParCarton: 0,
+        aDesFilets: false,
+        filetsParCarton: 0,
+        sachetsParFilet: 0,
+        prixSachet: 0,
+        prixFilet: 0,
+        prixCarton: 0,
+      });
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setCreateError(d.error ?? "Échec de la création.");
+    }
+    setSaving(false);
+  }
 
   function openEdit(p: Produit) {
     setEditTarget(p);
@@ -293,11 +348,23 @@ function ProduitsManager() {
 
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-white">
-          <Package size={16} />
-        </span>
-        <h2 className="font-bold text-slate-800">Produits & prix</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-white">
+            <Package size={16} />
+          </span>
+          <h2 className="font-bold text-slate-800">Produits & prix</h2>
+        </div>
+        <button
+          onClick={() => {
+            setShowCreate(true);
+            setCreateError(null);
+          }}
+          className="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600"
+        >
+          <Plus size={14} />
+          Nouveau
+        </button>
       </div>
 
       {loading ? (
@@ -365,6 +432,148 @@ function ProduitsManager() {
               </button>
               <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
                 {saving ? "..." : "Enregistrer"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form
+            onSubmit={handleCreate}
+            className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5 shadow-lg"
+          >
+            <h3 className="mb-3 font-semibold text-slate-800">Nouveau produit</h3>
+            <p className="mb-3 text-xs text-slate-400">
+              Apparaîtra automatiquement dans la Visite de réassort. Le
+              formulaire "Nouveau recensement" reste pour l'instant limité à
+              HYPO/HTC (voir README).
+            </p>
+
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Code (ex: XYZ)</label>
+                <input
+                  type="text"
+                  required
+                  value={createForm.code}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, code: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Volume (ml)</label>
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  value={createForm.volumeMl || ""}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, volumeMl: Number(e.target.value) || 0 }))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <label className="mb-1 block text-xs font-medium text-slate-500">Nom complet</label>
+            <input
+              type="text"
+              required
+              value={createForm.nom}
+              onChange={(e) => setCreateForm((f) => ({ ...f, nom: e.target.value }))}
+              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+
+            <label className="mb-2 flex items-center gap-2 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                checked={createForm.aDesFilets}
+                onChange={(e) => setCreateForm((f) => ({ ...f, aDesFilets: e.target.checked }))}
+              />
+              Ce produit se vend aussi par filet (comme HTC)
+            </label>
+
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              {createForm.aDesFilets && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">Sachets/filet</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={createForm.sachetsParFilet || ""}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, sachetsParFilet: Number(e.target.value) || 0 }))}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+              )}
+              {createForm.aDesFilets && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">Filets/carton</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={createForm.filetsParCarton || ""}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, filetsParCarton: Number(e.target.value) || 0 }))}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+              )}
+              <div className={createForm.aDesFilets ? "col-span-2" : ""}>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Sachets/carton</label>
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  value={createForm.sachetsParCarton || ""}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, sachetsParCarton: Number(e.target.value) || 0 }))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Prix/sachet</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={createForm.prixSachet || ""}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, prixSachet: Number(e.target.value) || 0 }))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Prix/carton</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={createForm.prixCarton || ""}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, prixCarton: Number(e.target.value) || 0 }))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+              {createForm.aDesFilets && (
+                <div className="col-span-2">
+                  <label className="mb-1 block text-xs font-medium text-slate-500">Prix/filet</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={createForm.prixFilet || ""}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, prixFilet: Number(e.target.value) || 0 }))}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+              )}
+            </div>
+
+            {createError && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{createError}</p>}
+
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setShowCreate(false)} className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
+                {saving ? "..." : "Créer"}
               </button>
             </div>
           </form>

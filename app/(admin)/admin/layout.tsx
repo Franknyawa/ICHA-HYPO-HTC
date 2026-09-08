@@ -12,12 +12,14 @@ import {
   Droplet,
   Truck,
   Settings,
+  Receipt,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/admin/points-vente", label: "Points de vente", icon: Store },
   { href: "/admin/commandes", label: "Commandes", icon: Truck },
+  { href: "/admin/factures", label: "Factures", icon: Receipt },
   { href: "/admin/clients", label: "Clients", icon: Users2 },
   { href: "/admin/rapports", label: "Rapports", icon: FileBarChart },
   { href: "/admin/parametres", label: "Paramètres", icon: Settings },

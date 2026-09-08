@@ -23,6 +23,7 @@ import {
 import { queuePendingVisite } from "@/lib/offline/db";
 import { syncPendingVisites } from "@/lib/offline/sync";
 import { compressImage } from "@/lib/utils/image";
+import { genererFacturePdf } from "@/lib/utils/facture-pdf";
 
 type Ville = { id: string; nom: string };
 type TypePV = { id: string; nom: string };
@@ -564,42 +565,6 @@ export default function NouvelleVisitePage() {
   async function telechargerFacture() {
     setFacturePdfLoading(true);
     try {
-      const { default: jsPDF } = await import("jspdf");
-      const autoTable = (await import("jspdf-autotable")).default;
-
-      const doc = new jsPDF();
-
-      doc.setFontSize(16);
-      doc.setTextColor(30, 64, 175);
-      doc.text("HYPO / HTC / ICHA IMPORT", 14, 18);
-
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text("Reçu de vente", 14, 25);
-      doc.text(`Point de vente : ${nom || "—"}`, 14, 31);
-      doc.text(`Vendeur : ${vendeur || "—"}`, 14, 36);
-      doc.text(`Date : ${new Date().toLocaleDateString("fr-FR")}`, 14, 41);
-      doc.text(
-        `Agent : ${session ? `${session.prenom} ${session.nom}` : "—"}`,
-        14,
-        46
-      );
-
-      autoTable(doc, {
-        startY: 52,
-        head: [["Produit", "Sachets", "Filets", "Cartons"]],
-        body: lignesVente.map((l) => [
-          l.produitCode,
-          String(l.nbSachets),
-          String(l.nbFilets),
-          String(l.nbCartons),
-        ]),
-        headStyles: { fillColor: [30, 64, 175] },
-        styles: { fontSize: 9 },
-      });
-
-      const finTableauY = (doc as any).lastAutoTable.finalY + 8;
-
       const modeLabel = {
         ESPECES: "Espèces",
         MOBILE_MONEY: "Mobile Money",
@@ -607,21 +572,18 @@ export default function NouvelleVisitePage() {
         CREDIT_TOTAL: "Crédit total",
       }[modePaiement];
 
-      doc.setFontSize(11);
-      doc.setTextColor(15, 23, 42);
-      doc.text(`Montant total : ${montantCalcule.toLocaleString("fr-FR")} FCFA`, 14, finTableauY);
-      doc.text(`Mode de paiement : ${modeLabel}`, 14, finTableauY + 6);
-      doc.text(
-        `Montant reçu : ${montantEffectivementRecu.toLocaleString("fr-FR")} FCFA`,
-        14,
-        finTableauY + 12
-      );
-      if (resteAPayer > 0) {
-        doc.setTextColor(185, 28, 28);
-        doc.text(`Reste à payer : ${resteAPayer.toLocaleString("fr-FR")} FCFA`, 14, finTableauY + 18);
-      }
-
-      doc.save(`facture-${nom.replace(/\s+/g, "-").toLowerCase() || "vente"}.pdf`);
+      await genererFacturePdf({
+        numero: new Date().toISOString().slice(0, 10).replace(/-/g, ""),
+        date: new Date(),
+        pointVenteNom: nom || "—",
+        villeNom: villes.find((v) => v.id === villeId)?.nom ?? null,
+        commercialNom: session ? `${session.prenom} ${session.nom}` : "—",
+        lignes: lignesVente,
+        montantTotal: montantCalcule,
+        modePaiementLabel: modeLabel,
+        montantRecu: montantEffectivementRecu,
+        resteAPayer: resteAPayer > 0 ? resteAPayer : undefined,
+      });
     } finally {
       setFacturePdfLoading(false);
     }

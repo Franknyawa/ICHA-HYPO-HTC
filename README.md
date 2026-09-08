@@ -508,6 +508,56 @@ npm run prisma:seed
   office (ils se créent à la volée depuis le terrain, mais ne peuvent pas
   encore être renommés/fusionnés depuis `/admin/parametres`)
 
+### ✅ Factures admin, produits dynamiques, recherche, rotation & réassort
+- **`/admin/factures`** — liste paginée de toutes les ventes (filtrable par
+  commercial/ville/période), bouton "Facture" par ligne générant le PDF à
+  partir des données déjà en base
+- **Produits dynamiques** — `produitCode` n'est plus limité à
+  `"HYPO"|"HTC"` côté validation/API ; l'admin peut créer de nouveaux
+  produits depuis `/admin/parametres` (code, nom, volume, conversions
+  sachets/filets/cartons, prix). **Limitation assumée** : le formulaire
+  "Nouveau recensement" garde son affichage figé à deux colonnes HYPO/HTC —
+  un produit ajouté apparaît dans la nouvelle Visite de réassort (rendu
+  dynamique), pas encore dans ce formulaire-là. Généraliser aussi
+  "Nouveau recensement" est la suite logique si plus de 2 produits arrivent.
+- **Recherche de point de vente** (`lib/queries/points-vente-recherche.ts`,
+  `/api/points-vente/recherche`, composant `PointVenteSearch`) — par nom de
+  boutique, nom de vendeur, ou proximité GPS (distance calculée
+  côté serveur). Réutilisée dans les deux nouvelles pages ci-dessous.
+- **Visite de rotation et d'achalandage** (`/visites/rotation`) — recherche
+  du point de vente existant, photo avec le boutiquier, rapport de visite
+  horodaté, bouton "{nom} passe une nouvelle commande" qui embarque le
+  point de vente déjà identifié vers la Visite de réassort
+- **Visite de réassort** (`/visites/reassort`) — recherche ou point de
+  vente pré-rempli (arrivée depuis la rotation), formulaire de commande
+  avec **tous les produits actifs rendus dynamiquement** (pas figé à
+  HYPO/HTC), calcul automatique du montant, les 4 modes de paiement,
+  génération de facture PDF, puis un champ rapport après la commande
+- **Dashboard commercial redessiné** — section "Alertes" unifiée
+  (crédits en cours + commandes en attente), boutons d'action reliés aux
+  nouvelles pages, mise en page resserrée
+
+Aucun changement de schéma dans ce module — pas de migration nécessaire.
+
+**Limite à surveiller** : la barre de navigation mobile compte maintenant
+8 onglets (Tableau de bord, Points de vente, Commandes, Factures, Clients,
+Rapports, Paramètres, Utilisateurs) — ça commence à être serré sur petit
+écran. À condenser (ex: un menu "Plus" regroupant les moins utilisés) si
+ça devient gênant en usage réel.
+
+### ✅ Facture PDF redessinée et centralisée
+- `lib/utils/facture-pdf.ts` — nouveau générateur unique, utilisé par les
+  3 endroits qui produisaient chacun leur propre PDF auparavant (formulaire
+  terrain, visite de réassort, liste admin des factures) — plus de code
+  dupliqué, un seul design à maintenir désormais.
+- Design : en-tête bleu marque avec bande d'accent, bloc "Point de vente" /
+  "Vendu par" sur fond gris clair, tableau produits avec lignes alternées
+  et en-tête coloré, bloc total aligné à droite avec le "Reste à payer"
+  mis en évidence sur fond rouge clair quand il y en a un, pied de page
+  avec message de remerciement.
+
+Aucun changement de schéma — pas de migration nécessaire.
+
 ### 📋 Plan pour les fonctionnalités admin restantes
 Dans l'ordre où elles seront abordées :
 1. **Objectifs & progression** — Réalisé/Objectif × 100 par binôme, jour et

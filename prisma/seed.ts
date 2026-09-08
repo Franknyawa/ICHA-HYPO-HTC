@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "dotenv/config"; // tsx ne charge pas .env automatiquement — contrairement au CLI Prisma
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 

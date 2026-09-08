@@ -7,7 +7,7 @@ const gpsSchema = z.object({
 });
 
 const venteLigneSchema = z.object({
-  produitCode: z.enum(["HYPO", "HTC"]),
+  produitCode: z.string(), // générique — ne se limite plus à HYPO/HTC
   nbSachets: z.number().int().min(0).default(0),
   nbFilets: z.number().int().min(0).default(0),
   nbCartons: z.number().int().min(0).default(0),
@@ -34,7 +34,7 @@ const venteSchema = z.object({
 
 // Commande à livrer plus tard (distincte de la vente immédiate) — §22 CDC.
 const commandeLigneSchema = z.object({
-  produitCode: z.enum(["HYPO", "HTC"]),
+  produitCode: z.string(), // générique — ne se limite plus à HYPO/HTC
   nbSachets: z.number().int().min(0).default(0),
   nbFilets: z.number().int().min(0).default(0),
   nbCartons: z.number().int().min(0).default(0),
