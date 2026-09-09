@@ -30,14 +30,16 @@ function KpiCard({
   label,
   value,
   color,
+  href,
 }: {
   icon: React.ElementType;
   label: string;
   value: string | number;
   color: string;
+  href?: string;
 }) {
-  return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+  const contenu = (
+    <>
       <div
         className="mb-2.5 flex h-9 w-9 items-center justify-center rounded-lg text-white"
         style={{ backgroundColor: color }}
@@ -46,13 +48,28 @@ function KpiCard({
       </div>
       <p className="text-xl font-bold text-slate-800">{value}</p>
       <p className="text-xs font-medium text-slate-400">{label}</p>
-    </div>
+    </>
   );
+
+  const classe =
+    "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100" +
+    (href ? " transition-transform hover:-translate-y-0.5 hover:shadow-md" : "");
+
+  if (href) {
+    return (
+      <Link href={href} className={classe}>
+        {contenu}
+      </Link>
+    );
+  }
+
+  return <div className={classe}>{contenu}</div>;
 }
 
 export default async function AdminDashboardPage() {
   const session = await getSession();
   const kpis = await getDashboardKpis();
+  const aujourdhui = new Date().toISOString().slice(0, 10);
   const [{ parBinome, parVendeur }, observations] = await Promise.all([
     getCaParBinomeEtVendeur(),
     getObservationsRecentes(),
@@ -68,27 +85,77 @@ export default async function AdminDashboardPage() {
 
       <div className="px-4 pt-4">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <KpiCard icon={MapPin} label="Visites aujourd'hui" value={kpis.visitesAujourdhui} color="#4338ca" />
+          <KpiCard
+            icon={MapPin}
+            label="Visites aujourd'hui"
+            value={kpis.visitesAujourdhui}
+            color="#4338ca"
+            href={`/admin/tracking?mode=visites&date=${aujourdhui}`}
+          />
           <KpiCard icon={Users} label="Prospects (total)" value={kpis.prospectsTotal} color="#4338ca" />
-          <KpiCard icon={UserCheck} label="Clients (total)" value={kpis.clientsTotal} color="#1e40af" />
-          <KpiCard icon={ShoppingCart} label="Ventes aujourd'hui" value={kpis.ventesAujourdhui} color="#1e40af" />
-          <KpiCard icon={Clock} label="Commandes en attente" value={kpis.commandesEnAttente} color="#b45309" />
-          <KpiCard icon={Droplet} label="Cartons HYPO vendus" value={kpis.cartonsHypo} color="#1e40af" />
-          <KpiCard icon={Sparkles} label="Cartons HTC vendus" value={kpis.cartonsHtc} color="#0f766e" />
-          <KpiCard icon={Banknote} label="CA du jour" value={formatFcfa(kpis.caAujourdhui)} color="#15803d" />
-          <KpiCard icon={Wallet} label="Encaissements" value={formatFcfa(kpis.encaissements)} color="#15803d" />
+          <KpiCard
+            icon={UserCheck}
+            label="Clients (total)"
+            value={kpis.clientsTotal}
+            color="#1e40af"
+            href="/admin/clients"
+          />
+          <KpiCard
+            icon={ShoppingCart}
+            label="Ventes aujourd'hui"
+            value={kpis.ventesAujourdhui}
+            color="#1e40af"
+            href={`/admin/factures?dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
+          />
+          <KpiCard
+            icon={Clock}
+            label="Commandes en attente"
+            value={kpis.commandesEnAttente}
+            color="#b45309"
+            href="/admin/commandes?statut=EN_ATTENTE"
+          />
+          <KpiCard
+            icon={Droplet}
+            label="Cartons HYPO vendus"
+            value={kpis.cartonsHypo}
+            color="#1e40af"
+            href={`/admin/rapports?produitCode=HYPO&dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
+          />
+          <KpiCard
+            icon={Sparkles}
+            label="Cartons HTC vendus"
+            value={kpis.cartonsHtc}
+            color="#0f766e"
+            href={`/admin/rapports?produitCode=HTC&dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
+          />
+          <KpiCard
+            icon={Banknote}
+            label="CA du jour"
+            value={formatFcfa(kpis.caAujourdhui)}
+            color="#15803d"
+            href={`/admin/rapports?dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
+          />
+          <KpiCard
+            icon={Wallet}
+            label="Encaissements"
+            value={formatFcfa(kpis.encaissements)}
+            color="#15803d"
+            href={`/admin/factures?dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
+          />
           <KpiCard icon={CreditCard} label="Crédits en cours" value={formatFcfa(kpis.credits)} color="#b91c1c" />
           <KpiCard
             icon={Droplet}
             label="Stock HYPO"
             value={`${kpis.stockHypoCartons} cartons`}
             color="#1e40af"
+            href="/admin/parametres"
           />
           <KpiCard
             icon={Sparkles}
             label="Stock HTC"
             value={`${kpis.stockHtcCartons} cartons`}
             color="#0f766e"
+            href="/admin/parametres"
           />
         </div>
 

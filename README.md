@@ -625,6 +625,21 @@ Si tu avais déjà réglé une durée de session avant ce correctif, elle est
 ignorée (ancienne clé `duree_session_heures`) — reconfigure-la depuis
 `/admin/parametres` après la mise à jour.
 
+### ✅ Cartes KPI cliquables sur le dashboard admin
+8 des 10 cartes du dashboard admin renvoient maintenant vers la page la
+plus pertinente, filtrée sur la journée en cours quand c'est pertinent :
+Visites → Tracking (visites du jour), Clients → liste clients, Ventes →
+Factures du jour, Commandes en attente → Commandes filtrées, Cartons
+HYPO/HTC → Rapports filtrés par produit, CA du jour → Rapports du jour,
+Encaissements → Factures du jour, Stock HYPO/HTC → Paramètres (pas encore
+de vraie page de gestion du stock, voir plan restant).
+
+**Non cliquables, faute de destination existante** : Prospects (pas de
+page admin dédiée) et Crédits en cours (pas de vue globale des crédits
+côté admin — seule la vue par commercial existe sur son profil).
+
+Aucun changement de schéma — pas de migration nécessaire.
+
 ### 📋 Plan pour les fonctionnalités admin restantes
 Dans l'ordre où elles seront abordées :
 1. **Objectifs & progression** — Réalisé/Objectif × 100 par binôme, jour et
