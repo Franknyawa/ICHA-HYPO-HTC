@@ -119,6 +119,14 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  // Dernière position connue — "battement" envoyé par la PWA pendant que
+  // l'app est ouverte côté commercial (§ tracking en direct). Ce n'est PAS
+  // un suivi en arrière-plan permanent : sans l'app ouverte, la position
+  // ne se met plus à jour — limitation assumée des PWA (surtout iOS).
+  dernierePositionLat Decimal?  @map("derniere_position_lat") @db.Decimal(10, 7)
+  dernierePositionLng Decimal?  @map("derniere_position_lng") @db.Decimal(10, 7)
+  dernierePositionAt  DateTime? @map("derniere_position_at")
+
   pointsVenteCrees PointVente[]     @relation("PointVenteCreateur")
   visites          Visite[]
   ventes           Vente[]

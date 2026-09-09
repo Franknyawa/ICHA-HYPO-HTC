@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { verifySessionToken, type SessionPayload } from "./edge";
 
 const COOKIE_NAME = "icha_session";
-const DUREE_SESSION_DEFAUT_HEURES = 12;
+const DUREE_SESSION_DEFAUT_MINUTES = 12 * 60;
 
 function getSecretKey() {
   const secret = process.env.AUTH_SECRET;
@@ -21,16 +21,17 @@ export type { SessionPayload };
 export { verifySessionToken };
 
 /**
- * Durée de session configurable depuis le back office
- * (ParametreSysteme, clé "duree_session_heures"). 12h par défaut si jamais
- * réglée.
+ * Durée de session configurable depuis le back office, en minutes
+ * (ParametreSysteme, clé "duree_session_minutes") — 12h (720 min) par
+ * défaut si jamais réglée. Anciennement en heures entières uniquement ;
+ * passé en minutes pour permettre des réglages plus fins (ex: 30 min).
  */
-export async function getDureeSessionHeures(): Promise<number> {
+export async function getDureeSessionMinutes(): Promise<number> {
   const param = await prisma.parametreSysteme.findUnique({
-    where: { cle: "duree_session_heures" },
+    where: { cle: "duree_session_minutes" },
   });
-  const heures = param ? Number(param.valeur) : NaN;
-  return Number.isFinite(heures) && heures > 0 ? heures : DUREE_SESSION_DEFAUT_HEURES;
+  const minutes = param ? Number(param.valeur) : NaN;
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : DUREE_SESSION_DEFAUT_MINUTES;
 }
 
 /** Signe un JWT de session. Utilisé uniquement côté route API (Node runtime). */

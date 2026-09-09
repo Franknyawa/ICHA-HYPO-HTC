@@ -592,6 +592,39 @@ Aucun changement de schéma — les coordonnées étaient déjà enregistrées �
 chaque visite. Nouvelles dépendances : `leaflet`, `react-leaflet`,
 `@types/leaflet`.
 
+### ✅ Corrections diverses + tracking en direct
+- **Bug objectifs individuels** — la sauvegarde échouait silencieusement
+  (aucune vérification `res.ok`, aucune erreur affichée). Corrigé avec
+  gestion d'erreur visible + resynchronisation de l'affichage après
+  rechargement. Si le problème persiste après ce correctif, le message
+  d'erreur affiché dira enfin pourquoi.
+- **Durée de session en minutes** — `duree_session_minutes` remplace
+  `duree_session_heures` (permet des réglages fins comme 30 min), champ
+  back office avec saisie heures + minutes séparées, converties
+  automatiquement.
+- **Date des crédits sur le dashboard commercial** — chaque crédit affiche
+  maintenant boutique, montant ET date de vente (comme les commandes en
+  attente).
+- **Tracking en direct** — nouveau bouton bascule sur `/admin/tracking`
+  entre "Visites du jour" (historique, déjà existant) et "Position
+  actuelle" (nouveau). Un léger battement de position est envoyé par la
+  PWA du commercial toutes les 3 minutes tant que le dashboard reste
+  ouvert (`components/commercial/LocationHeartbeat.tsx` →
+  `POST /api/me/position`). **Limitation assumée et annoncée dans
+  l'interface** : ce n'est pas un suivi permanent en arrière-plan — sans
+  l'app ouverte (surtout sur iOS, très restrictif), la position ne se met
+  plus à jour. La carte affiche l'heure du dernier battement reçu.
+
+**⚠️ Changement de schéma — migration nécessaire :**
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS derniere_position_lat DECIMAL(10,7);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS derniere_position_lng DECIMAL(10,7);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS derniere_position_at TIMESTAMP(3);
+```
+Si tu avais déjà réglé une durée de session avant ce correctif, elle est
+ignorée (ancienne clé `duree_session_heures`) — reconfigure-la depuis
+`/admin/parametres` après la mise à jour.
+
 ### 📋 Plan pour les fonctionnalités admin restantes
 Dans l'ordre où elles seront abordées :
 1. **Objectifs & progression** — Réalisé/Objectif × 100 par binôme, jour et

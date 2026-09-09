@@ -8,6 +8,7 @@ import {
 import { getCreditsCommercial } from "@/lib/queries/credits";
 import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { LogoutButton } from "@/components/LogoutButton";
+import { LocationHeartbeat } from "@/components/commercial/LocationHeartbeat";
 import {
   ClipboardList,
   RefreshCw,
@@ -18,7 +19,6 @@ import {
   Droplet,
   AlertTriangle,
   CreditCard,
-  ChevronRight,
 } from "lucide-react";
 
 const COULEUR_CLASSES: Record<string, { bar: string; text: string; bg: string }> = {
@@ -75,6 +75,7 @@ export default async function CommercialDashboardPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 pb-10">
+      <LocationHeartbeat />
       {/* En-tête */}
       <div
         className="px-4 pb-7 pt-6 text-white"
@@ -133,28 +134,41 @@ export default async function CommercialDashboardPage() {
             </div>
 
             {credits.total > 0 && (
-              <Link
-                href="/profil"
-                className="flex items-center justify-between border-b border-slate-100 px-4 py-3"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-alert">
-                    <CreditCard size={15} />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800">Crédits en cours</p>
-                    <p className="text-xs text-slate-400">
-                      {credits.detail.length} vente{credits.detail.length > 1 ? "s" : ""} avec reste à payer
+              <div className="border-b border-slate-100 px-4 py-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-alert">
+                      <CreditCard size={15} />
+                    </span>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {credits.detail.length} crédit{credits.detail.length > 1 ? "s" : ""} en cours
                     </p>
                   </div>
-                </div>
-                <div className="flex items-center gap-1">
                   <span className="text-sm font-bold text-alert">
                     {credits.total.toLocaleString("fr-FR")} FCFA
                   </span>
-                  <ChevronRight size={15} className="text-slate-300" />
                 </div>
-              </Link>
+                <div className="space-y-1.5 pl-1">
+                  {credits.detail.slice(0, 4).map((c) => (
+                    <div key={c.venteId} className="rounded-lg bg-red-50/50 px-3 py-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-slate-700">{c.pointVenteNom}</span>
+                        <span className="font-bold text-alert">
+                          {c.montantDu.toLocaleString("fr-FR")} FCFA
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400">
+                        Vendu le {new Date(c.dateVente).toLocaleDateString("fr-FR")}
+                      </span>
+                    </div>
+                  ))}
+                  {credits.detail.length > 4 && (
+                    <p className="text-center text-xs text-slate-400">
+                      + {credits.detail.length - 4} autre(s)
+                    </p>
+                  )}
+                </div>
+              </div>
             )}
 
             {commandesEnAttente.length > 0 && (

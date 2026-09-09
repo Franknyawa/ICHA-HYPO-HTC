@@ -37,3 +37,41 @@ export async function getVisitesAvecPosition(filters: TrackingFilters) {
     },
   });
 }
+
+/**
+ * Dernière position connue de chaque commercial actif — alimentée par le
+ * battement envoyé depuis la PWA pendant que l'app reste ouverte
+ * (voir components/commercial/LocationHeartbeat.tsx). Ce n'est PAS un
+ * suivi en arrière-plan garanti : un commercial sans l'app ouverte
+ * récemment n'aura pas de position à jour.
+ */
+export async function getPositionsActuelles(filters: { binomeId?: string }) {
+  const users = await prisma.user.findMany({
+    where: {
+      role: "COMMERCIAL",
+      actif: true,
+      dernierePositionLat: { not: null },
+      dernierePositionLng: { not: null },
+      ...(filters.binomeId ? { binomeId: filters.binomeId } : {}),
+    },
+    select: {
+      id: true,
+      nom: true,
+      prenom: true,
+      dernierePositionLat: true,
+      dernierePositionLng: true,
+      dernierePositionAt: true,
+      binome: { select: { nom: true } },
+    },
+    orderBy: { dernierePositionAt: "desc" },
+  });
+
+  return users.map((u) => ({
+    id: u.id,
+    nom: `${u.prenom} ${u.nom}`,
+    binomeNom: u.binome?.nom ?? null,
+    latitude: Number(u.dernierePositionLat),
+    longitude: Number(u.dernierePositionLng),
+    positionAt: u.dernierePositionAt!.toISOString(),
+  }));
+}

@@ -691,6 +691,14 @@ function ObjectifInput({
   onSave: (v: number) => void;
 }) {
   const [value, setValue] = useState(defaultValue);
+
+  // useState(defaultValue) ne capture que la valeur INITIALE — sans ce
+  // useEffect, si le serveur renvoie une valeur différente après un
+  // rechargement (ex: sauvegarde faite depuis un autre onglet), l'input
+  // resterait bloqué sur l'ancienne valeur affichée localement.
+  useEffect(() => {
+    setValue(defaultValue);
+  }, [defaultValue]);
   return (
     <div className="flex gap-1.5">
       <input
@@ -725,6 +733,7 @@ function ObjectifsIndividuelsManager() {
   const [data, setData] = useState<ObjectifIndividuel[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
@@ -738,13 +747,24 @@ function ObjectifsIndividuelsManager() {
 
   async function save(periode: string, valeur: number) {
     setSaving(periode);
-    await fetch("/api/parametres/objectifs-individuels", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ periode, valeurCartons: valeur }),
-    });
-    setSaving(null);
-    load();
+    setError(null);
+    try {
+      const res = await fetch("/api/parametres/objectifs-individuels", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ periode, valeurCartons: valeur }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? `Échec de la sauvegarde (${res.status}).`);
+        return;
+      }
+      load();
+    } catch {
+      setError("Erreur réseau — la sauvegarde a échoué.");
+    } finally {
+      setSaving(null);
+    }
   }
 
   return (
@@ -764,20 +784,25 @@ function ObjectifsIndividuelsManager() {
       {loading ? (
         <p className="text-sm text-slate-400">Chargement...</p>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
-          {data.map((o) => (
-            <div key={o.periode}>
-              <label className="mb-1 block text-[11px] font-medium text-slate-500">
-                {LABEL_PERIODE[o.periode]}
-              </label>
-              <ObjectifInput
-                defaultValue={o.valeurCartons}
-                saving={saving === o.periode}
-                onSave={(v) => save(o.periode, v)}
-              />
-            </div>
-          ))}
-        </div>
+        <>
+          {error && (
+            <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>
+          )}
+          <div className="grid grid-cols-3 gap-2">
+            {data.map((o) => (
+              <div key={o.periode}>
+                <label className="mb-1 block text-[11px] font-medium text-slate-500">
+                  {LABEL_PERIODE[o.periode]}
+                </label>
+                <ObjectifInput
+                  defaultValue={o.valeurCartons}
+                  saving={saving === o.periode}
+                  onSave={(v) => save(o.periode, v)}
+                />
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -786,29 +811,39 @@ function ObjectifsIndividuelsManager() {
 // --- Durée de session ------------------------------------------------------
 
 function SessionDureeManager() {
-  const [heures, setHeures] = useState(12);
+  const [minutes, setMinutes] = useState(720);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/parametres/session-duree")
       .then((r) => r.json())
-      .then((d) => setHeures(d.heures ?? 12))
+      .then((d) => setMinutes(d.minutes ?? 720))
       .finally(() => setLoading(false));
   }, []);
 
   async function save() {
     setSaving(true);
     setMessage(null);
+    setError(null);
     const res = await fetch("/api/parametres/session-duree", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ heures }),
+      body: JSON.stringify({ minutes }),
     });
-    setMessage(res.ok ? "Enregistré — s'applique aux prochaines connexions." : "Échec.");
+    if (res.ok) {
+      setMessage("Enregistré — s'applique aux prochaines connexions.");
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Échec de l'enregistrement.");
+    }
     setSaving(false);
   }
+
+  const heuresEntieres = Math.floor(minutes / 60);
+  const minutesRestantes = minutes % 60;
 
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
@@ -827,26 +862,46 @@ function SessionDureeManager() {
       {loading ? (
         <p className="text-sm text-slate-400">Chargement...</p>
       ) : (
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            min={1}
-            max={720}
-            value={heures}
-            onChange={(e) => setHeures(Number(e.target.value) || 12)}
-            className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          />
-          <span className="text-sm text-slate-500">heures</span>
-          <button
-            onClick={save}
-            disabled={saving}
-            className="ml-auto rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-          >
-            {saving ? "..." : "Enregistrer"}
-          </button>
-        </div>
+        <>
+          <div className="mb-2 flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={0}
+                value={heuresEntieres}
+                onChange={(e) =>
+                  setMinutes(Math.max(5, (Number(e.target.value) || 0) * 60 + minutesRestantes))
+                }
+                className="w-16 rounded-lg border border-slate-300 px-2 py-2 text-sm"
+              />
+              <span className="text-xs text-slate-500">h</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={0}
+                max={59}
+                value={minutesRestantes}
+                onChange={(e) =>
+                  setMinutes(Math.max(5, heuresEntieres * 60 + (Number(e.target.value) || 0)))
+                }
+                className="w-16 rounded-lg border border-slate-300 px-2 py-2 text-sm"
+              />
+              <span className="text-xs text-slate-500">min</span>
+            </div>
+            <button
+              onClick={save}
+              disabled={saving}
+              className="ml-auto rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {saving ? "..." : "Enregistrer"}
+            </button>
+          </div>
+          <p className="text-xs text-slate-400">Soit {minutes} minutes au total</p>
+        </>
       )}
-      {message && <p className="mt-2 text-xs text-slate-500">{message}</p>}
+      {message && <p className="mt-2 text-xs text-green-600">{message}</p>}
+      {error && <p className="mt-2 text-xs text-alert">{error}</p>}
     </div>
   );
 }

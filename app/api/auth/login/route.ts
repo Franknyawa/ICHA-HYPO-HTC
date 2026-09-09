@@ -5,7 +5,7 @@ import { verifyPassword } from "@/lib/auth/password";
 import {
   createSessionToken,
   setSessionCookie,
-  getDureeSessionHeures,
+  getDureeSessionMinutes,
 } from "@/lib/auth/session";
 
 // Node runtime requis : bcrypt et Prisma ne tournent pas sur l'Edge Runtime.
@@ -72,8 +72,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const dureeHeures = await getDureeSessionHeures();
-  const dureeSecondes = dureeHeures * 3600;
+  const dureeMinutes = await getDureeSessionMinutes();
+  const dureeSecondes = dureeMinutes * 60;
 
   const session = await prisma.session.create({
     data: {
