@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -16,10 +16,12 @@ import {
   Receipt,
   Navigation,
   MoreHorizontal,
+  BellRing,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+  { href: "/admin/alertes", label: "Alertes", icon: BellRing },
   { href: "/admin/points-vente", label: "Points de vente", icon: Store },
   { href: "/admin/commandes", label: "Commandes", icon: Truck },
   { href: "/admin/factures", label: "Factures", icon: Receipt },
@@ -33,6 +35,14 @@ const NAV_ITEMS = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [showPlus, setShowPlus] = useState(false);
+  const [alertesCount, setAlertesCount] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/alertes/count")
+      .then((r) => r.json())
+      .then((d) => setAlertesCount(d.count ?? 0))
+      .catch(() => {});
+  }, [pathname]); // re-vérifie à chaque navigation, ex: après avoir résolu une alerte
 
   return (
     <div className="min-h-screen bg-slate-50 md:flex">
@@ -69,6 +79,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               >
                 <Icon size={18} strokeWidth={active ? 2.4 : 2} />
                 {item.label}
+                {item.href === "/admin/alertes" && alertesCount > 0 && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-alert px-1 text-[10px] font-bold text-white">
+                    {alertesCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -100,11 +115,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium ${
+              className={`relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium ${
                 active ? "text-brand" : "text-slate-400"
               }`}
             >
               <Icon size={19} strokeWidth={active ? 2.4 : 2} />
+              {item.href === "/admin/alertes" && alertesCount > 0 && (
+                <span className="absolute right-[22%] top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alert px-1 text-[9px] font-bold text-white">
+                  {alertesCount}
+                </span>
+              )}
               {item.label.split(" ")[0]}
             </Link>
           );

@@ -640,15 +640,39 @@ côté admin — seule la vue par commercial existe sur son profil).
 
 Aucun changement de schéma — pas de migration nécessaire.
 
+### ✅ Alertes automatiques
+Le modèle `Alerte` existait déjà en base (jamais utilisé jusqu'ici) — la
+logique de génération et l'interface manquaient, c'est fait :
+- `lib/jobs/alertes.ts` — 6 générateurs, un par type déjà prévu dans le
+  schéma : stock faible (sous le seuil défini sur chaque produit),
+  commande à livrer bientôt / en retard, crédit en retard (>7 jours),
+  prospect à relancer, client inactif (>30 jours sans vente/commande),
+  objectif journalier de binôme non atteint. Anti-doublon intégré : une
+  alerte déjà active pour la même entité n'est jamais recréée.
+- Génération automatique via le **cron nocturne existant**
+  (`/api/cron/aggregate`) — tourne juste après l'agrégation
+- **Génération manuelle** à la demande, bouton "Générer maintenant" sur la
+  page admin (tout sauf le contrôle d'objectifs, qui a besoin des données
+  agrégées de la veille)
+- `/admin/alertes` — liste filtrable par type, bouton "Résolue" par alerte
+- **Badge rouge** avec le nombre d'alertes actives, sur l'onglet Alertes
+  (sidebar desktop + barre mobile), rafraîchi à chaque navigation
+
+**Limitations assumées** : les seuils (7 jours crédit, 5 jours prospect,
+30 jours client inactif, 2 jours avant livraison) sont des constantes dans
+le code, pas encore réglables en back office — à ajouter si besoin de les
+ajuster. Le contrôle d'objectifs ne couvre que le niveau JOURNALIER par
+binôme (pas encore les objectifs individuels ni hebdo/mensuel).
+
+Aucun changement de schéma — pas de migration nécessaire.
+
 ### 📋 Plan pour les fonctionnalités admin restantes
 Dans l'ordre où elles seront abordées :
-1. **Objectifs & progression** — Réalisé/Objectif × 100 par binôme, jour et
-   semaine, avec les seuils 42/2500 déjà en base
-2. **Alertes** — stock faible, commande en attente, crédit en retard,
-   prospect à relancer, client inactif, objectif non atteint (le modèle
-   `Alerte` existe déjà, il manque la logique de génération + l'UI admin)
-3. **Gestion du stock** — vue et ajustement manuel par produit
-4. **Historique des visites** côté commercial — actuellement un texte
+1. **Objectifs & progression** (vue admin) — Réalisé/Objectif × 100 par
+   binôme, jour et semaine, avec les seuils déjà en base (le dashboard
+   commercial affiche déjà ça côté commercial, pas encore côté admin)
+2. **Gestion du stock** — vue et ajustement manuel par produit
+3. **Historique des visites** côté commercial — actuellement un texte
    "à venir" sur son dashboard
 
 ### ⏳ À suivre

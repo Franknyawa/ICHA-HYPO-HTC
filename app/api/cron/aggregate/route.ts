@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { aggregateVentesDuJour, aggregerPerformanceBinome } from "@/lib/jobs/aggregate";
+import { genererToutesLesAlertes } from "@/lib/jobs/alertes";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // agrégation potentiellement longue à grand volume
@@ -31,7 +32,11 @@ export async function GET(req: NextRequest) {
     const anneeMois = `${hier.getFullYear()}-${String(hier.getMonth() + 1).padStart(2, "0")}`;
     const resultatBinomes = await aggregerPerformanceBinome(anneeMois);
 
-    return NextResponse.json({ ok: true, resultatVentes, resultatBinomes });
+    // Alertes générées après l'agrégation, pour pouvoir évaluer les
+    // objectifs de la veille à partir des données fraîchement agrégées.
+    await genererToutesLesAlertes(hier);
+
+    return NextResponse.json({ ok: true, resultatVentes, resultatBinomes, alertes: "generees" });
   } catch (error) {
     console.error("Erreur job agrégation:", error);
     return NextResponse.json({ error: "Échec de l'agrégation." }, { status: 500 });
