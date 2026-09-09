@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -13,6 +14,8 @@ import {
   Truck,
   Settings,
   Receipt,
+  Navigation,
+  MoreHorizontal,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -20,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/admin/points-vente", label: "Points de vente", icon: Store },
   { href: "/admin/commandes", label: "Commandes", icon: Truck },
   { href: "/admin/factures", label: "Factures", icon: Receipt },
+  { href: "/admin/tracking", label: "Tracking", icon: Navigation },
   { href: "/admin/clients", label: "Clients", icon: Users2 },
   { href: "/admin/rapports", label: "Rapports", icon: FileBarChart },
   { href: "/admin/parametres", label: "Paramètres", icon: Settings },
@@ -28,6 +32,7 @@ const NAV_ITEMS = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [showPlus, setShowPlus] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 md:flex">
@@ -84,9 +89,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {children}
       </div>
 
-      {/* Barre de navigation — mobile uniquement */}
+      {/* Barre de navigation — mobile uniquement. 4 onglets principaux +
+          un menu "Plus" pour le reste, sinon 9 onglets ne tiennent pas sur
+          un petit écran. */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.slice(0, 4).map((item) => {
           const active = pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
@@ -102,7 +109,49 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
           );
         })}
+        <button
+          onClick={() => setShowPlus((v) => !v)}
+          className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium ${
+            showPlus || NAV_ITEMS.slice(4).some((i) => pathname.startsWith(i.href))
+              ? "text-brand"
+              : "text-slate-400"
+          }`}
+        >
+          <MoreHorizontal size={19} />
+          Plus
+        </button>
       </nav>
+
+      {/* Menu "Plus" — panneau qui remonte du bas */}
+      {showPlus && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/30 md:hidden" onClick={() => setShowPlus(false)}>
+          <div
+            className="w-full rounded-t-2xl bg-white p-3 pb-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" />
+            <div className="grid grid-cols-3 gap-2">
+              {NAV_ITEMS.slice(4).map((item) => {
+                const active = pathname.startsWith(item.href);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setShowPlus(false)}
+                    className={`flex flex-col items-center gap-1.5 rounded-xl p-3 text-xs font-medium ${
+                      active ? "bg-blue-50 text-brand" : "text-slate-500"
+                    }`}
+                  >
+                    <Icon size={20} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

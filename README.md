@@ -558,6 +558,40 @@ Rapports, Paramètres, Utilisateurs) — ça commence à être serré sur petit
 
 Aucun changement de schéma — pas de migration nécessaire.
 
+### ✅ Tracking des commerciaux (carte)
+- `lib/queries/tracking.ts` — positions GPS des visites du jour (déjà
+  enregistrées à chaque visite), filtrables par commercial/binôme/date
+- `/admin/tracking` — carte interactive (Leaflet + OpenStreetMap, gratuit,
+  aucune clé API nécessaire), un marqueur coloré par commercial, popup avec
+  point de vente + heure de passage au clic
+- **Barre de navigation mobile condensée** — 9 onglets ne tenaient plus sur
+  petit écran ; désormais 4 principaux + un menu "Plus" qui remonte du bas
+  pour le reste (limite notée précédemment, corrigée ici)
+
+Aucun changement de schéma — les coordonnées étaient déjà enregistrées.
+Nouvelles dépendances : `leaflet`, `react-leaflet`, `@types/leaflet`.
+
+**Reste à faire** : uniquement les visites géolocalisées apparaissent (le
+commercial doit avoir activé le GPS pendant sa visite) — pas de suivi en
+temps réel continu, juste les points où une visite a été enregistrée.
+
+### ✅ Tracking terrain (carte)
+- `/admin/tracking` — carte interactive (Leaflet + OpenStreetMap, gratuit,
+  aucune clé API requise) des visites géolocalisées, filtrable par
+  commercial, binôme et date (aujourd'hui par défaut)
+- Un point par visite, couleur stable par commercial (même commercial =
+  même couleur sur toute la carte), popup avec point de vente + heure
+- Légende sous la carte avec le nombre de visites par commercial du jour
+- `lib/queries/tracking.ts` — récupère les visites du jour avec position
+  GPS non nulle
+- `CircleMarker` plutôt que des marqueurs images classiques — évite le bug
+  classique des icônes Leaflet cassées avec Next.js/webpack
+- Ajoutée à la navigation (déjà présente dans le menu "Plus" mobile)
+
+Aucun changement de schéma — les coordonnées étaient déjà enregistrées à
+chaque visite. Nouvelles dépendances : `leaflet`, `react-leaflet`,
+`@types/leaflet`.
+
 ### 📋 Plan pour les fonctionnalités admin restantes
 Dans l'ordre où elles seront abordées :
 1. **Objectifs & progression** — Réalisé/Objectif × 100 par binôme, jour et
@@ -566,9 +600,7 @@ Dans l'ordre où elles seront abordées :
    prospect à relancer, client inactif, objectif non atteint (le modèle
    `Alerte` existe déjà, il manque la logique de génération + l'UI admin)
 3. **Gestion du stock** — vue et ajustement manuel par produit
-4. **Tracking par binôme** — carte des positions GPS des visites (les
-   coordonnées sont déjà enregistrées à chaque visite)
-5. **Historique des visites** côté commercial — actuellement un texte
+4. **Historique des visites** côté commercial — actuellement un texte
    "à venir" sur son dashboard
 
 ### ⏳ À suivre
