@@ -148,14 +148,14 @@ export default async function AdminDashboardPage() {
             label="Stock HYPO"
             value={`${kpis.stockHypoCartons} cartons`}
             color="#1e40af"
-            href="/admin/parametres"
+            href="/admin/stock"
           />
           <KpiCard
             icon={Sparkles}
             label="Stock HTC"
             value={`${kpis.stockHtcCartons} cartons`}
             color="#0f766e"
-            href="/admin/parametres"
+            href="/admin/stock"
           />
         </div>
 

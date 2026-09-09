@@ -666,13 +666,29 @@ binôme (pas encore les objectifs individuels ni hebdo/mensuel).
 
 Aucun changement de schéma — pas de migration nécessaire.
 
+### ✅ Gestion du stock
+- **`/admin/stock`** — une carte par produit, cartons et sachets en un
+  coup d'œil, bordure rouge et badge "Faible" si sous le seuil d'alerte
+- **Réassort** (entrée) et **Retirer** (sortie — casse, produit périmé...),
+  au choix en cartons ou en sachets, avec motif optionnel — réutilise le
+  même service de mouvement de stock que la déduction automatique lors
+  d'une vente (même verrou optimiste anti-incohérence)
+- **Seuil d'alerte modifiable** par produit, directement lié aux alertes
+  "Stock faible" déjà en place
+- **Historique des mouvements** consultable par produit (entrées, sorties,
+  ventes)
+- Ajoutée à la navigation ; les cartes "Stock HYPO/HTC" du dashboard admin
+  pointent maintenant ici plutôt que vers Paramètres
+
+Aucun changement de schéma — pas de migration nécessaire (`Stock` et
+`MouvementStock` existaient déjà).
+
 ### 📋 Plan pour les fonctionnalités admin restantes
 Dans l'ordre où elles seront abordées :
 1. **Objectifs & progression** (vue admin) — Réalisé/Objectif × 100 par
    binôme, jour et semaine, avec les seuils déjà en base (le dashboard
    commercial affiche déjà ça côté commercial, pas encore côté admin)
-2. **Gestion du stock** — vue et ajustement manuel par produit
-3. **Historique des visites** côté commercial — actuellement un texte
+2. **Historique des visites** côté commercial — actuellement un texte
    "à venir" sur son dashboard
 
 ### ⏳ À suivre
