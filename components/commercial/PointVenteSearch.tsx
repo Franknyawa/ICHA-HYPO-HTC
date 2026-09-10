@@ -10,6 +10,7 @@ export type ResultatRecherche = {
   telephoneVendeur: string | null;
   villeNom: string | null;
   quartierNom: string | null;
+  typeId?: string | null;
   photoUrl: string | null;
   distanceKm?: number;
 };

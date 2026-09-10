@@ -36,6 +36,13 @@ type Produit = {
   prixCarton: number;
 };
 type Session = { nom: string; prenom: string; binomeId: string | null; binomeNom: string | null };
+type PrixParType = {
+  produitId: string;
+  typeId: string;
+  prixSachet: number;
+  prixFilet: number | null;
+  prixCarton: number;
+};
 
 // Palette pour les cartes produit — HYPO/HTC gardent leurs couleurs
 // habituelles, tout produit supplémentaire pioche dans la suite plutôt
@@ -236,6 +243,7 @@ export default function NouvelleVisitePage() {
   const [quartierModeLibre, setQuartierModeLibre] = useState(false);
   const [types, setTypes] = useState<TypePV[]>([]);
   const [produits, setProduits] = useState<Produit[]>([]);
+  const [prixParType, setPrixParType] = useState<PrixParType[]>([]);
 
   const [now] = useState(() => new Date());
 
@@ -299,6 +307,7 @@ export default function NouvelleVisitePage() {
         setVilles(d.villes ?? []);
         setTypes(d.types ?? []);
         setProduits(d.produits ?? []);
+        setPrixParType(d.prixParType ?? []);
       });
   }, []);
 
@@ -390,8 +399,24 @@ export default function NouvelleVisitePage() {
 
   // Calcul automatique à partir des quantités saisies et des prix produits
   // (chargés dynamiquement depuis /api/referentiels, jamais codés en dur).
+  // Dès qu'un type de boutique est choisi, on applique son prix spécifique
+  // s'il existe (défini en back office) ; sinon, repli sur le prix de base
+  // du produit.
+  function prixEffectif(p: Produit): Produit {
+    if (!typeId) return p;
+    const surcharge = prixParType.find((pt) => pt.produitId === p.id && pt.typeId === typeId);
+    if (!surcharge) return p;
+    return {
+      ...p,
+      prixSachet: surcharge.prixSachet,
+      prixFilet: surcharge.prixFilet,
+      prixCarton: surcharge.prixCarton,
+    };
+  }
+
   function sousTotalProduit(p: Produit, q: { sachets: number; filets: number; cartons: number }) {
-    return q.sachets * p.prixSachet + q.filets * (p.prixFilet ?? 0) + q.cartons * p.prixCarton;
+    const prix = prixEffectif(p);
+    return q.sachets * prix.prixSachet + q.filets * (prix.prixFilet ?? 0) + q.cartons * prix.prixCarton;
   }
 
   const sousTotauxParProduit = new Map(

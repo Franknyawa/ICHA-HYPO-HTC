@@ -703,10 +703,53 @@ Les deux derniers points de la liste de départ.
 
 Aucun changement de schéma — pas de migration nécessaire.
 
-**🎉 Tous les points de la liste de fonctionnalités originale sont
-traités**, "Nouveau recensement" inclus désormais (voir section
-ci-dessous). Reste seulement deux limitations mineures, à traiter à la
-demande, sans plan figé pour la suite.
+### ✅ Prix par type de boutique
+Permet de vendre un même produit à un prix différent selon le type de
+boutique (ex : plus cher au détail en boutique de quartier, moins cher en
+gros chez un grossiste), sans complexifier le modèle produit lui-même.
+- Nouveau modèle `PrixParType` — une ligne optionnelle par combinaison
+  (produit, type de boutique) ; son absence = le prix de base du produit
+  s'applique tel quel
+- `/admin/parametres` → section "Prix par type de boutique" — une ligne
+  par type sous chaque produit, "Personnaliser" révèle les champs de prix,
+  "Réinitialiser au prix de base" supprime la surcharge
+- **Formulaire terrain** (`/visites/new`) — dès qu'un type de boutique est
+  choisi, le prix spécifique s'applique automatiquement au calcul du
+  montant (section Achat du jour et Commande future), avec repli
+  silencieux sur le prix de base si rien n'est personnalisé pour ce type
+- **Visite de réassort** — le type de boutique du point de vente est déjà
+  connu (renseigné à sa création), donc le bon prix s'applique
+  automatiquement sans redemander le type
+- `/api/referentiels` renvoie désormais aussi ces surcharges, chargées une
+  seule fois avec le reste des référentiels
+
+**⚠️ Changement de schéma — migration nécessaire :**
+```sql
+CREATE TABLE IF NOT EXISTS prix_par_type (
+  id TEXT PRIMARY KEY,
+  produit_id TEXT NOT NULL REFERENCES produits(id),
+  type_id TEXT NOT NULL REFERENCES types_point_vente(id),
+  prix_sachet DECIMAL(10,2) NOT NULL,
+  prix_filet DECIMAL(10,2),
+  prix_carton DECIMAL(10,2) NOT NULL,
+  updated_at TIMESTAMP(3) NOT NULL,
+  UNIQUE (produit_id, type_id)
+);
+```
+
+### ✅ Suppression / désactivation de produit
+- **Suppression réelle** possible seulement si le produit n'a **jamais**
+  été vendu ni commandé (aucune ligne historique associée) — sinon refus
+  clair avec message suggérant la désactivation, cohérent avec le
+  traitement des villes/types/binômes ailleurs dans l'app
+- Si suppression autorisée : ses éventuelles surcharges de prix par type
+  et sa fiche stock sont supprimées avec lui (transaction)
+- **Toggle Actif/Inactif** ajouté sur chaque produit (existait déjà côté
+  API mais pas dans l'interface) — un produit désactivé disparaît
+  immédiatement des formulaires terrain (`/api/referentiels` filtre déjà
+  par `actif: true`)
+
+Aucun changement de schéma — pas de migration nécessaire.
 
 ### ✅ "Nouveau recensement" généralisé aux produits dynamiques
 Dernière limitation connue du module produits dynamiques, désormais

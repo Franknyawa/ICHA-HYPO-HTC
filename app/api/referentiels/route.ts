@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
     const villeId = req.nextUrl.searchParams.get("villeId") ?? undefined;
 
-    const [villes, quartiers, types, binomes, produits] = await Promise.all([
+    const [villes, quartiers, types, binomes, produits, prixParType] = await Promise.all([
       prisma.ville.findMany({ where: { actif: true }, orderBy: { nom: "asc" } }),
       prisma.quartier.findMany({
         where: villeId ? { villeId } : undefined,
@@ -34,10 +34,23 @@ export async function GET(req: NextRequest) {
           prixCarton: true,
         },
       }),
+      // Surcharges de prix par (produit, type de boutique) — le formulaire
+      // terrain les applique automatiquement dès que le type est choisi,
+      // en repli sur le prix de base du produit si rien n'est défini pour
+      // cette combinaison précise.
+      prisma.prixParType.findMany({
+        select: {
+          produitId: true,
+          typeId: true,
+          prixSachet: true,
+          prixFilet: true,
+          prixCarton: true,
+        },
+      }),
     ]);
 
     return NextResponse.json(
-      { villes, quartiers, types, binomes, produits },
+      { villes, quartiers, types, binomes, produits, prixParType },
       { headers: { "Cache-Control": "private, max-age=300" } }
     );
   } catch (error) {

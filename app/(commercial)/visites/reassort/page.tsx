@@ -33,6 +33,14 @@ type Produit = {
   prixCarton: number;
 };
 
+type PrixParType = {
+  produitId: string;
+  typeId: string;
+  prixSachet: number;
+  prixFilet: number | null;
+  prixCarton: number;
+};
+
 type Quantites = Record<string, { sachets: number; filets: number; cartons: number }>;
 
 function ReassortContent() {
@@ -45,6 +53,7 @@ function ReassortContent() {
   const [session, setSession] = useState<{ nom: string; prenom: string } | null>(null);
 
   const [produits, setProduits] = useState<Produit[]>([]);
+  const [prixParType, setPrixParType] = useState<PrixParType[]>([]);
   const [quantites, setQuantites] = useState<Quantites>({});
 
   const [montantEncaisse, setMontantEncaisse] = useState(0);
@@ -65,7 +74,10 @@ function ReassortContent() {
   useEffect(() => {
     fetch("/api/referentiels")
       .then((r) => r.json())
-      .then((d) => setProduits(d.produits ?? []));
+      .then((d) => {
+        setProduits(d.produits ?? []);
+        setPrixParType(d.prixParType ?? []);
+      });
     fetch("/api/me")
       .then((r) => r.json())
       .then((d) => setSession(d));
@@ -81,6 +93,7 @@ function ReassortContent() {
             telephoneVendeur: d.telephoneVendeur,
             villeNom: d.ville?.nom ?? null,
             quartierNom: d.quartier?.nom ?? null,
+            typeId: d.typeId ?? null,
             photoUrl: null,
           });
         })
@@ -103,10 +116,23 @@ function ReassortContent() {
     })
     .filter(Boolean) as { produit: Produit; sachets: number; filets: number; cartons: number }[];
 
-  const sousTotal = (l: { produit: Produit; sachets: number; filets: number; cartons: number }) =>
-    l.sachets * l.produit.prixSachet +
-    l.filets * (l.produit.prixFilet ?? 0) +
-    l.cartons * l.produit.prixCarton;
+  // Le type de boutique du point de vente est déjà connu (il a été
+  // renseigné à sa création) — pas besoin de le redemander ici, le prix
+  // spécifique s'applique automatiquement s'il existe, sinon repli sur le
+  // prix de base du produit.
+  function prixEffectif(p: Produit): Produit {
+    if (!pointVente?.typeId) return p;
+    const surcharge = prixParType.find(
+      (pt) => pt.produitId === p.id && pt.typeId === pointVente.typeId
+    );
+    if (!surcharge) return p;
+    return { ...p, prixSachet: surcharge.prixSachet, prixFilet: surcharge.prixFilet, prixCarton: surcharge.prixCarton };
+  }
+
+  const sousTotal = (l: { produit: Produit; sachets: number; filets: number; cartons: number }) => {
+    const prix = prixEffectif(l.produit);
+    return l.sachets * prix.prixSachet + l.filets * (prix.prixFilet ?? 0) + l.cartons * prix.prixCarton;
+  };
 
   const montantCalcule = lignes.reduce((s, l) => s + sousTotal(l), 0);
 

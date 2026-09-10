@@ -52,8 +52,30 @@ model TypePointVente {
   actif       Boolean      @default(true)
   ordre       Int          @default(0) // contrôle l'ordre d'affichage, modifiable en back office
   pointsVente PointVente[]
+  prixParType PrixParType[]
 
   @@map("types_point_vente")
+}
+
+/// Prix spécifique d'un produit pour un type de boutique donné — surclasse
+/// le prix de base du produit (Produit.prixSachet/prixFilet/prixCarton)
+/// quand une ligne existe pour la combinaison (produit, type). Absence de
+/// ligne = le prix de base s'applique tel quel. Permet par exemple de
+/// vendre plus cher au détail (boutique du quartier) qu'en gros
+/// (grossiste), sans complexifier le modèle Produit lui-même.
+model PrixParType {
+  id         String         @id @default(uuid())
+  produitId  String         @map("produit_id")
+  produit    Produit        @relation(fields: [produitId], references: [id])
+  typeId     String         @map("type_id")
+  type       TypePointVente @relation(fields: [typeId], references: [id])
+  prixSachet Decimal        @map("prix_sachet") @db.Decimal(10, 2)
+  prixFilet  Decimal?       @map("prix_filet") @db.Decimal(10, 2)
+  prixCarton Decimal        @map("prix_carton") @db.Decimal(10, 2)
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+
+  @@unique([produitId, typeId])
+  @@map("prix_par_type")
 }
 
 model Produit {
@@ -78,6 +100,7 @@ model Produit {
   commandeLignes CommandeLigne[]
   stock          Stock?
   mouvementsStock MouvementStock[]
+  prixParType     PrixParType[]
 
   @@map("produits")
 }

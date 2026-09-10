@@ -7,6 +7,7 @@ export type ResultatRecherchePointVente = {
   telephoneVendeur: string | null;
   villeNom: string | null;
   quartierNom: string | null;
+  typeId: string | null;
   latitude: number | null;
   longitude: number | null;
   photoUrl: string | null;
@@ -63,6 +64,7 @@ export async function rechercherPointsVente(params: {
     telephoneVendeur: p.telephoneVendeur,
     villeNom: p.ville?.nom ?? null,
     quartierNom: p.quartier?.nom ?? null,
+    typeId: p.typeId,
     latitude: p.latitude ? Number(p.latitude) : null,
     longitude: p.longitude ? Number(p.longitude) : null,
     photoUrl: p.photos[0]?.url ?? null,

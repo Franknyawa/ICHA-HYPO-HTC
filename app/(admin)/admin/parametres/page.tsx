@@ -10,6 +10,7 @@ import {
   Plus,
   Pencil,
   Clock,
+  Trash2,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
@@ -253,6 +254,7 @@ function ProduitsManager() {
   const [editTarget, setEditTarget] = useState<Produit | null>(null);
   const [form, setForm] = useState({ prixSachet: 0, prixFilet: 0, prixCarton: 0 });
   const [saving, setSaving] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({
     code: "",
@@ -319,6 +321,29 @@ function ProduitsManager() {
     setSaving(false);
   }
 
+  async function handleDelete(p: Produit) {
+    setDeleteError(null);
+    if (!confirm(`Supprimer définitivement ${p.code} ? Cette action est irréversible.`)) {
+      return;
+    }
+    const res = await fetch(`/api/parametres/produits/${p.id}`, { method: "DELETE" });
+    if (res.ok) {
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setDeleteError(d.error ?? "Échec de la suppression.");
+    }
+  }
+
+  async function toggleActif(p: Produit) {
+    await fetch(`/api/parametres/produits/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actif: !p.actif }),
+    });
+    load();
+  }
+
   function openEdit(p: Produit) {
     setEditTarget(p);
     setForm({
@@ -371,10 +396,15 @@ function ProduitsManager() {
         <p className="text-sm text-slate-400">Chargement...</p>
       ) : (
         <div className="space-y-2">
+          {deleteError && (
+            <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{deleteError}</p>
+          )}
           {produits.map((p) => (
             <div key={p.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
               <div>
-                <p className="text-sm font-semibold text-slate-800">{p.code}</p>
+                <p className={`text-sm font-semibold ${p.actif ? "text-slate-800" : "text-slate-400 line-through"}`}>
+                  {p.code}
+                </p>
                 <p className="text-xs text-slate-500">
                   {p.prixSachet.toLocaleString("fr-FR")} FCFA/sachet
                   {p.prixFilet !== null ? ` · ${p.prixFilet.toLocaleString("fr-FR")} FCFA/filet` : ""}
@@ -382,9 +412,22 @@ function ProduitsManager() {
                   {p.prixCarton.toLocaleString("fr-FR")} FCFA/carton
                 </p>
               </div>
-              <button onClick={() => openEdit(p)} className="text-slate-400">
-                <Pencil size={14} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => openEdit(p)} className="text-slate-400">
+                  <Pencil size={14} />
+                </button>
+                <button
+                  onClick={() => toggleActif(p)}
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    p.actif ? "bg-green-50 text-green-700" : "bg-slate-200 text-slate-500"
+                  }`}
+                >
+                  {p.actif ? "Actif" : "Inactif"}
+                </button>
+                <button onClick={() => handleDelete(p)} className="text-alert">
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -906,6 +949,206 @@ function SessionDureeManager() {
   );
 }
 
+// --- Prix par type de boutique --------------------------------------------
+
+type ProduitBase = { id: string; code: string; nom: string; prixFilet: number | null };
+type TypeBase = { id: string; nom: string };
+type OverridePrix = {
+  id: string;
+  produitId: string;
+  typeId: string;
+  prixSachet: number;
+  prixFilet: number | null;
+  prixCarton: number;
+};
+
+function LignePrixParType({
+  produit,
+  type,
+  produitBase,
+  override,
+  onSaved,
+}: {
+  produit: ProduitBase;
+  type: TypeBase;
+  produitBase: { prixSachet: number; prixFilet: number | null; prixCarton: number };
+  override: OverridePrix | undefined;
+  onSaved: () => void;
+}) {
+  const [personnalise, setPersonnalise] = useState(Boolean(override));
+  const [form, setForm] = useState({
+    prixSachet: override?.prixSachet ?? produitBase.prixSachet,
+    prixFilet: override?.prixFilet ?? produitBase.prixFilet ?? 0,
+    prixCarton: override?.prixCarton ?? produitBase.prixCarton,
+  });
+  const [saving, setSaving] = useState(false);
+
+  async function enregistrer() {
+    setSaving(true);
+    await fetch("/api/parametres/prix-par-type", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        produitId: produit.id,
+        typeId: type.id,
+        prixSachet: form.prixSachet,
+        prixCarton: form.prixCarton,
+        ...(produit.prixFilet !== null ? { prixFilet: form.prixFilet } : {}),
+      }),
+    });
+    setSaving(false);
+    onSaved();
+  }
+
+  async function reinitialiser() {
+    if (!override) return;
+    setSaving(true);
+    await fetch(`/api/parametres/prix-par-type/${override.id}`, { method: "DELETE" });
+    setPersonnalise(false);
+    setForm({
+      prixSachet: produitBase.prixSachet,
+      prixFilet: produitBase.prixFilet ?? 0,
+      prixCarton: produitBase.prixCarton,
+    });
+    setSaving(false);
+    onSaved();
+  }
+
+  if (!personnalise) {
+    return (
+      <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+        <span className="text-sm text-slate-600">{type.nom}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400">Prix de base</span>
+          <button
+            onClick={() => setPersonnalise(true)}
+            className="rounded-md bg-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600"
+          >
+            Personnaliser
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg bg-blue-50/50 p-2.5">
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-sm font-medium text-slate-700">{type.nom}</span>
+        {override && (
+          <button onClick={reinitialiser} disabled={saving} className="text-[11px] font-semibold text-slate-500 underline">
+            Réinitialiser au prix de base
+          </button>
+        )}
+      </div>
+      <div className={`grid gap-1.5 ${produit.prixFilet !== null ? "grid-cols-3" : "grid-cols-2"}`}>
+        <input
+          type="number"
+          min={0}
+          value={form.prixSachet}
+          onChange={(e) => setForm((f) => ({ ...f, prixSachet: Number(e.target.value) || 0 }))}
+          placeholder="Sachet"
+          className="rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+        />
+        {produit.prixFilet !== null && (
+          <input
+            type="number"
+            min={0}
+            value={form.prixFilet}
+            onChange={(e) => setForm((f) => ({ ...f, prixFilet: Number(e.target.value) || 0 }))}
+            placeholder="Filet"
+            className="rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+          />
+        )}
+        <input
+          type="number"
+          min={0}
+          value={form.prixCarton}
+          onChange={(e) => setForm((f) => ({ ...f, prixCarton: Number(e.target.value) || 0 }))}
+          placeholder="Carton"
+          className="rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+        />
+      </div>
+      <button
+        onClick={enregistrer}
+        disabled={saving}
+        className="mt-1.5 w-full rounded-md bg-blue-700 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+      >
+        {saving ? "..." : "Enregistrer"}
+      </button>
+    </div>
+  );
+}
+
+function PrixParTypeManager() {
+  const [produits, setProduits] = useState<ProduitBase[]>([]);
+  const [types, setTypes] = useState<TypeBase[]>([]);
+  const [overrides, setOverrides] = useState<OverridePrix[]>([]);
+  const [basesParProduit, setBasesParProduit] = useState<Record<string, { prixSachet: number; prixFilet: number | null; prixCarton: number }>>({});
+  const [loading, setLoading] = useState(true);
+
+  function load() {
+    setLoading(true);
+    Promise.all([
+      fetch("/api/parametres/produits").then((r) => r.json()),
+      fetch("/api/parametres/types").then((r) => r.json()),
+      fetch("/api/parametres/prix-par-type").then((r) => r.json()),
+    ]).then(([p, t, o]) => {
+      setProduits(p.data ?? []);
+      setTypes((t.data ?? []).filter((x: any) => x.actif));
+      setOverrides(o.data ?? []);
+      const bases: Record<string, any> = {};
+      for (const prod of p.data ?? []) {
+        bases[prod.id] = { prixSachet: prod.prixSachet, prixFilet: prod.prixFilet, prixCarton: prod.prixCarton };
+      }
+      setBasesParProduit(bases);
+      setLoading(false);
+    });
+  }
+
+  useEffect(load, []);
+
+  return (
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+      <div className="mb-1 flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-700 text-white">
+          <Package size={16} />
+        </span>
+        <h2 className="font-bold text-slate-800">Prix par type de boutique</h2>
+      </div>
+      <p className="mb-3 text-xs text-slate-400">
+        Personnalise le prix d'un produit pour un type de boutique précis — le
+        formulaire terrain l'applique automatiquement dès que le type est
+        choisi. Sans personnalisation, le prix de base du produit s'applique.
+      </p>
+
+      {loading ? (
+        <p className="text-sm text-slate-400">Chargement...</p>
+      ) : (
+        <div className="space-y-4">
+          {produits.map((p) => (
+            <div key={p.id}>
+              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">{p.code}</p>
+              <div className="space-y-1.5">
+                {types.map((t) => (
+                  <LignePrixParType
+                    key={t.id}
+                    produit={p}
+                    type={t}
+                    produitBase={basesParProduit[p.id]}
+                    override={overrides.find((o) => o.produitId === p.id && o.typeId === t.id)}
+                    onSaved={load}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Page principale -----------------------------------------------------
 
 export default function ParametresPage() {
@@ -926,6 +1169,9 @@ export default function ParametresPage() {
         </div>
         <ObjectifsIndividuelsManager />
         <SessionDureeManager />
+        <div className="md:col-span-2">
+          <PrixParTypeManager />
+        </div>
       </div>
     </main>
   );
