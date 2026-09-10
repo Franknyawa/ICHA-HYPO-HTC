@@ -9,13 +9,20 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     await requireAdmin();
-    const data = await prisma.prixParType.findMany({
+    const rows = await prisma.prixParType.findMany({
       include: {
         produit: { select: { code: true, nom: true } },
         type: { select: { nom: true } },
       },
       orderBy: [{ produit: { code: "asc" } }, { type: { ordre: "asc" } }],
     });
+    // Même conversion que /api/parametres/produits — Decimal → nombre.
+    const data = rows.map((r) => ({
+      ...r,
+      prixSachet: Number(r.prixSachet),
+      prixFilet: r.prixFilet !== null ? Number(r.prixFilet) : null,
+      prixCarton: Number(r.prixCarton),
+    }));
     return NextResponse.json({ data });
   } catch (error) {
     return handleApiError(error);

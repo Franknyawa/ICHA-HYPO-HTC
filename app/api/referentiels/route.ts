@@ -49,8 +49,33 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
+    // Prisma sérialise les champs Decimal en texte (ex: "75.00"), pas en
+    // nombre JS — laissé tel quel, ça fausse .toLocaleString() côté
+    // formulaire (comportement de tri de chaînes, pas de formatage
+    // numérique) même si les opérateurs arithmétiques *, - tolèrent la
+    // coercition implicite.
+    const produitsNormalises = produits.map((p) => ({
+      ...p,
+      prixSachet: Number(p.prixSachet),
+      prixFilet: p.prixFilet !== null ? Number(p.prixFilet) : null,
+      prixCarton: Number(p.prixCarton),
+    }));
+    const prixParTypeNormalise = prixParType.map((pt) => ({
+      ...pt,
+      prixSachet: Number(pt.prixSachet),
+      prixFilet: pt.prixFilet !== null ? Number(pt.prixFilet) : null,
+      prixCarton: Number(pt.prixCarton),
+    }));
+
     return NextResponse.json(
-      { villes, quartiers, types, binomes, produits, prixParType },
+      {
+        villes,
+        quartiers,
+        types,
+        binomes,
+        produits: produitsNormalises,
+        prixParType: prixParTypeNormalise,
+      },
       { headers: { "Cache-Control": "private, max-age=300" } }
     );
   } catch (error) {

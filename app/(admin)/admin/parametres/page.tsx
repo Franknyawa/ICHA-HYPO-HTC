@@ -96,11 +96,17 @@ function SimpleEntityManager({
   }
 
   async function toggleActif(item: Entity) {
-    await fetch(`${apiBase}/${item.id}`, {
+    setError(null);
+    const res = await fetch(`${apiBase}/${item.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ actif: !item.actif }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? `Échec de la mise à jour (${res.status}).`);
+      return;
+    }
     load();
   }
 
@@ -127,6 +133,10 @@ function SimpleEntityManager({
           Ajouter
         </button>
       </div>
+
+      {error && (
+        <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>
+      )}
 
       {loading ? (
         <p className="text-sm text-slate-400">Chargement...</p>

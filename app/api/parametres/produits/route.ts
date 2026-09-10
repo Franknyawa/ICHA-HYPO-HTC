@@ -10,7 +10,17 @@ export async function GET() {
   try {
     await requireAdmin();
     const produits = await prisma.produit.findMany({ orderBy: { code: "asc" } });
-    return NextResponse.json({ data: produits });
+    // Prisma sérialise les champs Decimal en texte (ex: "75.00"), pas en
+    // nombre JS — sans cette conversion, un champ jamais retapé par
+    // l'admin (donc resté à sa valeur pré-remplie) échoue la validation
+    // zod côté serveur ailleurs dans l'app (z.number() refuse une string).
+    const data = produits.map((p) => ({
+      ...p,
+      prixSachet: Number(p.prixSachet),
+      prixFilet: p.prixFilet !== null ? Number(p.prixFilet) : null,
+      prixCarton: Number(p.prixCarton),
+    }));
+    return NextResponse.json({ data });
   } catch (error) {
     return handleApiError(error);
   }
