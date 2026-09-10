@@ -29,15 +29,48 @@ type Ville = { id: string; nom: string };
 type TypePV = { id: string; nom: string };
 type Produit = {
   id: string;
-  code: "HYPO" | "HTC";
+  code: string;
+  nom: string;
   prixSachet: number;
   prixFilet: number | null;
   prixCarton: number;
 };
 type Session = { nom: string; prenom: string; binomeId: string | null; binomeNom: string | null };
 
+// Palette pour les cartes produit — HYPO/HTC gardent leurs couleurs
+// habituelles, tout produit supplémentaire pioche dans la suite plutôt
+// que d'hériter systématiquement du style HTC (teal).
+const PALETTE_PRODUITS: { couleur: string; fond: string; icone: typeof Droplet }[] = [
+  { couleur: "#3b82f6", fond: "#eff6ff", icone: Droplet },
+  { couleur: "#0d9488", fond: "#f0fdfa", icone: Sparkles },
+  { couleur: "#7c3aed", fond: "#f5f3ff", icone: Package },
+  { couleur: "#b45309", fond: "#fffbeb", icone: Package },
+  { couleur: "#be123c", fond: "#fff1f2", icone: Package },
+];
+
+function styleProduit(index: number) {
+  return PALETTE_PRODUITS[index % PALETTE_PRODUITS.length];
+}
+
 function uuid() {
   return crypto.randomUUID();
+}
+
+/** Met à jour une quantité (sachets/filets/cartons) pour un produit donné,
+ * dans une map { [code]: {sachets, filets, cartons} } — partagé par
+ * l'achat du jour et la commande future intégrée. */
+function updateQuantite(
+  setter: React.Dispatch<
+    React.SetStateAction<Record<string, { sachets: number; filets: number; cartons: number }>>
+  >,
+  code: string,
+  field: "sachets" | "filets" | "cartons",
+  value: number
+) {
+  setter((prev) => {
+    const base = prev[code] ?? { sachets: 0, filets: 0, cartons: 0 };
+    return { ...prev, [code]: { ...base, [field]: value } };
+  });
 }
 
 // Coordonnées approximatives des 7 villes couvertes (§25 CDC — cartographie).
@@ -228,18 +261,16 @@ export default function NouvelleVisitePage() {
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [villeAuto, setVilleAuto] = useState(false);
 
-  const [hypoSachets, setHypoSachets] = useState(0);
-  const [hypoCartons, setHypoCartons] = useState(0);
-  const [htcSachets, setHtcSachets] = useState(0);
-  const [htcFilets, setHtcFilets] = useState(0);
-  const [htcCartons, setHtcCartons] = useState(0);
+  // Quantités par produit — généralisé à n'importe quel produit actif
+  // (plus limité à HYPO/HTC), clé = produit.code.
+  const [quantites, setQuantites] = useState<
+    Record<string, { sachets: number; filets: number; cartons: number }>
+  >({});
 
   const [inclureCommande, setInclureCommande] = useState(false);
-  const [commandeHypoSachets, setCommandeHypoSachets] = useState(0);
-  const [commandeHypoCartons, setCommandeHypoCartons] = useState(0);
-  const [commandeHtcSachets, setCommandeHtcSachets] = useState(0);
-  const [commandeHtcFilets, setCommandeHtcFilets] = useState(0);
-  const [commandeHtcCartons, setCommandeHtcCartons] = useState(0);
+  const [quantitesCommande, setQuantitesCommande] = useState<
+    Record<string, { sachets: number; filets: number; cartons: number }>
+  >({});
   const [commandeDateLivraison, setCommandeDateLivraison] = useState("");
 
   const [montantEncaisse, setMontantEncaisse] = useState(0);
@@ -347,74 +378,44 @@ export default function NouvelleVisitePage() {
     }
   }
 
-  const hypoLigne =
-    hypoSachets > 0 || hypoCartons > 0
-      ? { produitCode: "HYPO" as const, nbSachets: hypoSachets, nbFilets: 0, nbCartons: hypoCartons }
-      : null;
-  const htcLigne =
-    htcSachets > 0 || htcFilets > 0 || htcCartons > 0
-      ? {
-          produitCode: "HTC" as const,
-          nbSachets: htcSachets,
-          nbFilets: htcFilets,
-          nbCartons: htcCartons,
-        }
-      : null;
-  const lignesVente = [hypoLigne, htcLigne].filter(Boolean) as NonNullable<
-    typeof hypoLigne
-  >[];
+  // Une ligne par produit ayant une quantité saisie — généralisé à
+  // n'importe quel nombre de produits actifs (plus limité à HYPO/HTC).
+  const lignesVente = produits
+    .map((p) => {
+      const q = quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
+      if (q.sachets === 0 && q.filets === 0 && q.cartons === 0) return null;
+      return { produitCode: p.code, nbSachets: q.sachets, nbFilets: q.filets, nbCartons: q.cartons };
+    })
+    .filter(Boolean) as { produitCode: string; nbSachets: number; nbFilets: number; nbCartons: number }[];
 
   // Calcul automatique à partir des quantités saisies et des prix produits
-  // (75 FCFA/sachet HYPO, 8400/carton HYPO, 75/sachet HTC, 750/filet HTC,
-  // 9000/carton HTC — chargés dynamiquement, jamais codés en dur ici).
-  // Sous-total par ligne (affiché sur chaque carte produit) + total global
-  // (champ "Montant encaissé", qui reste modifiable ensuite, ex: remise).
-  const hypoProduit = produits.find((p) => p.code === "HYPO");
-  const htcProduit = produits.find((p) => p.code === "HTC");
+  // (chargés dynamiquement depuis /api/referentiels, jamais codés en dur).
+  function sousTotalProduit(p: Produit, q: { sachets: number; filets: number; cartons: number }) {
+    return q.sachets * p.prixSachet + q.filets * (p.prixFilet ?? 0) + q.cartons * p.prixCarton;
+  }
 
-  const sousTotalHypo = hypoProduit
-    ? hypoSachets * hypoProduit.prixSachet + hypoCartons * hypoProduit.prixCarton
-    : 0;
-  const sousTotalHtc = htcProduit
-    ? htcSachets * htcProduit.prixSachet +
-      htcFilets * (htcProduit.prixFilet ?? 0) +
-      htcCartons * htcProduit.prixCarton
-    : 0;
-  const montantCalcule = sousTotalHypo + sousTotalHtc;
+  const sousTotauxParProduit = new Map(
+    produits.map((p) => [p.code, sousTotalProduit(p, quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 })])
+  );
+  const montantCalcule = [...sousTotauxParProduit.values()].reduce((s, v) => s + v, 0);
 
   // Sous-totaux de la commande à livrer plus tard (mêmes prix, calcul
   // identique à la vente immédiate) — §2 demande de Victor.
-  const sousTotalCommandeHypo = hypoProduit
-    ? commandeHypoSachets * hypoProduit.prixSachet + commandeHypoCartons * hypoProduit.prixCarton
-    : 0;
-  const sousTotalCommandeHtc = htcProduit
-    ? commandeHtcSachets * htcProduit.prixSachet +
-      commandeHtcFilets * (htcProduit.prixFilet ?? 0) +
-      commandeHtcCartons * htcProduit.prixCarton
-    : 0;
-  const montantCommandeCalcule = sousTotalCommandeHypo + sousTotalCommandeHtc;
+  const sousTotauxCommandeParProduit = new Map(
+    produits.map((p) => [
+      p.code,
+      sousTotalProduit(p, quantitesCommande[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }),
+    ])
+  );
+  const montantCommandeCalcule = [...sousTotauxCommandeParProduit.values()].reduce((s, v) => s + v, 0);
 
-  const commandeHypoLigne =
-    commandeHypoSachets > 0 || commandeHypoCartons > 0
-      ? {
-          produitCode: "HYPO" as const,
-          nbSachets: commandeHypoSachets,
-          nbFilets: 0,
-          nbCartons: commandeHypoCartons,
-        }
-      : null;
-  const commandeHtcLigne =
-    commandeHtcSachets > 0 || commandeHtcFilets > 0 || commandeHtcCartons > 0
-      ? {
-          produitCode: "HTC" as const,
-          nbSachets: commandeHtcSachets,
-          nbFilets: commandeHtcFilets,
-          nbCartons: commandeHtcCartons,
-        }
-      : null;
-  const commandeLignes = [commandeHypoLigne, commandeHtcLigne].filter(
-    Boolean
-  ) as NonNullable<typeof commandeHypoLigne>[];
+  const commandeLignes = produits
+    .map((p) => {
+      const q = quantitesCommande[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
+      if (q.sachets === 0 && q.filets === 0 && q.cartons === 0) return null;
+      return { produitCode: p.code, nbSachets: q.sachets, nbFilets: q.filets, nbCartons: q.cartons };
+    })
+    .filter(Boolean) as { produitCode: string; nbSachets: number; nbFilets: number; nbCartons: number }[];
 
   // Logique par mode de paiement (§1 demande de Victor) :
   // - Espèces : le montant calculé est versé intégralement, encaissé tout
@@ -446,18 +447,19 @@ export default function NouvelleVisitePage() {
   }, [montantEffectivementRecu]);
 
   // Auto-détection du présentoir (demande de Victor) : si les sachets
-  // dépassent 30 ET les cartons dépassent 1 pour l'un des deux produits,
-  // on marque "Oui" automatiquement. Reste modifiable ensuite — c'est une
-  // suggestion, pas un verrou.
+  // dépassent 30 ET les cartons dépassent 1 pour l'un des produits actifs
+  // (plus limité à HYPO/HTC), on marque "Oui" automatiquement. Reste
+  // modifiable ensuite — c'est une suggestion, pas un verrou.
   useEffect(() => {
-    const hypoQualifie = hypoSachets > 30 && hypoCartons > 1;
-    const htcQualifie = htcSachets > 30 && htcCartons > 1;
-    if ((hypoQualifie || htcQualifie) && presentoir !== true) {
+    const unProduitQualifie = Object.values(quantites).some(
+      (q) => q.sachets > 30 && q.cartons > 1
+    );
+    if (unProduitQualifie && presentoir !== true) {
       setPresentoir(true);
       setPresentoirAuto(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hypoSachets, hypoCartons, htcSachets, htcCartons]);
+  }, [quantites]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -927,82 +929,65 @@ export default function NouvelleVisitePage() {
         <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
           <SectionHeader icon={Package} title="Achat / commande du jour" color="#0f766e" />
 
-          <div className="mb-3 rounded-xl border-l-4 border-blue-500 bg-blue-50/50 p-3">
-            <div className="mb-1 flex items-center gap-2">
-              <Droplet size={16} className="text-blue-600" />
-              <p className="text-sm font-bold text-slate-800">HYPO</p>
-            </div>
-            <p className="mb-2.5 text-xs text-slate-500">75ml · 112 sachets/carton</p>
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <FieldLabel>Sachets</FieldLabel>
-                <TextInput
-                  type="number"
-                  min={0}
-                  value={hypoSachets || ""}
-                  onChange={(e) => setHypoSachets(Number(e.target.value) || 0)}
-                />
+          {produits.map((p, index) => {
+            const q = quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
+            const sousTotal = sousTotauxParProduit.get(p.code) ?? 0;
+            const { couleur, fond, icone: Icone } = styleProduit(index);
+            return (
+              <div
+                key={p.id}
+                className="mb-3 rounded-xl border-l-4 p-3"
+                style={{ borderColor: couleur, backgroundColor: fond }}
+              >
+                <div className="mb-1 flex items-center gap-2">
+                  <Icone size={16} style={{ color: couleur }} />
+                  <p className="text-sm font-bold text-slate-800">{p.nom || p.code}</p>
+                </div>
+                <div className={`grid gap-2.5 ${p.prixFilet !== null ? "grid-cols-3" : "grid-cols-2"}`}>
+                  <div>
+                    <FieldLabel>Sachets</FieldLabel>
+                    <TextInput
+                      type="number"
+                      min={0}
+                      value={q.sachets || ""}
+                      onChange={(e) =>
+                        updateQuantite(setQuantites, p.code, "sachets", Number(e.target.value) || 0)
+                      }
+                    />
+                  </div>
+                  {p.prixFilet !== null && (
+                    <div>
+                      <FieldLabel>Filets</FieldLabel>
+                      <TextInput
+                        type="number"
+                        min={0}
+                        value={q.filets || ""}
+                        onChange={(e) =>
+                          updateQuantite(setQuantites, p.code, "filets", Number(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <FieldLabel>Cartons</FieldLabel>
+                    <TextInput
+                      type="number"
+                      min={0}
+                      value={q.cartons || ""}
+                      onChange={(e) =>
+                        updateQuantite(setQuantites, p.code, "cartons", Number(e.target.value) || 0)
+                      }
+                    />
+                  </div>
+                </div>
+                {sousTotal > 0 && (
+                  <p className="mt-2.5 text-right text-sm font-bold" style={{ color: couleur }}>
+                    Sous-total : {sousTotal.toLocaleString("fr-FR")} FCFA
+                  </p>
+                )}
               </div>
-              <div>
-                <FieldLabel>Cartons</FieldLabel>
-                <TextInput
-                  type="number"
-                  min={0}
-                  value={hypoCartons || ""}
-                  onChange={(e) => setHypoCartons(Number(e.target.value) || 0)}
-                />
-              </div>
-            </div>
-            {sousTotalHypo > 0 && (
-              <p className="mt-2.5 text-right text-sm font-bold text-blue-700">
-                Sous-total : {sousTotalHypo.toLocaleString("fr-FR")} FCFA
-              </p>
-            )}
-          </div>
-
-          <div className="mb-4 rounded-xl border-l-4 border-teal-600 bg-teal-50/50 p-3">
-            <div className="mb-1 flex items-center gap-2">
-              <Sparkles size={16} className="text-teal-700" />
-              <p className="text-sm font-bold text-slate-800">HTC</p>
-            </div>
-            <p className="mb-2.5 text-xs text-slate-500">
-              60ml · 12 filets de 10 sachets · 120 sachets/carton
-            </p>
-            <div className="grid grid-cols-3 gap-2.5">
-              <div>
-                <FieldLabel>Sachets</FieldLabel>
-                <TextInput
-                  type="number"
-                  min={0}
-                  value={htcSachets || ""}
-                  onChange={(e) => setHtcSachets(Number(e.target.value) || 0)}
-                />
-              </div>
-              <div>
-                <FieldLabel>Filets</FieldLabel>
-                <TextInput
-                  type="number"
-                  min={0}
-                  value={htcFilets || ""}
-                  onChange={(e) => setHtcFilets(Number(e.target.value) || 0)}
-                />
-              </div>
-              <div>
-                <FieldLabel>Cartons</FieldLabel>
-                <TextInput
-                  type="number"
-                  min={0}
-                  value={htcCartons || ""}
-                  onChange={(e) => setHtcCartons(Number(e.target.value) || 0)}
-                />
-              </div>
-            </div>
-            {sousTotalHtc > 0 && (
-              <p className="mt-2.5 text-right text-sm font-bold text-teal-700">
-                Sous-total : {sousTotalHtc.toLocaleString("fr-FR")} FCFA
-              </p>
-            )}
-          </div>
+            );
+          })}
 
           {/* Présentoir — positionné après l'achat du jour et pré-rempli
               automatiquement selon les quantités saisies (§ demande de
@@ -1132,88 +1117,65 @@ export default function NouvelleVisitePage() {
 
           {inclureCommande && (
             <div className="space-y-3 rounded-xl border border-teal-100 bg-teal-50/30 p-3">
-              <div className="rounded-xl border-l-4 border-blue-500 bg-blue-50/50 p-3">
-                <div className="mb-1 flex items-center gap-2">
-                  <Droplet size={16} className="text-blue-600" />
-                  <p className="text-sm font-bold text-slate-800">HYPO</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <FieldLabel>Sachets</FieldLabel>
-                    <TextInput
-                      type="number"
-                      min={0}
-                      value={commandeHypoSachets || ""}
-                      onChange={(e) =>
-                        setCommandeHypoSachets(Number(e.target.value) || 0)
-                      }
-                    />
+              {produits.map((p, index) => {
+                const q = quantitesCommande[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
+                const sousTotal = sousTotauxCommandeParProduit.get(p.code) ?? 0;
+                const { couleur, fond, icone: Icone } = styleProduit(index);
+                return (
+                  <div
+                    key={p.id}
+                    className="rounded-xl border-l-4 p-3"
+                    style={{ borderColor: couleur, backgroundColor: fond }}
+                  >
+                    <div className="mb-1 flex items-center gap-2">
+                      <Icone size={16} style={{ color: couleur }} />
+                      <p className="text-sm font-bold text-slate-800">{p.nom || p.code}</p>
+                    </div>
+                    <div className={`grid gap-2.5 ${p.prixFilet !== null ? "grid-cols-3" : "grid-cols-2"}`}>
+                      <div>
+                        <FieldLabel>Sachets</FieldLabel>
+                        <TextInput
+                          type="number"
+                          min={0}
+                          value={q.sachets || ""}
+                          onChange={(e) =>
+                            updateQuantite(setQuantitesCommande, p.code, "sachets", Number(e.target.value) || 0)
+                          }
+                        />
+                      </div>
+                      {p.prixFilet !== null && (
+                        <div>
+                          <FieldLabel>Filets</FieldLabel>
+                          <TextInput
+                            type="number"
+                            min={0}
+                            value={q.filets || ""}
+                            onChange={(e) =>
+                              updateQuantite(setQuantitesCommande, p.code, "filets", Number(e.target.value) || 0)
+                            }
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <FieldLabel>Cartons</FieldLabel>
+                        <TextInput
+                          type="number"
+                          min={0}
+                          value={q.cartons || ""}
+                          onChange={(e) =>
+                            updateQuantite(setQuantitesCommande, p.code, "cartons", Number(e.target.value) || 0)
+                          }
+                        />
+                      </div>
+                    </div>
+                    {sousTotal > 0 && (
+                      <p className="mt-2 text-right text-sm font-bold" style={{ color: couleur }}>
+                        Sous-total : {sousTotal.toLocaleString("fr-FR")} FCFA
+                      </p>
+                    )}
                   </div>
-                  <div>
-                    <FieldLabel>Cartons</FieldLabel>
-                    <TextInput
-                      type="number"
-                      min={0}
-                      value={commandeHypoCartons || ""}
-                      onChange={(e) =>
-                        setCommandeHypoCartons(Number(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                </div>
-                {sousTotalCommandeHypo > 0 && (
-                  <p className="mt-2 text-right text-sm font-bold text-blue-700">
-                    Sous-total : {sousTotalCommandeHypo.toLocaleString("fr-FR")} FCFA
-                  </p>
-                )}
-              </div>
-
-              <div className="rounded-xl border-l-4 border-teal-600 bg-teal-50/50 p-3">
-                <div className="mb-1 flex items-center gap-2">
-                  <Sparkles size={16} className="text-teal-700" />
-                  <p className="text-sm font-bold text-slate-800">HTC</p>
-                </div>
-                <div className="grid grid-cols-3 gap-2.5">
-                  <div>
-                    <FieldLabel>Sachets</FieldLabel>
-                    <TextInput
-                      type="number"
-                      min={0}
-                      value={commandeHtcSachets || ""}
-                      onChange={(e) =>
-                        setCommandeHtcSachets(Number(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Filets</FieldLabel>
-                    <TextInput
-                      type="number"
-                      min={0}
-                      value={commandeHtcFilets || ""}
-                      onChange={(e) =>
-                        setCommandeHtcFilets(Number(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Cartons</FieldLabel>
-                    <TextInput
-                      type="number"
-                      min={0}
-                      value={commandeHtcCartons || ""}
-                      onChange={(e) =>
-                        setCommandeHtcCartons(Number(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                </div>
-                {sousTotalCommandeHtc > 0 && (
-                  <p className="mt-2 text-right text-sm font-bold text-teal-700">
-                    Sous-total : {sousTotalCommandeHtc.toLocaleString("fr-FR")} FCFA
-                  </p>
-                )}
-              </div>
+                );
+              })}
 
               <div>
                 <FieldLabel>Date de livraison prévue</FieldLabel>

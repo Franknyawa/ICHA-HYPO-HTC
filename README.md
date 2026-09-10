@@ -703,14 +703,47 @@ Les deux derniers points de la liste de départ.
 
 Aucun changement de schéma — pas de migration nécessaire.
 
-**🎉 Avec ce lot, tous les points de la liste de fonctionnalités
-originale sont traités.** Reste seulement les limitations déjà connues et
-documentées plus haut (généraliser "Nouveau recensement" aux produits
-dynamiques, gestion des quartiers en back office, boutons placeholder du
-dashboard sans page dédiée) — à traiter à la demande, pas de plan figé
-pour la suite désormais.
-Stockage photos (upload cloud réel), puis le plan admin ci-dessus —
-voir `docs/architecture.md` §4.
+**🎉 Tous les points de la liste de fonctionnalités originale sont
+traités**, "Nouveau recensement" inclus désormais (voir section
+ci-dessous). Reste seulement deux limitations mineures, à traiter à la
+demande, sans plan figé pour la suite.
+
+### ✅ "Nouveau recensement" généralisé aux produits dynamiques
+Dernière limitation connue du module produits dynamiques, désormais
+traitée. Le formulaire terrain principal (`/visites/new`) — le plus
+utilisé, et jusqu'ici le seul encore figé à deux colonnes HYPO/HTC codées
+en dur — affiche maintenant **dynamiquement tous les produits actifs**,
+aussi bien dans la section "Achat du jour" que dans la commande future
+intégrée :
+- États remplacés par des maps génériques `{ [code]: {sachets, filets,
+  cartons} }`, un seul helper `updateQuantite()` partagé
+- Le champ "Filets" n'apparaît que si le produit a un `prixFilet` défini
+  (comme HTC) — s'adapte automatiquement à la structure de chaque produit
+- Calcul du montant, présentoir auto-détecté, et lignes envoyées au
+  serveur : tout généralisé à N produits, plus seulement 2
+- Petite palette de couleurs/icônes cyclique pour les cartes produit — un
+  3e produit ajouté en back office n'hérite plus par défaut du style HTC,
+  il obtient sa propre couleur distincte
+
+Concrètement : un produit créé depuis `/admin/parametres` apparaît
+maintenant **partout** — Visite de réassort (déjà fait) et Nouveau
+recensement (fait maintenant) — sans aucune modification de code
+supplémentaire nécessaire.
+
+Aucun changement de schéma — pas de migration nécessaire (le backend
+était déjà générique depuis l'ajout du module produits dynamiques).
+
+### 📋 Limitations restantes
+- **Gestion des quartiers en back office** — ils se créent à la volée
+  depuis le terrain (recherche/création par nom), mais ne sont pas encore
+  listables/renommables/fusionnables depuis `/admin/parametres`
+- **Boutons placeholder du dashboard commercial sans page dédiée propre**
+  — "Visite de rotation et d'achalandage" et "Visite de réassort" ont
+  bien leurs pages maintenant, mais si Victor prévoit d'autres types de
+  visite à l'avenir, il faudra les ajouter au même modèle
+- Pas de suivi de version pour les migrations Prisma (`prisma/migrations`
+  reste vide, tout est passé par SQL manuel) — pas bloquant, juste moins
+  traçable qu'un historique de migrations en bonne et due forme
 
 ## Documents sources
 
