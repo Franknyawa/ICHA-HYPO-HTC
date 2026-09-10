@@ -982,36 +982,59 @@ function LignePrixParType({
     prixCarton: override?.prixCarton ?? produitBase.prixCarton,
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function enregistrer() {
     setSaving(true);
-    await fetch("/api/parametres/prix-par-type", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        produitId: produit.id,
-        typeId: type.id,
-        prixSachet: form.prixSachet,
-        prixCarton: form.prixCarton,
-        ...(produit.prixFilet !== null ? { prixFilet: form.prixFilet } : {}),
-      }),
-    });
-    setSaving(false);
-    onSaved();
+    setError(null);
+    try {
+      const res = await fetch("/api/parametres/prix-par-type", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          produitId: produit.id,
+          typeId: type.id,
+          prixSachet: form.prixSachet,
+          prixCarton: form.prixCarton,
+          ...(produit.prixFilet !== null ? { prixFilet: form.prixFilet } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? `Échec de l'enregistrement (${res.status}).`);
+        return;
+      }
+      onSaved();
+    } catch {
+      setError("Erreur réseau — la sauvegarde a échoué.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function reinitialiser() {
     if (!override) return;
     setSaving(true);
-    await fetch(`/api/parametres/prix-par-type/${override.id}`, { method: "DELETE" });
-    setPersonnalise(false);
-    setForm({
-      prixSachet: produitBase.prixSachet,
-      prixFilet: produitBase.prixFilet ?? 0,
-      prixCarton: produitBase.prixCarton,
-    });
-    setSaving(false);
-    onSaved();
+    setError(null);
+    try {
+      const res = await fetch(`/api/parametres/prix-par-type/${override.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? "Échec de la réinitialisation.");
+        return;
+      }
+      setPersonnalise(false);
+      setForm({
+        prixSachet: produitBase.prixSachet,
+        prixFilet: produitBase.prixFilet ?? 0,
+        prixCarton: produitBase.prixCarton,
+      });
+      onSaved();
+    } catch {
+      setError("Erreur réseau.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!personnalise) {
@@ -1076,6 +1099,7 @@ function LignePrixParType({
       >
         {saving ? "..." : "Enregistrer"}
       </button>
+      {error && <p className="mt-1.5 text-[11px] text-alert">{error}</p>}
     </div>
   );
 }
