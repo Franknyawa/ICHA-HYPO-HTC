@@ -18,6 +18,7 @@ import {
   MoreHorizontal,
   BellRing,
   Package,
+  Target,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { href: "/admin/points-vente", label: "Points de vente", icon: Store },
   { href: "/admin/commandes", label: "Commandes", icon: Truck },
   { href: "/admin/stock", label: "Stock", icon: Package },
+  { href: "/admin/objectifs", label: "Objectifs", icon: Target },
   { href: "/admin/factures", label: "Factures", icon: Receipt },
   { href: "/admin/tracking", label: "Tracking", icon: Navigation },
   { href: "/admin/clients", label: "Clients", icon: Users2 },

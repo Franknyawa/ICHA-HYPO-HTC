@@ -683,15 +683,32 @@ Aucun changement de schéma — pas de migration nécessaire.
 Aucun changement de schéma — pas de migration nécessaire (`Stock` et
 `MouvementStock` existaient déjà).
 
-### 📋 Plan pour les fonctionnalités admin restantes
-Dans l'ordre où elles seront abordées :
-1. **Objectifs & progression** (vue admin) — Réalisé/Objectif × 100 par
-   binôme, jour et semaine, avec les seuils déjà en base (le dashboard
-   commercial affiche déjà ça côté commercial, pas encore côté admin)
-2. **Historique des visites** côté commercial — actuellement un texte
-   "à venir" sur son dashboard
+### ✅ Historique des visites (commercial) + Objectifs & progression (admin)
+Les deux derniers points de la liste de départ.
 
-### ⏳ À suivre
+- **`/historique`** (commercial) — liste paginée de ses propres visites,
+  type déduit automatiquement (Nouveau recensement / Rotation et
+  achalandage / Réassort, selon les photos et la vente rattachées),
+  montant de vente et rapport affichés quand ils existent. Lien "Voir
+  l'historique de mes visites" ajouté sous les boutons d'action du
+  dashboard commercial.
+- **`/admin/objectifs`** — vue d'ensemble Réalisé/Objectif × 100, par
+  binôme (jour/semaine) et par commercial (jour/semaine/mois), même code
+  couleur rouge/orange/vert que le dashboard commercial. Réutilise
+  directement `getStatsBinome`/`getStatsPersonnelles` déjà construits pour
+  le dashboard commercial — aucune nouvelle logique de calcul.
+- `components/StatBar.tsx` — la barre de progression colorée était
+  dupliquée dans le dashboard commercial ; extraite en composant partagé,
+  utilisée maintenant aux deux endroits.
+
+Aucun changement de schéma — pas de migration nécessaire.
+
+**🎉 Avec ce lot, tous les points de la liste de fonctionnalités
+originale sont traités.** Reste seulement les limitations déjà connues et
+documentées plus haut (généraliser "Nouveau recensement" aux produits
+dynamiques, gestion des quartiers en back office, boutons placeholder du
+dashboard sans page dédiée) — à traiter à la demande, pas de plan figé
+pour la suite désormais.
 Stockage photos (upload cloud réel), puis le plan admin ci-dessus —
 voir `docs/architecture.md` §4.
 
