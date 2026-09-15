@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { PwaSetup } from "@/components/PwaSetup";
+import { ThemeProvider, THEME_INIT_SCRIPT } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "ICHA IMPORT — HYPO/HTC",
@@ -29,10 +30,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
-      <body>
-        {children}
-        <PwaSetup />
+    <html lang="fr" suppressHydrationWarning>
+      <head>
+        {/* Doit s'exécuter avant le premier rendu pour éviter un flash de
+            thème incorrect — voir components/ThemeProvider.tsx */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <ThemeProvider>
+          {children}
+          <PwaSetup />
+        </ThemeProvider>
       </body>
     </html>
   );

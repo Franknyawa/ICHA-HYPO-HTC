@@ -35,6 +35,7 @@ model Ville {
 model Quartier {
   id        String   @id @default(uuid())
   nom       String
+  actif     Boolean  @default(true)
   villeId   String   @map("ville_id")
   ville     Ville    @relation(fields: [villeId], references: [id])
   createdAt DateTime @default(now()) @map("created_at")

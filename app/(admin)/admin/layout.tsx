@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/LogoutButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   LayoutDashboard,
   Store,
@@ -49,9 +50,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [pathname]); // re-vérifie à chaque navigation, ex: après avoir résolu une alerte
 
   return (
-    <div className="min-h-screen bg-slate-50 md:flex">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:flex">
       {/* Sidebar — desktop uniquement */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 md:flex">
         <div
           className="flex items-center gap-2 px-5 py-5"
           style={{ background: "linear-gradient(135deg, #1e3a8a, #2563eb)" }}
@@ -77,8 +78,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 href={item.href}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                   active
-                    ? "bg-blue-50 text-brand"
-                    : "text-slate-500 hover:bg-slate-50"
+                    ? "bg-blue-50 text-brand dark:bg-blue-950/50 dark:text-blue-400"
+                    : "text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800/60"
                 }`}
               >
                 <Icon size={18} strokeWidth={active ? 2.4 : 2} />
@@ -93,17 +94,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        <div className="border-t border-slate-100 p-3">
-          <LogoutButton />
+        <div className="flex items-center gap-2 border-t border-slate-100 p-3 dark:border-slate-800">
+          <LogoutButton className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800/60" />
+          <ThemeToggle className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" />
         </div>
       </aside>
 
       {/* Contenu */}
-      <div className="min-h-screen flex-1 pb-20 md:pb-0">
-        {/* Bouton déconnexion flottant — mobile uniquement (la sidebar,
-            hors écran sur mobile, porte déjà le bouton sur desktop) */}
-        <div className="fixed right-3 top-3 z-40 md:hidden">
-          <LogoutButton className="flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-xs font-medium text-slate-500 shadow-sm ring-1 ring-slate-200 backdrop-blur" />
+      <div className="min-h-screen flex-1 bg-slate-50 pb-20 dark:bg-slate-950 md:pb-0">
+        {/* Bouton déconnexion + thème flottants — mobile uniquement (la
+            sidebar, hors écran sur mobile, porte déjà ces boutons sur
+            desktop) */}
+        <div className="fixed right-3 top-3 z-40 flex items-center gap-2 md:hidden">
+          <ThemeToggle className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-500 shadow-sm ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/95 dark:text-slate-300 dark:ring-slate-700" />
+          <LogoutButton className="flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-xs font-medium text-slate-500 shadow-sm ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/95 dark:text-slate-300 dark:ring-slate-700" />
         </div>
         {children}
       </div>

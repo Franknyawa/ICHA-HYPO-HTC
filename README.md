@@ -809,10 +809,58 @@ promettre fait en un seul lot.
 
 Aucun changement de schéma — pas de migration nécessaire.
 
+### ✅ Gestion des quartiers en back office
+Dernier point de la liste de fonctionnalités d'origine, désormais traité.
+- Champ `actif` ajouté au modèle `Quartier` (cohérent avec villes/types/
+  binômes/produits) — un quartier désactivé disparaît immédiatement du
+  formulaire terrain (`/api/referentiels` filtre déjà dessus)
+- **`/admin/parametres`** — nouvelle section "Quartiers", groupés par
+  ville, avec le nombre de points de vente rattachés affiché sur chaque
+  ligne
+- **Renommer**, **activer/désactiver** — mêmes patterns que le reste
+- **Fusionner** — bouton dédié (icône fusion) sur les quartiers ayant au
+  moins un point de vente : tous ses points de vente sont réassignés au
+  quartier choisi, puis le quartier d'origine est désactivé (jamais
+  supprimé — cohérent avec le principe général de l'app : ne jamais
+  perdre de données historiques)
+
+**⚠️ Changement de schéma — migration nécessaire :**
+```sql
+ALTER TABLE quartiers ADD COLUMN IF NOT EXISTS actif BOOLEAN NOT NULL DEFAULT true;
+```
+
+**🎉 Avec ce module, tous les points de la liste de fonctionnalités
+d'origine — fonctionnelle ET visuelle (premier lot) — sont traités.** Le
+reste de la refonte visuelle (dashboard, formulaires terrain, autres pages
+admin) reste à faire, à la demande.
+
+### ✅ Mode clair / sombre (infrastructure + premier lot de pages)
+- **Infrastructure complète** : `darkMode: "class"` activé dans Tailwind,
+  `components/ThemeProvider.tsx` (contexte + persistance `localStorage`),
+  script anti-flash injecté dans `<head>` (`app/layout.tsx`) qui applique
+  la classe `dark` avant l'hydratation React — sans lui, on verrait un
+  flash de thème clair au chargement même si l'utilisateur a choisi sombre
+- **`components/ThemeToggle.tsx`** — bouton soleil/lune réutilisable
+- **Bouton de bascule ajouté** : sidebar admin (desktop) + barre flottante
+  mobile, dashboard commercial, page de connexion
+- **Variantes sombres appliquées** : layout admin (sidebar, navigation),
+  `AdminPageHeader` (donc l'en-tête de toutes les pages admin d'un coup),
+  `AdminLoadingSkeleton`, dashboard commercial, `StatBar` (partagé
+  commercial + admin objectifs), page de connexion
+
+**Ce qui n'est PAS encore fait** (honnête sur la couverture réelle) : le
+contenu détaillé de la plupart des pages admin (points de vente,
+commandes, factures, rapports, paramètres, tracking, utilisateurs, stock,
+alertes, clients, objectifs) et les formulaires terrain (nouveau
+recensement, rotation, réassort) gardent leurs couleurs fixes — le bouton
+bascule existe globalement, mais tant que ces pages n'ont pas leurs
+propres classes `dark:`, elles restent visuellement identiques quel que
+soit le thème choisi. À étendre progressivement, page par page, comme
+convenu pour le reste de la refonte visuelle.
+
+Aucun changement de schéma — pas de migration nécessaire.
+
 ### 📋 Limitations restantes
-- **Gestion des quartiers en back office** — ils se créent à la volée
-  depuis le terrain (recherche/création par nom), mais ne sont pas encore
-  listables/renommables/fusionnables depuis `/admin/parametres`
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont
   bien leurs pages maintenant, mais si Victor prévoit d'autres types de

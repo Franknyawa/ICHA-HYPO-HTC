@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     const [villes, quartiers, types, binomes, produits, prixParType] = await Promise.all([
       prisma.ville.findMany({ where: { actif: true }, orderBy: { nom: "asc" } }),
       prisma.quartier.findMany({
-        where: villeId ? { villeId } : undefined,
+        where: { actif: true, ...(villeId ? { villeId } : {}) },
         orderBy: { nom: "asc" },
       }),
       prisma.typePointVente.findMany({ where: { actif: true }, orderBy: { ordre: "asc" } }),

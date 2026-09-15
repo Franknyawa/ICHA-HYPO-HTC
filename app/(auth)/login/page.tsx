@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Eye, EyeOff, User, Lock, ShieldCheck } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { SachetIcon, BouteilleJavelIcon } from "@/components/illustrations/BrandPatternIcons";
 
 // Motif de fond du panneau de marque — sachets et bouteilles dispersés
@@ -104,18 +105,21 @@ export default function LoginPage() {
       </div>
 
       {/* Panneau formulaire */}
-      <div className="flex flex-1 items-center justify-center bg-white px-6 py-12">
+      <div className="relative flex flex-1 items-center justify-center bg-white dark:bg-slate-950 px-6 py-12">
+        <div className="absolute right-4 top-4">
+          <ThemeToggle className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" />
+        </div>
         <form onSubmit={handleSubmit} className="w-full max-w-sm">
-          <div className="mb-2 flex items-center gap-2 text-brand">
+          <div className="mb-2 flex items-center gap-2 text-brand dark:text-blue-400">
             <ShieldCheck size={18} />
             <p className="text-xs font-bold uppercase tracking-widest">Espace sécurisé</p>
           </div>
-          <h1 className="mb-1 text-2xl font-extrabold text-slate-800">Connexion</h1>
-          <p className="mb-7 text-sm text-slate-500">
+          <h1 className="mb-1 text-2xl font-extrabold text-slate-800 dark:text-slate-100">Connexion</h1>
+          <p className="mb-7 text-sm text-slate-500 dark:text-slate-400">
             Commercial ou administrateur — utilise tes identifiants habituels.
           </p>
 
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">
+          <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Identifiant
           </label>
           <div className="relative mb-4">
@@ -129,12 +133,12 @@ export default function LoginPage() {
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
               placeholder="Ton identifiant"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-base text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-base text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:bg-slate-900 dark:focus:ring-blue-950"
               required
             />
           </div>
 
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">
+          <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Mot de passe / code personnel
           </label>
           <div className="relative mb-5">
@@ -148,7 +152,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
               placeholder="••••••••"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-base text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-base text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:bg-slate-900 dark:focus:ring-blue-950"
               required
             />
             <button

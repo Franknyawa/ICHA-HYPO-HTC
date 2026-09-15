@@ -1,7 +1,7 @@
 const COULEUR_CLASSES: Record<string, { bar: string; text: string; bg: string }> = {
-  vert: { bar: "bg-green-500", text: "text-green-700", bg: "bg-green-50" },
-  orange: { bar: "bg-amber-500", text: "text-amber-700", bg: "bg-amber-50" },
-  rouge: { bar: "bg-red-500", text: "text-alert", bg: "bg-red-50" },
+  vert: { bar: "bg-green-500", text: "text-green-700 dark:text-green-400", bg: "bg-green-50 dark:bg-green-950/40" },
+  orange: { bar: "bg-amber-500", text: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40" },
+  rouge: { bar: "bg-red-500", text: "text-alert dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/40" },
 };
 
 /**
@@ -26,16 +26,16 @@ export function StatBar({
   return (
     <div className={`rounded-xl ${c.bg} p-3`}>
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-600">{label}</span>
+        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{label}</span>
         <span className={`text-xs font-bold ${c.text}`}>{pourcentage}%</span>
       </div>
-      <div className="mb-1 h-2 overflow-hidden rounded-full bg-white">
+      <div className="mb-1 h-2 overflow-hidden rounded-full bg-white dark:bg-slate-900/60">
         <div
           className={`h-full rounded-full ${c.bar} transition-all`}
           style={{ width: `${Math.min(100, pourcentage)}%` }}
         />
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         {realise} / {objectif} cartons
       </p>
     </div>
