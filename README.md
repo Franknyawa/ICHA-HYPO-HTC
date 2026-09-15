@@ -776,6 +776,39 @@ supplémentaire nécessaire.
 Aucun changement de schéma — pas de migration nécessaire (le backend
 était déjà générique depuis l'ajout du module produits dynamiques).
 
+### ✅ Identité visuelle — logo, spinner, page de connexion redessinée
+Premier lot d'une refonte visuelle demandée par Victor ("revisiter toutes
+les pages") — celui-ci couvre le logo et la page de connexion ; le reste
+de l'app sera repris page par page dans les prochains échanges.
+- **Logo** — `public/brand/logo-hypo.png`. Le fichier fourni était un
+  JPEG avec un damier de transparence "cuit" dans l'image (pas une vraie
+  transparence) ; traitement par script Python (détection par saturation
+  colorimétrique + lissage des bords) pour en extraire un vrai PNG
+  transparent, recadré, couleur uniformisée.
+- **Icônes PWA regénérées** avec le vrai logo à la place de la goutte
+  d'eau générique précédente (`public/icons/icon-192.png`,
+  `icon-512.png`, `public/apple-touch-icon.png`)
+- **`components/Spinner.tsx`** — spinner SVG réutilisable (`<Spinner
+  size={18} />`) + `<FullPageSpinner label="..." />` pour les transitions
+  pleine page. Utilisé sur le bouton de connexion pour l'instant ; à
+  généraliser aux autres boutons "..." de l'app dans un prochain passage.
+- **`components/illustrations/BrandPatternIcons.tsx`** — deux icônes
+  SVG dessinées à la main (sachet, bouteille de javel), pensées pour un
+  motif de fond décoratif, pas des photos
+- **Page de connexion entièrement redessinée** — panneau de marque bleu
+  dégradé à gauche (desktop) avec motif de sachets/bouteilles dispersés en
+  transparence et le logo mis en valeur sur carte blanche, formulaire
+  épuré à droite avec icônes dans les champs, focus ring, et spinner sur
+  le bouton de connexion. S'empile verticalement sur mobile.
+
+**Ce qui n'est PAS encore fait** (honnête sur le "revisiter toutes les
+pages") : le reste de l'app garde son design actuel — dashboard commercial
+et admin, formulaires terrain, toutes les pages `/admin/*`. Je vais les
+reprendre systématiquement dans les prochains échanges plutôt que de tout
+promettre fait en un seul lot.
+
+Aucun changement de schéma — pas de migration nécessaire.
+
 ### 📋 Limitations restantes
 - **Gestion des quartiers en back office** — ils se créent à la volée
   depuis le terrain (recherche/création par nom), mais ne sont pas encore
