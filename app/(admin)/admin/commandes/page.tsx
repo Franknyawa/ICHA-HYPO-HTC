@@ -68,28 +68,28 @@ export default async function CommandesPage({
 
       <div className="p-4 md:p-6">
         {/* Filtres */}
-        <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 md:grid-cols-4" action="/admin/commandes">
-          <select name="statut" defaultValue={statut ?? ""} className="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+        <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-4" action="/admin/commandes">
+          <select name="statut" defaultValue={statut ?? ""} className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm">
             <option value="">Tous les statuts</option>
             <option value="EN_ATTENTE">En attente</option>
             <option value="LIVREE">Livrée</option>
             <option value="ANNULEE">Annulée</option>
           </select>
-          <select name="villeId" defaultValue={villeId} className="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+          <select name="villeId" defaultValue={villeId} className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm">
             <option value="">Toutes les villes</option>
             {villes.map((v) => (
               <option key={v.id} value={v.id}>{v.nom}</option>
             ))}
           </select>
-          <select name="commercialId" defaultValue={commercialId} className="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+          <select name="commercialId" defaultValue={commercialId} className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm">
             <option value="">Tous les commerciaux</option>
             {commerciaux.map((c) => (
               <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>
             ))}
           </select>
           <div className="grid grid-cols-2 gap-2">
-            <input type="date" name="dateFrom" defaultValue={dateFrom} className="rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-            <input type="date" name="dateTo" defaultValue={dateTo} className="rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+            <input type="date" name="dateFrom" defaultValue={dateFrom} className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm" />
+            <input type="date" name="dateTo" defaultValue={dateTo} className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm" />
           </div>
           <button type="submit" className="col-span-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white md:col-span-4">
             Filtrer
@@ -101,13 +101,13 @@ export default async function CommandesPage({
           {data.map((c) => {
             const wa = waUrl(c.pointVente.telephoneVendeur);
             return (
-              <div key={c.id} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+              <div key={c.id} className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-semibold text-slate-800">
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">
                       {c.client?.nom ?? c.pointVente.nom}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
                       {c.pointVente.nom} · {c.pointVente.ville?.nom ?? "—"} · {c.commercial.prenom} {c.commercial.nom}
                     </p>
                   </div>
@@ -129,7 +129,7 @@ export default async function CommandesPage({
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-400">
+                <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
                   <div>
                     <p>Commandée le {new Date(c.dateCommande).toLocaleDateString("fr-FR")}</p>
                     {c.dateLivraisonPrevue && (
@@ -149,21 +149,21 @@ export default async function CommandesPage({
             );
           })}
           {data.length === 0 && (
-            <p className="rounded-2xl bg-white py-10 text-center text-sm text-slate-400 shadow-sm ring-1 ring-slate-100">
+            <p className="rounded-2xl bg-white dark:bg-slate-900 py-10 text-center text-sm text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
               Aucune commande trouvée.
             </p>
           )}
         </div>
 
         {/* Pagination */}
-        <div className="mt-5 flex items-center justify-between text-sm text-slate-500">
+        <div className="mt-5 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
           <span>Page {pagination.page} / {pagination.totalPages}</span>
           <div className="flex gap-2">
             <Link
               href={`/admin/commandes?${buildQuery({ ...baseQuery, page: String(pagination.page - 1) })}`}
               aria-disabled={pagination.page <= 1}
               className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 font-medium ${
-                pagination.page <= 1 ? "pointer-events-none border-slate-100 text-slate-300" : "border-slate-200 text-slate-600"
+                pagination.page <= 1 ? "pointer-events-none border-slate-100 dark:border-slate-800 text-slate-300" : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
               }`}
             >
               <ChevronLeft size={15} />
@@ -173,7 +173,7 @@ export default async function CommandesPage({
               href={`/admin/commandes?${buildQuery({ ...baseQuery, page: String(pagination.page + 1) })}`}
               aria-disabled={pagination.page >= pagination.totalPages}
               className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 font-medium ${
-                pagination.page >= pagination.totalPages ? "pointer-events-none border-slate-100 text-slate-300" : "border-slate-200 text-slate-600"
+                pagination.page >= pagination.totalPages ? "pointer-events-none border-slate-100 dark:border-slate-800 text-slate-300" : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
               }`}
             >
               Suivant

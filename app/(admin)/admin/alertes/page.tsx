@@ -49,7 +49,7 @@ export default async function AlertesPage({
           <a
             href="/admin/alertes"
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-              !searchParams.type ? "bg-brand text-white" : "bg-white text-slate-500 ring-1 ring-slate-200"
+              !searchParams.type ? "bg-brand text-white" : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 dark:text-slate-500 ring-1 ring-slate-200 dark:ring-slate-700"
             }`}
           >
             Toutes ({toutesLesAlertes.length})
@@ -62,7 +62,7 @@ export default async function AlertesPage({
                 key={type}
                 href={`/admin/alertes?type=${type}`}
                 className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                  searchParams.type === type ? "bg-brand text-white" : "bg-white text-slate-500 ring-1 ring-slate-200"
+                  searchParams.type === type ? "bg-brand text-white" : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 dark:text-slate-500 ring-1 ring-slate-200 dark:ring-slate-700"
                 }`}
               >
                 {c.label} ({count})
@@ -72,9 +72,9 @@ export default async function AlertesPage({
         </div>
 
         {alertes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-white py-16 shadow-sm ring-1 ring-slate-100">
+          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-white dark:bg-slate-900 py-16 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
             <BellOff size={28} className="text-slate-300" />
-            <p className="text-sm text-slate-400">Aucune alerte active — tout est en ordre.</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">Aucune alerte active — tout est en ordre.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -84,7 +84,7 @@ export default async function AlertesPage({
               return (
                 <div
                   key={a.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100"
+                  className="flex items-center justify-between gap-3 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800"
                 >
                   <div className="flex items-center gap-3">
                     <span
@@ -100,8 +100,8 @@ export default async function AlertesPage({
                       >
                         {config.label}
                       </p>
-                      <p className="text-sm text-slate-700">{a.message}</p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-sm text-slate-700 dark:text-slate-300">{a.message}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
                         {new Date(a.createdAt).toLocaleDateString("fr-FR")}
                       </p>
                     </div>

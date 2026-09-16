@@ -146,14 +146,14 @@ function SectionHeader({
       >
         <Icon size={19} strokeWidth={2.25} />
       </span>
-      <h2 className="text-base font-bold text-slate-800">{title}</h2>
+      <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">{title}</h2>
     </div>
   );
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">
+    <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
       {children}
     </span>
   );
@@ -176,13 +176,13 @@ function Select({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
-        className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-3 pr-9 text-base text-slate-800"
+        className="w-full appearance-none rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 pr-9 text-base text-slate-800 dark:text-slate-100"
       >
         {children}
       </select>
       <ChevronDown
         size={18}
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
       />
     </div>
   );
@@ -200,7 +200,7 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
         (e.target as HTMLInputElement).blur();
         props.onWheel?.(e);
       }}
-      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-base text-slate-800 placeholder:text-slate-400"
+      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 text-base text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 dark:text-slate-500"
     />
   );
 }
@@ -213,7 +213,7 @@ function ToggleOuiNon({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1">
+    <div className="inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1">
       {[
         ["Non", false],
         ["Oui", true],
@@ -223,7 +223,7 @@ function ToggleOuiNon({
           key={label as string}
           onClick={() => onChange(v as boolean)}
           className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
-            value === v ? "bg-brand text-white" : "text-slate-500"
+            value === v ? "bg-brand text-white" : "text-slate-500 dark:text-slate-400 dark:text-slate-500"
           }`}
         >
           {label}
@@ -618,12 +618,12 @@ export default function NouvelleVisitePage() {
 
   if (success) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-sm rounded-2xl bg-white px-8 py-10 text-center shadow-sm">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+        <div className="max-w-sm rounded-2xl bg-white dark:bg-slate-900 px-8 py-10 text-center shadow-sm">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-600">
             <CheckCircle2 size={30} />
           </div>
-          <p className="mb-4 font-semibold text-slate-800">Visite enregistrée avec succès</p>
+          <p className="mb-4 font-semibold text-slate-800 dark:text-slate-100">Visite enregistrée avec succès</p>
           {lignesVente.length > 0 && (
             <div className="space-y-2">
               <button
@@ -636,7 +636,7 @@ export default function NouvelleVisitePage() {
               </button>
               <button
                 onClick={() => router.push("/dashboard")}
-                className="w-full rounded-xl bg-slate-100 py-3 text-sm font-medium text-slate-600"
+                className="w-full rounded-xl bg-slate-100 dark:bg-slate-800 py-3 text-sm font-medium text-slate-600 dark:text-slate-300"
               >
                 Retour à l'accueil
               </button>
@@ -649,15 +649,15 @@ export default function NouvelleVisitePage() {
 
   if (queuedOffline) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-sm rounded-2xl bg-white px-8 py-10 text-center shadow-sm">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+        <div className="max-w-sm rounded-2xl bg-white dark:bg-slate-900 px-8 py-10 text-center shadow-sm">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600">
             <Clock size={28} />
           </div>
           <p className="mb-2 font-semibold text-amber-800">
             Données en attente de synchronisation
           </p>
-          <p className="mb-5 text-sm text-slate-500">
+          <p className="mb-5 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
             La visite a été enregistrée sur ton téléphone et sera envoyée
             automatiquement dès que la connexion reviendra.
           </p>
@@ -676,7 +676,7 @@ export default function NouvelleVisitePage() {
   const step3Started = lignesVente.length > 0 || inclureCommande;
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-28">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-28">
       {/* En-tête — dégradé + motif de points, identité visuelle marquée
           plutôt qu'un simple bandeau plat. */}
       <div
@@ -713,27 +713,27 @@ export default function NouvelleVisitePage() {
           <p className="mt-1 text-sm text-blue-100">Recensement terrain du jour</p>
 
           <div className="mt-5 flex gap-2">
-            <div className="h-1.5 flex-1 rounded-full bg-white" />
-            <div className={`h-1.5 flex-1 rounded-full ${step2Done ? "bg-white" : "bg-white/30"}`} />
-            <div className={`h-1.5 flex-1 rounded-full ${step3Started ? "bg-white" : "bg-white/30"}`} />
+            <div className="h-1.5 flex-1 rounded-full bg-white dark:bg-slate-900" />
+            <div className={`h-1.5 flex-1 rounded-full ${step2Done ? "bg-white dark:bg-slate-900" : "bg-white/30"}`} />
+            <div className={`h-1.5 flex-1 rounded-full ${step3Started ? "bg-white dark:bg-slate-900" : "bg-white/30"}`} />
           </div>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} id="visite-form" className="-mt-3 space-y-4 px-4 pt-1">
         {/* 1. Informations sur l'équipe */}
-        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+        <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
           <SectionHeader icon={Users} title="Informations équipe" color="#4338ca" />
           <div className="mb-4 grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-indigo-50/70 px-3 py-2.5">
               <FieldLabel>Date</FieldLabel>
-              <p className="text-sm font-semibold text-slate-700">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 {now.toLocaleDateString("fr-FR")}
               </p>
             </div>
             <div className="rounded-xl bg-indigo-50/70 px-3 py-2.5">
               <FieldLabel>Heure</FieldLabel>
-              <p className="text-sm font-semibold text-slate-700">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 {now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
               </p>
             </div>
@@ -741,21 +741,21 @@ export default function NouvelleVisitePage() {
 
           <div className="mb-4 rounded-xl bg-indigo-50/70 px-3 py-2.5">
             <FieldLabel>Agent commercial</FieldLabel>
-            <p className="text-sm font-semibold text-slate-700">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               {session ? `${session.prenom} ${session.nom}` : "..."}
             </p>
           </div>
 
           <div className="rounded-xl bg-indigo-50/70 px-3 py-2.5">
             <FieldLabel>Binôme</FieldLabel>
-            <p className="text-sm font-semibold text-slate-700">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               {session?.binomeNom ?? "Non assigné — contacte ton administrateur"}
             </p>
           </div>
         </section>
 
         {/* 2. Point de vente */}
-        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+        <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
           <SectionHeader icon={Store} title="Point de vente" color="#1e40af" />
           <div className="space-y-3">
             <div>
@@ -769,7 +769,7 @@ export default function NouvelleVisitePage() {
                 {gps ? "Position mise à jour" : "Récupérer la position (détecte la ville)"}
               </button>
               {gps && (
-                <p className="mt-1.5 text-xs text-slate-400">
+                <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
                   {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)} (± {Math.round(gps.precision)}m)
                 </p>
               )}
@@ -951,7 +951,7 @@ export default function NouvelleVisitePage() {
         </section>
 
         {/* 3. Achat / commande du jour */}
-        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+        <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
           <SectionHeader icon={Package} title="Achat / commande du jour" color="#0f766e" />
 
           {produits.map((p, index) => {
@@ -966,7 +966,7 @@ export default function NouvelleVisitePage() {
               >
                 <div className="mb-1 flex items-center gap-2">
                   <Icone size={16} style={{ color: couleur }} />
-                  <p className="text-sm font-bold text-slate-800">{p.nom || p.code}</p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{p.nom || p.code}</p>
                 </div>
                 <div className={`grid gap-2.5 ${p.prixFilet !== null ? "grid-cols-3" : "grid-cols-2"}`}>
                   <div>
@@ -1019,7 +1019,7 @@ export default function NouvelleVisitePage() {
               Victor), mais reste modifiable. */}
           <div className="mb-4 flex items-center justify-between rounded-xl bg-blue-50/70 px-3 py-2.5">
             <div>
-              <span className="text-sm font-semibold text-slate-700">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Installation du présentoir
               </span>
               {presentoirAuto && presentoir === true && (
@@ -1051,29 +1051,29 @@ export default function NouvelleVisitePage() {
           </div>
 
           {modePaiement === "ESPECES" && (
-            <div className="mb-4 rounded-xl bg-slate-50 px-3 py-2.5">
+            <div className="mb-4 rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2.5">
               <div className="mb-1 flex items-center justify-between">
                 <FieldLabel>Montant à percevoir (FCFA)</FieldLabel>
                 <span className="text-[10px] font-semibold text-teal-700">
                   Calculé automatiquement
                 </span>
               </div>
-              <p className="flex items-center gap-2 text-lg font-bold text-slate-800">
-                <Wallet size={18} className="text-slate-400" />
+              <p className="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-slate-100">
+                <Wallet size={18} className="text-slate-400 dark:text-slate-500" />
                 {montantCalcule.toLocaleString("fr-FR")} FCFA
               </p>
             </div>
           )}
 
           {modePaiement === "MOBILE_MONEY" && (
-            <div className="mb-4 rounded-xl bg-slate-50 px-3 py-2.5">
-              <p className="mb-2 text-sm text-slate-600">
+            <div className="mb-4 rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2.5">
+              <p className="mb-2 text-sm text-slate-600 dark:text-slate-300">
                 Montant à percevoir :{" "}
-                <span className="font-bold text-slate-800">
+                <span className="font-bold text-slate-800 dark:text-slate-100">
                   {montantCalcule.toLocaleString("fr-FR")} FCFA
                 </span>
               </p>
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                 <input
                   type="checkbox"
                   checked={mobileMoneyConfirme}
@@ -1087,10 +1087,10 @@ export default function NouvelleVisitePage() {
           )}
 
           {modePaiement === "CREDIT_PARTIEL" && (
-            <div className="mb-4 space-y-2.5 rounded-xl bg-slate-50 px-3 py-2.5">
-              <p className="text-sm text-slate-600">
+            <div className="mb-4 space-y-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2.5">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
                 Total dû :{" "}
-                <span className="font-bold text-slate-800">
+                <span className="font-bold text-slate-800 dark:text-slate-100">
                   {montantCalcule.toLocaleString("fr-FR")} FCFA
                 </span>
               </p>
@@ -1103,7 +1103,7 @@ export default function NouvelleVisitePage() {
                   value={montantRecu || ""}
                   onChange={(e) => setMontantRecu(Number(e.target.value) || 0)}
                   onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-base text-slate-800"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 text-base text-slate-800 dark:text-slate-100"
                 />
               </div>
               {resteAPayer > 0 && (
@@ -1128,7 +1128,7 @@ export default function NouvelleVisitePage() {
           {/* Commande à livrer plus tard — placée en dernier (§2 demande
               de Victor), mêmes champs détaillés que l'achat du jour. */}
           <label className="mb-3 flex items-center justify-between rounded-xl bg-teal-50/60 px-3 py-2.5">
-            <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
               <Truck size={17} className="text-teal-700" />
               Le client passe une commande
             </span>
@@ -1154,7 +1154,7 @@ export default function NouvelleVisitePage() {
                   >
                     <div className="mb-1 flex items-center gap-2">
                       <Icone size={16} style={{ color: couleur }} />
-                      <p className="text-sm font-bold text-slate-800">{p.nom || p.code}</p>
+                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{p.nom || p.code}</p>
                     </div>
                     <div className={`grid gap-2.5 ${p.prixFilet !== null ? "grid-cols-3" : "grid-cols-2"}`}>
                       <div>
@@ -1212,7 +1212,7 @@ export default function NouvelleVisitePage() {
               </div>
 
               {montantCommandeCalcule > 0 && (
-                <p className="rounded-lg bg-white px-3 py-2 text-right text-sm font-bold text-slate-800">
+                <p className="rounded-lg bg-white dark:bg-slate-900 px-3 py-2 text-right text-sm font-bold text-slate-800 dark:text-slate-100">
                   À percevoir à la livraison :{" "}
                   {montantCommandeCalcule.toLocaleString("fr-FR")} FCFA
                 </p>
@@ -1222,7 +1222,7 @@ export default function NouvelleVisitePage() {
         </section>
 
         {/* 4. Observations */}
-        <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+        <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
           <SectionHeader icon={NotebookPen} title="Observations" color="#7c3aed" />
           <FieldLabel>
             Points importants à signaler (optionnel)
@@ -1232,7 +1232,7 @@ export default function NouvelleVisitePage() {
             onChange={(e) => setObservation(e.target.value)}
             placeholder="Ex : le point de vente manque de présentoir, le client a demandé un délai de paiement, concurrent présent sur la zone..."
             rows={4}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-base text-slate-800 placeholder:text-slate-400"
+            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 text-base text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 dark:text-slate-500"
           />
         </section>
 
@@ -1243,7 +1243,7 @@ export default function NouvelleVisitePage() {
 
       {/* Barre d'action fixe — toujours accessible sur mobile, même en
           bas d'un long formulaire (§26 CDC : ergonomie tactile). */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 p-3 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 dark:border-slate-700 bg-white/95 p-3 backdrop-blur">
         <button
           type="submit"
           form="visite-form"

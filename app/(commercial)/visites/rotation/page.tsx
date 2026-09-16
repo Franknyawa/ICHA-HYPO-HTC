@@ -120,8 +120,8 @@ export default function RotationPage() {
 
   if (success || queuedOffline) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-sm rounded-2xl bg-white px-8 py-10 text-center shadow-sm">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+        <div className="max-w-sm rounded-2xl bg-white dark:bg-slate-900 px-8 py-10 text-center shadow-sm">
           <div
             className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${
               queuedOffline ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"
@@ -129,12 +129,12 @@ export default function RotationPage() {
           >
             {queuedOffline ? <Clock size={28} /> : <CheckCircle2 size={30} />}
           </div>
-          <p className="mb-5 font-semibold text-slate-800">
+          <p className="mb-5 font-semibold text-slate-800 dark:text-slate-100">
             {queuedOffline ? "Données en attente de synchronisation" : "Visite enregistrée"}
           </p>
           <button
             onClick={() => router.push("/dashboard")}
-            className="w-full rounded-xl bg-slate-100 py-3 text-sm font-medium text-slate-600"
+            className="w-full rounded-xl bg-slate-100 dark:bg-slate-800 py-3 text-sm font-medium text-slate-600 dark:text-slate-300"
           >
             Retour à l'accueil
           </button>
@@ -144,7 +144,7 @@ export default function RotationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-28">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-28">
       <div
         className="px-4 pb-6 pt-6 text-white"
         style={{ background: "linear-gradient(135deg, #4338ca 0%, #4f46e5 60%, #6366f1 100%)" }}
@@ -167,19 +167,19 @@ export default function RotationPage() {
 
       <div className="-mt-3 space-y-4 px-4 pt-1">
         {!pointVente ? (
-          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
-            <h2 className="mb-3 text-sm font-bold text-slate-700">Rechercher le point de vente</h2>
+          <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+            <h2 className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-300">Rechercher le point de vente</h2>
             <PointVenteSearch onSelect={setPointVente} />
           </section>
         ) : (
           <>
-            <section className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+            <section className="flex items-center gap-3 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700">
                 <Store size={18} />
               </span>
               <div>
-                <p className="font-bold text-slate-800">{pointVente.nom}</p>
-                <p className="text-sm text-slate-500">
+                <p className="font-bold text-slate-800 dark:text-slate-100">{pointVente.nom}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
                   {pointVente.vendeur ?? "—"} · {pointVente.villeNom ?? "—"}
                 </p>
               </div>
@@ -197,10 +197,10 @@ export default function RotationPage() {
             </button>
 
             <form onSubmit={handleSubmit} id="rotation-form" className="space-y-4">
-              <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+              <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
                 <div className="mb-3 flex items-center justify-between">
                   <FieldLabel>Photo avec le boutiquier</FieldLabel>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
                     {now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
@@ -244,17 +244,17 @@ export default function RotationPage() {
                 )}
               </section>
 
-              <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+              <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
                 <div className="mb-2 flex items-center gap-2">
                   <NotebookPen size={16} className="text-indigo-700" />
-                  <h2 className="text-sm font-bold text-slate-700">Rapport de visite</h2>
+                  <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">Rapport de visite</h2>
                 </div>
                 <textarea
                   value={observation}
                   onChange={(e) => setObservation(e.target.value)}
                   rows={5}
                   placeholder="État du rayon, achalandage, remarques..."
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-base"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 text-base"
                 />
               </section>
 
@@ -265,7 +265,7 @@ export default function RotationPage() {
       </div>
 
       {pointVente && (
-        <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 p-3 backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 dark:border-slate-700 bg-white/95 p-3 backdrop-blur">
           <button
             type="submit"
             form="rotation-form"
@@ -283,7 +283,7 @@ export default function RotationPage() {
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
+    <span className="block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
       {children}
     </span>
   );

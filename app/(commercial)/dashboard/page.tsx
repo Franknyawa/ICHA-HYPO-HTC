@@ -37,7 +37,7 @@ export default async function CommercialDashboardPage() {
   const nbAlertes = commandesEnAttente.length + (credits.total > 0 ? 1 : 0);
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-10 dark:bg-slate-950">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-10 dark:bg-slate-950">
       <LocationHeartbeat />
       {/* En-tête */}
       <div
@@ -89,7 +89,7 @@ export default async function CommercialDashboardPage() {
           </Link>
           <Link
             href="/historique"
-            className="text-center text-xs font-medium text-slate-400 underline underline-offset-2"
+            className="text-center text-xs font-medium text-slate-400 dark:text-slate-500 underline underline-offset-2"
           >
             Voir l'historique de mes visites
           </Link>
@@ -106,7 +106,7 @@ export default async function CommercialDashboardPage() {
             </div>
 
             {credits.total > 0 && (
-              <div className="border-b border-slate-100 px-4 py-3">
+              <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-3">
                 <div className="mb-2 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-alert">
@@ -129,13 +129,13 @@ export default async function CommercialDashboardPage() {
                           {c.montantDu.toLocaleString("fr-FR")} FCFA
                         </span>
                       </div>
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-slate-400 dark:text-slate-500">
                         Vendu le {new Date(c.dateVente).toLocaleDateString("fr-FR")}
                       </span>
                     </div>
                   ))}
                   {credits.detail.length > 4 && (
-                    <p className="text-center text-xs text-slate-400">
+                    <p className="text-center text-xs text-slate-400 dark:text-slate-500">
                       + {credits.detail.length - 4} autre(s)
                     </p>
                   )}
@@ -163,14 +163,14 @@ export default async function CommercialDashboardPage() {
                         </span>
                       </div>
                       {c.dateLivraisonPrevue && (
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-slate-400 dark:text-slate-500">
                           Livraison le {new Date(c.dateLivraisonPrevue).toLocaleDateString("fr-FR")}
                         </span>
                       )}
                     </div>
                   ))}
                   {commandesEnAttente.length > 4 && (
-                    <p className="text-center text-xs text-slate-400">
+                    <p className="text-center text-xs text-slate-400 dark:text-slate-500">
                       + {commandesEnAttente.length - 4} autre(s)
                     </p>
                   )}

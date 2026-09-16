@@ -48,7 +48,7 @@ export function SyncStatusBanner() {
   return (
     <div
       className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm ${
-        online ? "bg-amber-50 text-amber-800" : "bg-slate-200 text-slate-700"
+        online ? "bg-amber-50 text-amber-800" : "bg-slate-200 dark:bg-slate-700 text-slate-700"
       }`}
     >
       <span>

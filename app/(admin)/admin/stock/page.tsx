@@ -131,14 +131,14 @@ export default function StockPage() {
 
       <div className="p-4 md:p-6">
         {loading ? (
-          <p className="text-sm text-slate-400">Chargement...</p>
+          <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {stocks.map((s) => (
               <div
                 key={s.id}
-                className={`rounded-2xl bg-white p-4 shadow-sm ring-1 ${
-                  s.enAlerte ? "ring-2 ring-red-200" : "ring-slate-100"
+                className={`rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ${
+                  s.enAlerte ? "ring-2 ring-red-200" : "ring-slate-100 dark:ring-slate-800"
                 }`}
               >
                 <div className="mb-3 flex items-center justify-between">
@@ -150,8 +150,8 @@ export default function StockPage() {
                       <Package size={18} />
                     </span>
                     <div>
-                      <p className="font-bold text-slate-800">{s.produitNom}</p>
-                      <p className="text-xs text-slate-400">{s.produitCode}</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-100">{s.produitNom}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">{s.produitCode}</p>
                     </div>
                   </div>
                   {s.enAlerte && (
@@ -163,13 +163,13 @@ export default function StockPage() {
                 </div>
 
                 <div className="mb-3 grid grid-cols-2 gap-2">
-                  <div className="rounded-xl bg-slate-50 p-3 text-center">
-                    <p className="text-xl font-bold text-slate-800">{s.quantiteCartons}</p>
-                    <p className="text-xs text-slate-400">cartons</p>
+                  <div className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3 text-center">
+                    <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{s.quantiteCartons}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">cartons</p>
                   </div>
-                  <div className="rounded-xl bg-slate-50 p-3 text-center">
-                    <p className="text-xl font-bold text-slate-800">{s.quantiteSachets}</p>
-                    <p className="text-xs text-slate-400">sachets</p>
+                  <div className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3 text-center">
+                    <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{s.quantiteSachets}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">sachets</p>
                   </div>
                 </div>
 
@@ -204,7 +204,7 @@ export default function StockPage() {
                   </button>
                   <button
                     onClick={() => ouvrirHistorique(s)}
-                    className="flex items-center justify-center gap-1 rounded-lg bg-slate-100 py-2 text-xs font-semibold text-slate-600"
+                    className="flex items-center justify-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300"
                   >
                     <History size={13} />
                     Historique
@@ -219,11 +219,11 @@ export default function StockPage() {
       {/* Modal ajustement */}
       {ajusterTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={confirmerAjuster} className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
-            <h3 className="mb-1 font-semibold text-slate-800">
+          <form onSubmit={confirmerAjuster} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-1 font-semibold text-slate-800 dark:text-slate-100">
               {ajusterType === "ENTREE" ? "Réassort" : "Retirer du stock"} — {ajusterTarget.produitNom}
             </h3>
-            <p className="mb-3 text-xs text-slate-400">
+            <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
               Stock actuel : {ajusterTarget.quantiteCartons} cartons ({ajusterTarget.quantiteSachets} sachets)
             </p>
 
@@ -231,7 +231,7 @@ export default function StockPage() {
               <select
                 value={ajusterUnite}
                 onChange={(e) => setAjusterUnite(e.target.value as "cartons" | "sachets")}
-                className="rounded-lg border border-slate-300 px-2 py-2 text-sm"
+                className="rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-2 text-sm"
               >
                 <option value="cartons">Cartons</option>
                 <option value="sachets">Sachets</option>
@@ -242,17 +242,17 @@ export default function StockPage() {
                 required
                 value={ajusterQuantite || ""}
                 onChange={(e) => setAjusterQuantite(Number(e.target.value) || 0)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
               />
             </div>
 
-            <label className="mb-1 block text-xs font-medium text-slate-500">Motif (optionnel)</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Motif (optionnel)</label>
             <input
               type="text"
               value={ajusterMotif}
               onChange={(e) => setAjusterMotif(e.target.value)}
               placeholder={ajusterType === "ENTREE" ? "Ex : Livraison fournisseur" : "Ex : Casse, périmé..."}
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             />
 
             {ajusterError && (
@@ -263,7 +263,7 @@ export default function StockPage() {
               <button
                 type="button"
                 onClick={() => setAjusterTarget(null)}
-                className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600"
+                className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300"
               >
                 Annuler
               </button>
@@ -284,9 +284,9 @@ export default function StockPage() {
       {/* Modal seuil */}
       {seuilTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={confirmerSeuil} className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
-            <h3 className="mb-3 font-semibold text-slate-800">Seuil d'alerte — {seuilTarget.produitNom}</h3>
-            <label className="mb-1 block text-xs font-medium text-slate-500">
+          <form onSubmit={confirmerSeuil} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Seuil d'alerte — {seuilTarget.produitNom}</h3>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
               Alerte "stock faible" en dessous de (sachets)
             </label>
             <input
@@ -295,13 +295,13 @@ export default function StockPage() {
               required
               value={seuilValeur}
               onChange={(e) => setSeuilValeur(Number(e.target.value) || 0)}
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             />
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setSeuilTarget(null)}
-                className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600"
+                className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300"
               >
                 Annuler
               </button>
@@ -320,27 +320,27 @@ export default function StockPage() {
       {/* Modal historique */}
       {historiqueTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
-            <h3 className="mb-3 font-semibold text-slate-800">
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">
               Historique — {historiqueTarget.produitNom}
             </h3>
             {historiqueLoading ? (
-              <p className="text-sm text-slate-400">Chargement...</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
             ) : historique.length === 0 ? (
-              <p className="text-sm text-slate-400">Aucun mouvement enregistré.</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500">Aucun mouvement enregistré.</p>
             ) : (
               <div className="mb-4 max-h-80 space-y-1.5 overflow-y-auto">
                 {historique.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                  <div key={m.id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm">
                     <div>
                       <p className={`font-medium ${m.type === "ENTREE" ? "text-green-700" : "text-alert"}`}>
                         {m.type === "ENTREE" ? "+" : "-"}{m.quantiteSachets} sachets
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
                         {LABEL_TYPE_MOUVEMENT[m.referenceType ?? ""] ?? m.referenceType ?? "—"}
                       </p>
                     </div>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-slate-400 dark:text-slate-500">
                       {new Date(m.createdAt).toLocaleDateString("fr-FR")}
                     </span>
                   </div>
@@ -349,7 +349,7 @@ export default function StockPage() {
             )}
             <button
               onClick={() => setHistoriqueTarget(null)}
-              className="w-full rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600"
+              className="w-full rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300"
             >
               Fermer
             </button>

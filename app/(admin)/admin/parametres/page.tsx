@@ -112,7 +112,7 @@ function SimpleEntityManager({
   }
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span
@@ -121,14 +121,14 @@ function SimpleEntityManager({
           >
             <Icon size={16} />
           </span>
-          <h2 className="font-bold text-slate-800">{labelSingulier}s</h2>
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">{labelSingulier}s</h2>
         </div>
         <button
           onClick={() => {
             setShowCreate(true);
             setError(null);
           }}
-          className="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600"
+          className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300"
         >
           <Plus size={14} />
           Ajouter
@@ -140,15 +140,15 @@ function SimpleEntityManager({
       )}
 
       {loading ? (
-        <p className="text-sm text-slate-400">Chargement...</p>
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
         <div className="space-y-1.5">
           {items.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2"
+              className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2"
             >
-              <span className={`text-sm font-medium ${item.actif ? "text-slate-700" : "text-slate-400 line-through"}`}>
+              <span className={`text-sm font-medium ${item.actif ? "text-slate-700 dark:text-slate-300" : "text-slate-400 dark:text-slate-500 line-through"}`}>
                 {avecOrdre && item.ordre ? `${item.ordre}. ` : ""}
                 {item.nom}
               </span>
@@ -160,14 +160,14 @@ function SimpleEntityManager({
                     setEditOrdre(item.ordre ?? 0);
                     setError(null);
                   }}
-                  className="text-slate-400"
+                  className="text-slate-400 dark:text-slate-500"
                 >
                   <Pencil size={14} />
                 </button>
                 <button
                   onClick={() => toggleActif(item)}
                   className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                    item.actif ? "bg-green-50 text-green-700" : "bg-slate-200 text-slate-500"
+                    item.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 dark:text-slate-500"
                   }`}
                 >
                   {item.actif ? "Actif" : "Inactif"}
@@ -176,26 +176,26 @@ function SimpleEntityManager({
             </div>
           ))}
           {items.length === 0 && (
-            <p className="text-sm text-slate-400">Aucun élément.</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">Aucun élément.</p>
           )}
         </div>
       )}
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={handleCreate} className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
-            <h3 className="mb-3 font-semibold text-slate-800">Nouveau {labelSingulier.toLowerCase()}</h3>
+          <form onSubmit={handleCreate} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Nouveau {labelSingulier.toLowerCase()}</h3>
             <input
               type="text"
               value={newNom}
               onChange={(e) => setNewNom(e.target.value)}
               required
               placeholder="Nom"
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             />
             {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
             <div className="flex gap-2">
-              <button type="button" onClick={() => setShowCreate(false)} className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600">
+              <button type="button" onClick={() => setShowCreate(false)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
                 Annuler
               </button>
               <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
@@ -208,18 +208,18 @@ function SimpleEntityManager({
 
       {editTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={handleEdit} className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
-            <h3 className="mb-3 font-semibold text-slate-800">Modifier</h3>
+          <form onSubmit={handleEdit} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Modifier</h3>
             <input
               type="text"
               value={editNom}
               onChange={(e) => setEditNom(e.target.value)}
               required
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             />
             {avecOrdre && (
               <>
-                <label className="mb-1 block text-xs font-medium text-slate-500">
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
                   Ordre d&apos;affichage
                 </label>
                 <input
@@ -227,13 +227,13 @@ function SimpleEntityManager({
                   min={0}
                   value={editOrdre}
                   onChange={(e) => setEditOrdre(Number(e.target.value) || 0)}
-                  className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
                 />
               </>
             )}
             {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
             <div className="flex gap-2">
-              <button type="button" onClick={() => setEditTarget(null)} className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600">
+              <button type="button" onClick={() => setEditTarget(null)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
                 Annuler
               </button>
               <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
@@ -383,20 +383,20 @@ function ProduitsManager() {
   }
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-white">
             <Package size={16} />
           </span>
-          <h2 className="font-bold text-slate-800">Produits & prix</h2>
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">Produits & prix</h2>
         </div>
         <button
           onClick={() => {
             setShowCreate(true);
             setCreateError(null);
           }}
-          className="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600"
+          className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300"
         >
           <Plus size={14} />
           Nouveau
@@ -404,19 +404,19 @@ function ProduitsManager() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-400">Chargement...</p>
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
         <div className="space-y-2">
           {deleteError && (
             <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{deleteError}</p>
           )}
           {produits.map((p) => (
-            <div key={p.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
+            <div key={p.id} className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2.5">
               <div>
-                <p className={`text-sm font-semibold ${p.actif ? "text-slate-800" : "text-slate-400 line-through"}`}>
+                <p className={`text-sm font-semibold ${p.actif ? "text-slate-800 dark:text-slate-100" : "text-slate-400 dark:text-slate-500 line-through"}`}>
                   {p.code}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
                   {p.prixSachet.toLocaleString("fr-FR")} FCFA/sachet
                   {p.prixFilet !== null ? ` · ${p.prixFilet.toLocaleString("fr-FR")} FCFA/filet` : ""}
                   {" · "}
@@ -424,13 +424,13 @@ function ProduitsManager() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => openEdit(p)} className="text-slate-400">
+                <button onClick={() => openEdit(p)} className="text-slate-400 dark:text-slate-500">
                   <Pencil size={14} />
                 </button>
                 <button
                   onClick={() => toggleActif(p)}
                   className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                    p.actif ? "bg-green-50 text-green-700" : "bg-slate-200 text-slate-500"
+                    p.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 dark:text-slate-500"
                   }`}
                 >
                   {p.actif ? "Actif" : "Inactif"}
@@ -446,42 +446,42 @@ function ProduitsManager() {
 
       {editTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={handleSave} className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
-            <h3 className="mb-3 font-semibold text-slate-800">Prix {editTarget.code}</h3>
+          <form onSubmit={handleSave} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Prix {editTarget.code}</h3>
 
-            <label className="mb-1 block text-xs font-medium text-slate-500">Prix par sachet (FCFA)</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Prix par sachet (FCFA)</label>
             <input
               type="number"
               min={0}
               value={form.prixSachet}
               onChange={(e) => setForm((f) => ({ ...f, prixSachet: Number(e.target.value) || 0 }))}
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             />
 
             {editTarget.prixFilet !== null && (
               <>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Prix par filet (FCFA)</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Prix par filet (FCFA)</label>
                 <input
                   type="number"
                   min={0}
                   value={form.prixFilet}
                   onChange={(e) => setForm((f) => ({ ...f, prixFilet: Number(e.target.value) || 0 }))}
-                  className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
                 />
               </>
             )}
 
-            <label className="mb-1 block text-xs font-medium text-slate-500">Prix par carton (FCFA)</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Prix par carton (FCFA)</label>
             <input
               type="number"
               min={0}
               value={form.prixCarton}
               onChange={(e) => setForm((f) => ({ ...f, prixCarton: Number(e.target.value) || 0 }))}
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             />
 
             <div className="flex gap-2">
-              <button type="button" onClick={() => setEditTarget(null)} className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600">
+              <button type="button" onClick={() => setEditTarget(null)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
                 Annuler
               </button>
               <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
@@ -496,10 +496,10 @@ function ProduitsManager() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form
             onSubmit={handleCreate}
-            className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5 shadow-lg"
+            className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg"
           >
-            <h3 className="mb-3 font-semibold text-slate-800">Nouveau produit</h3>
-            <p className="mb-3 text-xs text-slate-400">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Nouveau produit</h3>
+            <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
               Apparaîtra automatiquement dans la Visite de réassort. Le
               formulaire "Nouveau recensement" reste pour l'instant limité à
               HYPO/HTC (voir README).
@@ -507,38 +507,38 @@ function ProduitsManager() {
 
             <div className="mb-3 grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Code (ex: XYZ)</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Code (ex: XYZ)</label>
                 <input
                   type="text"
                   required
                   value={createForm.code}
                   onChange={(e) => setCreateForm((f) => ({ ...f, code: e.target.value }))}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm uppercase"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Volume (ml)</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Volume (ml)</label>
                 <input
                   type="number"
                   min={1}
                   required
                   value={createForm.volumeMl || ""}
                   onChange={(e) => setCreateForm((f) => ({ ...f, volumeMl: Number(e.target.value) || 0 }))}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
                 />
               </div>
             </div>
 
-            <label className="mb-1 block text-xs font-medium text-slate-500">Nom complet</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Nom complet</label>
             <input
               type="text"
               required
               value={createForm.nom}
               onChange={(e) => setCreateForm((f) => ({ ...f, nom: e.target.value }))}
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             />
 
-            <label className="mb-2 flex items-center gap-2 text-sm text-slate-600">
+            <label className="mb-2 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
               <input
                 type="checkbox"
                 checked={createForm.aDesFilets}
@@ -550,71 +550,71 @@ function ProduitsManager() {
             <div className="mb-3 grid grid-cols-2 gap-2">
               {createForm.aDesFilets && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500">Sachets/filet</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Sachets/filet</label>
                   <input
                     type="number"
                     min={1}
                     value={createForm.sachetsParFilet || ""}
                     onChange={(e) => setCreateForm((f) => ({ ...f, sachetsParFilet: Number(e.target.value) || 0 }))}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
                   />
                 </div>
               )}
               {createForm.aDesFilets && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500">Filets/carton</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Filets/carton</label>
                   <input
                     type="number"
                     min={1}
                     value={createForm.filetsParCarton || ""}
                     onChange={(e) => setCreateForm((f) => ({ ...f, filetsParCarton: Number(e.target.value) || 0 }))}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
                   />
                 </div>
               )}
               <div className={createForm.aDesFilets ? "col-span-2" : ""}>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Sachets/carton</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Sachets/carton</label>
                 <input
                   type="number"
                   min={1}
                   required
                   value={createForm.sachetsParCarton || ""}
                   onChange={(e) => setCreateForm((f) => ({ ...f, sachetsParCarton: Number(e.target.value) || 0 }))}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
                 />
               </div>
             </div>
 
             <div className="mb-3 grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Prix/sachet</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Prix/sachet</label>
                 <input
                   type="number"
                   min={0}
                   value={createForm.prixSachet || ""}
                   onChange={(e) => setCreateForm((f) => ({ ...f, prixSachet: Number(e.target.value) || 0 }))}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500">Prix/carton</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Prix/carton</label>
                 <input
                   type="number"
                   min={0}
                   value={createForm.prixCarton || ""}
                   onChange={(e) => setCreateForm((f) => ({ ...f, prixCarton: Number(e.target.value) || 0 }))}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
                 />
               </div>
               {createForm.aDesFilets && (
                 <div className="col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-slate-500">Prix/filet</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Prix/filet</label>
                   <input
                     type="number"
                     min={0}
                     value={createForm.prixFilet || ""}
                     onChange={(e) => setCreateForm((f) => ({ ...f, prixFilet: Number(e.target.value) || 0 }))}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
                   />
                 </div>
               )}
@@ -623,7 +623,7 @@ function ProduitsManager() {
             {createError && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{createError}</p>}
 
             <div className="flex gap-2">
-              <button type="button" onClick={() => setShowCreate(false)} className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600">
+              <button type="button" onClick={() => setShowCreate(false)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
                 Annuler
               </button>
               <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
@@ -686,24 +686,24 @@ function ObjectifsManager() {
   }
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="mb-3 flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600 text-white">
           <Target size={16} />
         </span>
-        <h2 className="font-bold text-slate-800">Objectifs (période en cours)</h2>
+        <h2 className="font-bold text-slate-800 dark:text-slate-100">Objectifs (période en cours)</h2>
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-400">Chargement...</p>
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
         <div className="space-y-3">
           {data.map((b) => (
-            <div key={b.id} className="rounded-xl bg-slate-50 p-3">
-              <p className="mb-2 text-sm font-semibold text-slate-800">{b.nom}</p>
+            <div key={b.id} className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3">
+              <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{b.nom}</p>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium text-slate-500">
+                  <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
                     Cartons / jour
                   </label>
                   <ObjectifInput
@@ -715,7 +715,7 @@ function ObjectifsManager() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium text-slate-500">
+                  <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
                     Cartons / semaine
                   </label>
                   <ObjectifInput
@@ -760,7 +760,7 @@ function ObjectifInput({
         min={0}
         value={value}
         onChange={(e) => setValue(Number(e.target.value) || 0)}
-        className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+        className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-sm"
       />
       <button
         onClick={() => onSave(value)}
@@ -904,20 +904,20 @@ function QuartiersManager() {
   }
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
             <MapPin size={16} />
           </span>
-          <h2 className="font-bold text-slate-800">Quartiers</h2>
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">Quartiers</h2>
         </div>
         <button
           onClick={() => {
             setShowCreate(true);
             setError(null);
           }}
-          className="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600"
+          className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300"
         >
           <Plus size={14} />
           Ajouter
@@ -927,7 +927,7 @@ function QuartiersManager() {
       <select
         value={villeFiltre}
         onChange={(e) => setVilleFiltre(e.target.value)}
-        className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
       >
         <option value="">Toutes les villes</option>
         {villes.map((v) => (
@@ -940,22 +940,22 @@ function QuartiersManager() {
       )}
 
       {loading ? (
-        <p className="text-sm text-slate-400">Chargement...</p>
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
         <div className="space-y-4">
           {[...parVille.entries()].map(([villeNom, liste]) => (
             <div key={villeNom}>
-              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">
+              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                 {villeNom}
               </p>
               <div className="space-y-1.5">
                 {liste.map((q) => (
-                  <div key={q.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                  <div key={q.id} className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2">
                     <div>
-                      <span className={`text-sm font-medium ${q.actif ? "text-slate-700" : "text-slate-400 line-through"}`}>
+                      <span className={`text-sm font-medium ${q.actif ? "text-slate-700 dark:text-slate-300" : "text-slate-400 dark:text-slate-500 line-through"}`}>
                         {q.nom}
                       </span>
-                      <span className="ml-2 text-xs text-slate-400">
+                      <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">
                         {q._count.pointsVente} point(s) de vente
                       </span>
                     </div>
@@ -966,7 +966,7 @@ function QuartiersManager() {
                           setEditNom(q.nom);
                           setError(null);
                         }}
-                        className="text-slate-400"
+                        className="text-slate-400 dark:text-slate-500"
                       >
                         <Pencil size={14} />
                       </button>
@@ -986,7 +986,7 @@ function QuartiersManager() {
                       <button
                         onClick={() => toggleActif(q)}
                         className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          q.actif ? "bg-green-50 text-green-700" : "bg-slate-200 text-slate-500"
+                          q.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 dark:text-slate-500"
                         }`}
                       >
                         {q.actif ? "Actif" : "Inactif"}
@@ -998,38 +998,38 @@ function QuartiersManager() {
             </div>
           ))}
           {quartiers.length === 0 && (
-            <p className="text-sm text-slate-400">Aucun quartier.</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">Aucun quartier.</p>
           )}
         </div>
       )}
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={handleCreate} className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
-            <h3 className="mb-3 font-semibold text-slate-800">Nouveau quartier</h3>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Ville</label>
+          <form onSubmit={handleCreate} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Nouveau quartier</h3>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Ville</label>
             <select
               value={newVilleId}
               onChange={(e) => setNewVilleId(e.target.value)}
               required
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             >
               <option value="">Choisir...</option>
               {villes.map((v) => (
                 <option key={v.id} value={v.id}>{v.nom}</option>
               ))}
             </select>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Nom du quartier</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Nom du quartier</label>
             <input
               type="text"
               value={newNom}
               onChange={(e) => setNewNom(e.target.value)}
               required
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             />
             {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
             <div className="flex gap-2">
-              <button type="button" onClick={() => setShowCreate(false)} className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600">
+              <button type="button" onClick={() => setShowCreate(false)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
                 Annuler
               </button>
               <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
@@ -1042,18 +1042,18 @@ function QuartiersManager() {
 
       {editTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={handleEdit} className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
-            <h3 className="mb-3 font-semibold text-slate-800">Renommer le quartier</h3>
+          <form onSubmit={handleEdit} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Renommer le quartier</h3>
             <input
               type="text"
               value={editNom}
               onChange={(e) => setEditNom(e.target.value)}
               required
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             />
             {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
             <div className="flex gap-2">
-              <button type="button" onClick={() => setEditTarget(null)} className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600">
+              <button type="button" onClick={() => setEditTarget(null)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
                 Annuler
               </button>
               <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
@@ -1066,20 +1066,20 @@ function QuartiersManager() {
 
       {fusionTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={handleFusion} className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
-            <h3 className="mb-1 font-semibold text-slate-800">
+          <form onSubmit={handleFusion} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-1 font-semibold text-slate-800 dark:text-slate-100">
               Fusionner "{fusionTarget.nom}"
             </h3>
-            <p className="mb-3 text-xs text-slate-400">
+            <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
               Les {fusionTarget._count.pointsVente} point(s) de vente de ce quartier seront
               déplacés vers le quartier choisi, puis "{fusionTarget.nom}" sera désactivé.
             </p>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Fusionner vers</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Fusionner vers</label>
             <select
               value={fusionVersId}
               onChange={(e) => setFusionVersId(e.target.value)}
               required
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             >
               <option value="">Choisir...</option>
               {quartiers
@@ -1090,7 +1090,7 @@ function QuartiersManager() {
             </select>
             {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
             <div className="flex gap-2">
-              <button type="button" onClick={() => setFusionTarget(null)} className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600">
+              <button type="button" onClick={() => setFusionTarget(null)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
                 Annuler
               </button>
               <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-indigo-600 py-2 text-sm font-medium text-white disabled:opacity-60">
@@ -1153,21 +1153,21 @@ function ObjectifsIndividuelsManager() {
   }
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="mb-3 flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
           <Target size={16} />
         </span>
         <div>
-          <h2 className="font-bold text-slate-800">Objectifs individuels</h2>
-          <p className="text-xs text-slate-400">
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">Objectifs individuels</h2>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
             Appliqués à chaque commercial (distinct des objectifs par binôme ci-dessus)
           </p>
         </div>
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-400">Chargement...</p>
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
         <>
           {error && (
@@ -1176,7 +1176,7 @@ function ObjectifsIndividuelsManager() {
           <div className="grid grid-cols-3 gap-2">
             {data.map((o) => (
               <div key={o.periode}>
-                <label className="mb-1 block text-[11px] font-medium text-slate-500">
+                <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
                   {LABEL_PERIODE[o.periode]}
                 </label>
                 <ObjectifInput
@@ -1231,21 +1231,21 @@ function SessionDureeManager() {
   const minutesRestantes = minutes % 60;
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="mb-3 flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700 text-white">
           <Clock size={16} />
         </span>
         <div>
-          <h2 className="font-bold text-slate-800">Durée de session</h2>
-          <p className="text-xs text-slate-400">
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">Durée de session</h2>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
             Avant déconnexion automatique — s'applique aux prochaines connexions
           </p>
         </div>
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-400">Chargement...</p>
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
         <>
           <div className="mb-2 flex items-center gap-2">
@@ -1257,9 +1257,9 @@ function SessionDureeManager() {
                 onChange={(e) =>
                   setMinutes(Math.max(5, (Number(e.target.value) || 0) * 60 + minutesRestantes))
                 }
-                className="w-16 rounded-lg border border-slate-300 px-2 py-2 text-sm"
+                className="w-16 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-2 text-sm"
               />
-              <span className="text-xs text-slate-500">h</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">h</span>
             </div>
             <div className="flex items-center gap-1.5">
               <input
@@ -1270,9 +1270,9 @@ function SessionDureeManager() {
                 onChange={(e) =>
                   setMinutes(Math.max(5, heuresEntieres * 60 + (Number(e.target.value) || 0)))
                 }
-                className="w-16 rounded-lg border border-slate-300 px-2 py-2 text-sm"
+                className="w-16 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-2 text-sm"
               />
-              <span className="text-xs text-slate-500">min</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">min</span>
             </div>
             <button
               onClick={save}
@@ -1282,7 +1282,7 @@ function SessionDureeManager() {
               {saving ? "..." : "Enregistrer"}
             </button>
           </div>
-          <p className="text-xs text-slate-400">Soit {minutes} minutes au total</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Soit {minutes} minutes au total</p>
         </>
       )}
       {message && <p className="mt-2 text-xs text-green-600">{message}</p>}
@@ -1381,13 +1381,13 @@ function LignePrixParType({
 
   if (!personnalise) {
     return (
-      <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-        <span className="text-sm text-slate-600">{type.nom}</span>
+      <div className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-950 px-3 py-2">
+        <span className="text-sm text-slate-600 dark:text-slate-300">{type.nom}</span>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">Prix de base</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">Prix de base</span>
           <button
             onClick={() => setPersonnalise(true)}
-            className="rounded-md bg-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600"
+            className="rounded-md bg-slate-200 dark:bg-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300"
           >
             Personnaliser
           </button>
@@ -1399,9 +1399,9 @@ function LignePrixParType({
   return (
     <div className="rounded-lg bg-blue-50/50 p-2.5">
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-700">{type.nom}</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{type.nom}</span>
         {override && (
-          <button onClick={reinitialiser} disabled={saving} className="text-[11px] font-semibold text-slate-500 underline">
+          <button onClick={reinitialiser} disabled={saving} className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 underline">
             Réinitialiser au prix de base
           </button>
         )}
@@ -1413,7 +1413,7 @@ function LignePrixParType({
           value={form.prixSachet}
           onChange={(e) => setForm((f) => ({ ...f, prixSachet: Number(e.target.value) || 0 }))}
           placeholder="Sachet"
-          className="rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+          className="rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs"
         />
         {produit.prixFilet !== null && (
           <input
@@ -1422,7 +1422,7 @@ function LignePrixParType({
             value={form.prixFilet}
             onChange={(e) => setForm((f) => ({ ...f, prixFilet: Number(e.target.value) || 0 }))}
             placeholder="Filet"
-            className="rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+            className="rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs"
           />
         )}
         <input
@@ -1431,7 +1431,7 @@ function LignePrixParType({
           value={form.prixCarton}
           onChange={(e) => setForm((f) => ({ ...f, prixCarton: Number(e.target.value) || 0 }))}
           placeholder="Carton"
-          className="rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+          className="rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs"
         />
       </div>
       <button
@@ -1475,26 +1475,26 @@ function PrixParTypeManager() {
   useEffect(load, []);
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="mb-1 flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-700 text-white">
           <Package size={16} />
         </span>
-        <h2 className="font-bold text-slate-800">Prix par type de boutique</h2>
+        <h2 className="font-bold text-slate-800 dark:text-slate-100">Prix par type de boutique</h2>
       </div>
-      <p className="mb-3 text-xs text-slate-400">
+      <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
         Personnalise le prix d'un produit pour un type de boutique précis — le
         formulaire terrain l'applique automatiquement dès que le type est
         choisi. Sans personnalisation, le prix de base du produit s'applique.
       </p>
 
       {loading ? (
-        <p className="text-sm text-slate-400">Chargement...</p>
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
         <div className="space-y-4">
           {produits.map((p) => (
             <div key={p.id}>
-              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">{p.code}</p>
+              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500">{p.code}</p>
               <div className="space-y-1.5">
                 {types.map((t) => (
                   <LignePrixParType

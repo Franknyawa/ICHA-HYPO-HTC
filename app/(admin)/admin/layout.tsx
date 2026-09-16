@@ -52,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:flex">
       {/* Sidebar — desktop uniquement */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 md:flex">
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 dark:border-slate-800 dark:bg-slate-900 md:flex">
         <div
           className="flex items-center gap-2 px-5 py-5"
           style={{ background: "linear-gradient(135deg, #1e3a8a, #2563eb)" }}
@@ -79,7 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                   active
                     ? "bg-blue-50 text-brand dark:bg-blue-950/50 dark:text-blue-400"
-                    : "text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800/60"
+                    : "text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/60 dark:bg-slate-950 dark:text-slate-400 dark:text-slate-500 dark:hover:bg-slate-800/60"
                 }`}
               >
                 <Icon size={18} strokeWidth={active ? 2.4 : 2} />
@@ -94,20 +94,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        <div className="flex items-center gap-2 border-t border-slate-100 p-3 dark:border-slate-800">
-          <LogoutButton className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800/60" />
-          <ThemeToggle className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" />
+        <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 p-3 dark:border-slate-800">
+          <LogoutButton className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/60 dark:bg-slate-950 dark:text-slate-400 dark:text-slate-500 dark:hover:bg-slate-800/60" />
+          <ThemeToggle className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 dark:bg-slate-800 dark:text-slate-300" />
         </div>
       </aside>
 
       {/* Contenu */}
-      <div className="min-h-screen flex-1 bg-slate-50 pb-20 dark:bg-slate-950 md:pb-0">
+      <div className="min-h-screen flex-1 bg-slate-50 dark:bg-slate-950 pb-20 dark:bg-slate-950 md:pb-0">
         {/* Bouton déconnexion + thème flottants — mobile uniquement (la
             sidebar, hors écran sur mobile, porte déjà ces boutons sur
             desktop) */}
         <div className="fixed right-3 top-3 z-40 flex items-center gap-2 md:hidden">
-          <ThemeToggle className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-500 shadow-sm ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/95 dark:text-slate-300 dark:ring-slate-700" />
-          <LogoutButton className="flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-xs font-medium text-slate-500 shadow-sm ring-1 ring-slate-200 backdrop-blur dark:bg-slate-900/95 dark:text-slate-300 dark:ring-slate-700" />
+          <ThemeToggle className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-500 dark:text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 backdrop-blur dark:bg-slate-900/95 dark:text-slate-300 dark:ring-slate-700" />
+          <LogoutButton className="flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 backdrop-blur dark:bg-slate-900/95 dark:text-slate-300 dark:ring-slate-700" />
         </div>
         {children}
       </div>
@@ -115,7 +115,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Barre de navigation — mobile uniquement. 4 onglets principaux +
           un menu "Plus" pour le reste, sinon 9 onglets ne tiennent pas sur
           un petit écran. */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 dark:border-slate-700 bg-white/95 backdrop-blur md:hidden">
         {NAV_ITEMS.slice(0, 4).map((item) => {
           const active = pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -124,7 +124,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               key={item.href}
               href={item.href}
               className={`relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium ${
-                active ? "text-brand" : "text-slate-400"
+                active ? "text-brand" : "text-slate-400 dark:text-slate-500"
               }`}
             >
               <Icon size={19} strokeWidth={active ? 2.4 : 2} />
@@ -142,7 +142,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium ${
             showPlus || NAV_ITEMS.slice(4).some((i) => pathname.startsWith(i.href))
               ? "text-brand"
-              : "text-slate-400"
+              : "text-slate-400 dark:text-slate-500"
           }`}
         >
           <MoreHorizontal size={19} />
@@ -154,10 +154,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {showPlus && (
         <div className="fixed inset-0 z-50 flex items-end bg-black/30 md:hidden" onClick={() => setShowPlus(false)}>
           <div
-            className="w-full rounded-t-2xl bg-white p-3 pb-6"
+            className="w-full rounded-t-2xl bg-white dark:bg-slate-900 p-3 pb-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" />
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-700" />
             <div className="grid grid-cols-3 gap-2">
               {NAV_ITEMS.slice(4).map((item) => {
                 const active = pathname.startsWith(item.href);
@@ -168,7 +168,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     href={item.href}
                     onClick={() => setShowPlus(false)}
                     className={`flex flex-col items-center gap-1.5 rounded-xl p-3 text-xs font-medium ${
-                      active ? "bg-blue-50 text-brand" : "text-slate-500"
+                      active ? "bg-blue-50 text-brand" : "text-slate-500 dark:text-slate-400 dark:text-slate-500"
                     }`}
                   >
                     <Icon size={20} />

@@ -68,13 +68,13 @@ export default async function RapportsPage({
       <div className="p-4 md:p-6">
         {/* Filtres */}
         <form
-          className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 md:grid-cols-4"
+          className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-4"
           action="/admin/rapports"
         >
           <select
             name="commercialId"
             defaultValue={filters.commercialId ?? ""}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
           >
             <option value="">Tous les commerciaux</option>
             {commerciaux.map((c) => (
@@ -86,7 +86,7 @@ export default async function RapportsPage({
           <select
             name="binomeId"
             defaultValue={filters.binomeId ?? ""}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
           >
             <option value="">Tous les binômes</option>
             {binomes.map((b) => (
@@ -98,7 +98,7 @@ export default async function RapportsPage({
           <select
             name="villeId"
             defaultValue={filters.villeId ?? ""}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
           >
             <option value="">Toutes les villes</option>
             {villes.map((v) => (
@@ -110,7 +110,7 @@ export default async function RapportsPage({
           <select
             name="quartierId"
             defaultValue={filters.quartierId ?? ""}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
           >
             <option value="">Tous les quartiers</option>
             {quartiers.map((q) => (
@@ -122,7 +122,7 @@ export default async function RapportsPage({
           <select
             name="typeId"
             defaultValue={filters.typeId ?? ""}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
           >
             <option value="">Tous les types de boutique</option>
             {types.map((t) => (
@@ -134,7 +134,7 @@ export default async function RapportsPage({
           <select
             name="produitCode"
             defaultValue={filters.produitCode ?? ""}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
           >
             <option value="">Tous les produits</option>
             <option value="HYPO">HYPO</option>
@@ -144,13 +144,13 @@ export default async function RapportsPage({
             type="date"
             name="dateFrom"
             defaultValue={filters.dateFrom ?? ""}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
           />
           <input
             type="date"
             name="dateTo"
             defaultValue={filters.dateTo ?? ""}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
           />
           <button
             type="submit"
@@ -162,34 +162,34 @@ export default async function RapportsPage({
 
         {/* Totaux */}
         <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
             <ShoppingCart size={16} className="mb-2 text-indigo-600" />
-            <p className="text-xl font-bold text-slate-800">{totaux.nbVentes}</p>
-            <p className="text-xs font-medium text-slate-400">Ventes</p>
+            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{totaux.nbVentes}</p>
+            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Ventes</p>
           </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
             <Banknote size={16} className="mb-2 text-green-600" />
-            <p className="text-xl font-bold text-slate-800">
+            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
               {totaux.caTotal.toLocaleString("fr-FR")}
             </p>
-            <p className="text-xs font-medium text-slate-400">CA (FCFA)</p>
+            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">CA (FCFA)</p>
           </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
             <Droplet size={16} className="mb-2 text-blue-600" />
-            <p className="text-xl font-bold text-slate-800">{totaux.cartonsHypo}</p>
-            <p className="text-xs font-medium text-slate-400">Cartons HYPO</p>
+            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{totaux.cartonsHypo}</p>
+            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Cartons HYPO</p>
           </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
             <Sparkles size={16} className="mb-2 text-teal-600" />
-            <p className="text-xl font-bold text-slate-800">{totaux.cartonsHtc}</p>
-            <p className="text-xs font-medium text-slate-400">Cartons HTC</p>
+            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{totaux.cartonsHtc}</p>
+            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Cartons HTC</p>
           </div>
         </div>
 
         {/* Détail par commercial */}
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+        <div className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500">
+            <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 dark:text-slate-500">
               <tr>
                 <th className="px-4 py-3">Commercial</th>
                 <th className="px-4 py-3">Binôme</th>
@@ -201,22 +201,22 @@ export default async function RapportsPage({
             </thead>
             <tbody>
               {lignes.map((l) => (
-                <tr key={l.commercialId} className="border-t border-slate-100">
-                  <td className="px-4 py-2.5 font-medium text-slate-800">
+                <tr key={l.commercialId} className="border-t border-slate-100 dark:border-slate-800">
+                  <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">
                     {l.commercialNom}
                   </td>
-                  <td className="px-4 py-2.5 text-slate-600">{l.binomeNom ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-slate-600">{l.nbVentes}</td>
-                  <td className="px-4 py-2.5 text-slate-600">{l.cartonsHypo}</td>
-                  <td className="px-4 py-2.5 text-slate-600">{l.cartonsHtc}</td>
-                  <td className="px-4 py-2.5 font-semibold text-slate-800">
+                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{l.binomeNom ?? "—"}</td>
+                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{l.nbVentes}</td>
+                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{l.cartonsHypo}</td>
+                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{l.cartonsHtc}</td>
+                  <td className="px-4 py-2.5 font-semibold text-slate-800 dark:text-slate-100">
                     {l.caTotal.toLocaleString("fr-FR")}
                   </td>
                 </tr>
               ))}
               {lignes.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500">
                     Aucune donnée pour ces filtres.
                   </td>
                 </tr>

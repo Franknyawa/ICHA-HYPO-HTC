@@ -50,7 +50,7 @@ export function CommandeStatusActions({ id, statut }: { id: string; statut: Stat
     <button
       onClick={() => updateStatut("EN_ATTENTE")}
       disabled={saving}
-      className="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-500 disabled:opacity-50"
+      className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 disabled:opacity-50"
     >
       <RotateCcw size={13} />
       Réactiver

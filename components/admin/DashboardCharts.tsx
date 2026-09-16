@@ -23,8 +23,8 @@ function formatFcfaShort(n: number) {
 
 export function CaChart({ title, items }: { title: string; items: CaItem[] }) {
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 print:break-inside-avoid">
-      <p className="mb-3 text-sm font-bold text-slate-700">{title}</p>
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 print:break-inside-avoid">
+      <p className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-300">{title}</p>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={items} margin={{ top: 4, right: 8, left: -20, bottom: 4 }}>
           <XAxis
@@ -63,8 +63,8 @@ export function CartonsChart({
     { nom: "HTC", cartons: cartonsHtc },
   ];
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 print:break-inside-avoid">
-      <p className="mb-3 text-sm font-bold text-slate-700">Cartons vendus aujourd&apos;hui</p>
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 print:break-inside-avoid">
+      <p className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-300">Cartons vendus aujourd&apos;hui</p>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 4 }}>
           <XAxis dataKey="nom" tick={{ fontSize: 12, fill: "#64748b" }} />
@@ -87,7 +87,7 @@ export function PrintButton() {
   return (
     <button
       onClick={() => window.print()}
-      className="flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-brand ring-1 ring-slate-200 print:hidden"
+      className="flex items-center gap-1.5 rounded-xl bg-white dark:bg-slate-900 px-3 py-2 text-sm font-semibold text-brand dark:text-blue-400 ring-1 ring-slate-200 dark:ring-slate-700 print:hidden"
     >
       <Printer size={15} />
       Imprimer

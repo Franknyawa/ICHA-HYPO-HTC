@@ -42,7 +42,7 @@ function UserCard({
   onSessions: (u: UserRow) => void;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-100">
+    <div className="flex items-center justify-between rounded-xl bg-white dark:bg-slate-900 p-3 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="flex items-center gap-3">
         {u.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -52,21 +52,21 @@ function UserCard({
             className="h-10 w-10 shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-400">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-400 dark:text-slate-500">
             {u.prenom[0]}
             {u.nom[0]}
           </div>
         )}
         <div>
-          <p className="font-medium text-slate-800">
+          <p className="font-medium text-slate-800 dark:text-slate-100">
             {u.prenom} {u.nom}
             {!u.actif && (
-              <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+              <span className="ml-2 rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
                 Désactivé
               </span>
             )}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
             {u.username}
             {u.binome ? ` · ${u.binome.nom}` : ""}
           </p>
@@ -76,21 +76,21 @@ function UserCard({
         <button
           onClick={() => onSessions(u)}
           title="Sessions actives"
-          className="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-sm font-medium text-slate-600"
+          className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300"
         >
           <Smartphone size={14} />
         </button>
         <button
           onClick={() => onEdit(u)}
           title="Modifier"
-          className="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-sm font-medium text-slate-600"
+          className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300"
         >
           <Pencil size={14} />
         </button>
         <button
           onClick={() => onReset(u)}
           title="Réinitialiser le mot de passe"
-          className="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-sm font-medium text-slate-600"
+          className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300"
         >
           <KeyRound size={14} />
         </button>
@@ -358,7 +358,7 @@ export default function UtilisateursPage() {
         )}
 
         {loading ? (
-          <p className="text-sm text-slate-500">Chargement...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Chargement...</p>
         ) : (
           <div className="space-y-6">
             {/* Administrateurs */}
@@ -367,10 +367,10 @@ export default function UtilisateursPage() {
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white">
                   <ShieldCheck size={15} />
                 </span>
-                <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+                <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500">
                   Administrateurs
                 </h2>
-                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                <span className="rounded-full bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
                   {admins.length}
                 </span>
               </div>
@@ -390,7 +390,7 @@ export default function UtilisateursPage() {
                   />
                 ))}
                 {admins.length === 0 && (
-                  <p className="text-sm text-slate-400">Aucun administrateur.</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500">Aucun administrateur.</p>
                 )}
               </div>
             </section>
@@ -401,10 +401,10 @@ export default function UtilisateursPage() {
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-700 text-white">
                   <UsersIcon size={15} />
                 </span>
-                <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+                <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500">
                   Commerciaux
                 </h2>
-                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                <span className="rounded-full bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
                   {commerciaux.length}
                 </span>
               </div>
@@ -436,7 +436,7 @@ export default function UtilisateursPage() {
 
                 {sansBinome.length > 0 && (
                   <div>
-                    <p className="mb-1.5 text-xs font-semibold text-slate-400">
+                    <p className="mb-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500">
                       Sans binôme
                     </p>
                     <div className="space-y-2">
@@ -459,7 +459,7 @@ export default function UtilisateursPage() {
                 )}
 
                 {commerciaux.length === 0 && (
-                  <p className="text-sm text-slate-400">Aucun commercial.</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500">Aucun commercial.</p>
                 )}
               </div>
             </section>
@@ -472,12 +472,12 @@ export default function UtilisateursPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form
             onSubmit={handleReset}
-            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg"
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg"
           >
-            <h2 className="mb-1 font-semibold text-slate-800">
+            <h2 className="mb-1 font-semibold text-slate-800 dark:text-slate-100">
               Nouveau mot de passe
             </h2>
-            <p className="mb-4 text-sm text-slate-500">
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
               Pour {resetTarget.prenom} {resetTarget.nom} ({resetTarget.username})
             </p>
             <input
@@ -487,7 +487,7 @@ export default function UtilisateursPage() {
               placeholder="Nouveau mot de passe (min. 6 caractères)"
               required
               minLength={6}
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-base"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-base"
             />
             {error && (
               <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">
@@ -498,7 +498,7 @@ export default function UtilisateursPage() {
               <button
                 type="button"
                 onClick={() => setResetTarget(null)}
-                className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600"
+                className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300"
               >
                 Annuler
               </button>
@@ -519,9 +519,9 @@ export default function UtilisateursPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form
             onSubmit={handleEdit}
-            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg"
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg"
           >
-            <h2 className="mb-4 font-semibold text-slate-800">
+            <h2 className="mb-4 font-semibold text-slate-800 dark:text-slate-100">
               Modifier le compte ({editTarget.username})
             </h2>
 
@@ -535,13 +535,13 @@ export default function UtilisateursPage() {
             <button
               type="button"
               onClick={() => editFileInputRef.current?.click()}
-              className="relative mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-100"
+              className="relative mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
             >
               {editForm.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={editForm.avatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <Camera size={18} className="text-slate-400" />
+                <Camera size={18} className="text-slate-400 dark:text-slate-500" />
               )}
               {avatarUploading && (
                 <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-[10px] text-white">
@@ -557,7 +557,7 @@ export default function UtilisateursPage() {
                 value={editForm.prenom}
                 onChange={(e) => setEditForm((f) => ({ ...f, prenom: e.target.value }))}
                 required
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
               />
               <input
                 type="text"
@@ -565,7 +565,7 @@ export default function UtilisateursPage() {
                 value={editForm.nom}
                 onChange={(e) => setEditForm((f) => ({ ...f, nom: e.target.value }))}
                 required
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
               />
             </div>
 
@@ -574,7 +574,7 @@ export default function UtilisateursPage() {
               onChange={(e) =>
                 setEditForm((f) => ({ ...f, role: e.target.value as "ADMIN" | "COMMERCIAL" }))
               }
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             >
               <option value="COMMERCIAL">Commercial</option>
               <option value="ADMIN">Administrateur</option>
@@ -584,7 +584,7 @@ export default function UtilisateursPage() {
               <select
                 value={editForm.binomeId}
                 onChange={(e) => setEditForm((f) => ({ ...f, binomeId: e.target.value }))}
-                className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
               >
                 <option value="">Binôme (optionnel)...</option>
                 {binomes.map((b) => (
@@ -605,7 +605,7 @@ export default function UtilisateursPage() {
               <button
                 type="button"
                 onClick={() => setEditTarget(null)}
-                className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600"
+                className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300"
               >
                 Annuler
               </button>
@@ -626,9 +626,9 @@ export default function UtilisateursPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form
             onSubmit={handleCreate}
-            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg"
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg"
           >
-            <h2 className="mb-4 font-semibold text-slate-800">Nouveau compte</h2>
+            <h2 className="mb-4 font-semibold text-slate-800 dark:text-slate-100">Nouveau compte</h2>
 
             <div className="mb-3 grid grid-cols-2 gap-2">
               <input
@@ -637,7 +637,7 @@ export default function UtilisateursPage() {
                 value={createForm.prenom}
                 onChange={(e) => setCreateForm((f) => ({ ...f, prenom: e.target.value }))}
                 required
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
               />
               <input
                 type="text"
@@ -645,7 +645,7 @@ export default function UtilisateursPage() {
                 value={createForm.nom}
                 onChange={(e) => setCreateForm((f) => ({ ...f, nom: e.target.value }))}
                 required
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
               />
             </div>
 
@@ -660,9 +660,9 @@ export default function UtilisateursPage() {
                 }))
               }
               required
-              className="mb-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             />
-            <p className="mb-3 text-xs text-slate-400">
+            <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
               Sans espace ni accent — ex : commercial2
             </p>
 
@@ -673,7 +673,7 @@ export default function UtilisateursPage() {
               onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
               required
               minLength={6}
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             />
 
             <select
@@ -681,7 +681,7 @@ export default function UtilisateursPage() {
               onChange={(e) =>
                 setCreateForm((f) => ({ ...f, role: e.target.value as "ADMIN" | "COMMERCIAL" }))
               }
-              className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             >
               <option value="COMMERCIAL">Commercial</option>
               <option value="ADMIN">Administrateur</option>
@@ -691,7 +691,7 @@ export default function UtilisateursPage() {
               <select
                 value={createForm.binomeId}
                 onChange={(e) => setCreateForm((f) => ({ ...f, binomeId: e.target.value }))}
-                className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
               >
                 <option value="">Binôme (optionnel)...</option>
                 {binomes.map((b) => (
@@ -712,7 +712,7 @@ export default function UtilisateursPage() {
               <button
                 type="button"
                 onClick={() => setShowCreate(false)}
-                className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600"
+                className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300"
               >
                 Annuler
               </button>
@@ -731,30 +731,30 @@ export default function UtilisateursPage() {
       {/* Modal sessions actives */}
       {sessionsTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
-            <h2 className="mb-1 font-semibold text-slate-800">
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h2 className="mb-1 font-semibold text-slate-800 dark:text-slate-100">
               Sessions actives
             </h2>
-            <p className="mb-4 text-sm text-slate-500">
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
               {sessionsTarget.prenom} {sessionsTarget.nom}
             </p>
 
             {sessionsLoading ? (
-              <p className="text-sm text-slate-400">Chargement...</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
             ) : sessionsList.length === 0 ? (
-              <p className="text-sm text-slate-400">Aucune session active.</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500">Aucune session active.</p>
             ) : (
               <div className="mb-4 space-y-2">
                 {sessionsList.map((s) => (
                   <div
                     key={s.id}
-                    className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2"
+                    className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-950 px-3 py-2"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-xs font-medium text-slate-700">
+                      <p className="truncate text-xs font-medium text-slate-700 dark:text-slate-300">
                         {s.userAgent ?? "Appareil inconnu"}
                       </p>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500">
                         Dernière activité :{" "}
                         {new Date(s.lastSeenAt).toLocaleString("fr-FR")}
                       </p>
@@ -773,7 +773,7 @@ export default function UtilisateursPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setSessionsTarget(null)}
-                className="flex-1 rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-600"
+                className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300"
               >
                 Fermer
               </button>

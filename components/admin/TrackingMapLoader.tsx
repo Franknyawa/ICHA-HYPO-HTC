@@ -12,7 +12,7 @@ const TrackingMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[420px] items-center justify-center rounded-2xl bg-slate-100 text-sm text-slate-400">
+      <div className="flex h-[420px] items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm text-slate-400 dark:text-slate-500">
         Chargement de la carte...
       </div>
     ),

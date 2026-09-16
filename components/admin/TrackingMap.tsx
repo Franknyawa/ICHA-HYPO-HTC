@@ -61,7 +61,7 @@ export function TrackingMap({ points }: { points: PointTracking[] }) {
 
   return (
     <div>
-      <div className="mb-3 overflow-hidden rounded-2xl ring-1 ring-slate-100">
+      <div className="mb-3 overflow-hidden rounded-2xl ring-1 ring-slate-100 dark:ring-slate-800">
         <MapContainer
           center={CENTRE_DEFAUT}
           zoom={12}
@@ -87,8 +87,8 @@ export function TrackingMap({ points }: { points: PointTracking[] }) {
               <Popup>
                 <div className="text-sm">
                   <p className="font-semibold">{p.pointVenteNom}</p>
-                  <p className="text-slate-500">{p.commercialNom}</p>
-                  <p className="text-slate-400">
+                  <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500">{p.commercialNom}</p>
+                  <p className="text-slate-400 dark:text-slate-500">
                     {new Date(p.dateVisite).toLocaleTimeString("fr-FR", {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -106,7 +106,7 @@ export function TrackingMap({ points }: { points: PointTracking[] }) {
           {legende.map((l) => (
             <span
               key={l.nom}
-              className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm ring-1 ring-slate-100"
+              className="flex items-center gap-1.5 rounded-full bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800"
             >
               <span
                 className="h-2.5 w-2.5 rounded-full"

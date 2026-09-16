@@ -46,13 +46,13 @@ function KpiCard({
       >
         <Icon size={17} strokeWidth={2.25} />
       </div>
-      <p className="text-xl font-bold text-slate-800">{value}</p>
-      <p className="text-xs font-medium text-slate-400">{label}</p>
+      <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{value}</p>
+      <p className="text-xs font-medium text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">{label}</p>
     </>
   );
 
   const classe =
-    "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100" +
+    "rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800" +
     (href ? " transition-transform hover:-translate-y-0.5 hover:shadow-md" : "");
 
   if (href) {
@@ -169,27 +169,27 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Observations terrain récentes — demande de Victor */}
-        <div className="mt-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+        <div className="mt-5 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
           <div className="mb-3 flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-600 text-white">
               <NotebookPen size={15} />
             </span>
-            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">
               Observations récentes
             </h2>
           </div>
           <div className="space-y-3">
             {observations.map((o) => (
-              <div key={o.id} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-                <p className="text-sm text-slate-700">{o.observation}</p>
-                <p className="mt-1 text-xs text-slate-400">
+              <div key={o.id} className="border-b border-slate-100 dark:border-slate-800 pb-3 last:border-0 last:pb-0">
+                <p className="text-sm text-slate-700 dark:text-slate-300">{o.observation}</p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">
                   {o.commercial.prenom} {o.commercial.nom} · {o.pointVente.nom} ·{" "}
                   {new Date(o.dateVisite).toLocaleDateString("fr-FR")}
                 </p>
               </div>
             ))}
             {observations.length === 0 && (
-              <p className="text-sm text-slate-400">Aucune observation pour le moment.</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">Aucune observation pour le moment.</p>
             )}
           </div>
         </div>
@@ -197,17 +197,17 @@ export default async function AdminDashboardPage() {
         <div className="mt-5 grid gap-3 md:grid-cols-2">
           <Link
             href="/admin/points-vente"
-            className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100"
+            className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800"
           >
-            <p className="font-semibold text-slate-800">Points de vente</p>
-            <p className="text-sm text-slate-500">Consulter et rechercher</p>
+            <p className="font-semibold text-slate-800 dark:text-slate-100">Points de vente</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">Consulter et rechercher</p>
           </Link>
           <Link
             href="/admin/utilisateurs"
-            className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100"
+            className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800"
           >
-            <p className="font-semibold text-slate-800">Utilisateurs</p>
-            <p className="text-sm text-slate-500">
+            <p className="font-semibold text-slate-800 dark:text-slate-100">Utilisateurs</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">
               Comptes commerciaux et admin, réinitialisation de mot de passe
             </p>
           </Link>

@@ -69,12 +69,12 @@ export default async function PointsVentePage({
             name="search"
             defaultValue={search}
             placeholder="Rechercher..."
-            className="col-span-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm md:col-span-1"
+            className="col-span-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm md:col-span-1"
           />
           <select
             name="villeId"
             defaultValue={villeId}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
           >
             <option value="">Toutes les villes</option>
             {villes.map((v) => (
@@ -86,7 +86,7 @@ export default async function PointsVentePage({
           <select
             name="quartierId"
             defaultValue={quartierId}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
           >
             <option value="">Tous les quartiers</option>
             {quartiers.map((q) => (
@@ -98,7 +98,7 @@ export default async function PointsVentePage({
           <select
             name="typeId"
             defaultValue={typeId}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
           >
             <option value="">Tous les types</option>
             {types.map((t) => (
@@ -110,7 +110,7 @@ export default async function PointsVentePage({
           <select
             name="triCommandes"
             defaultValue={triCommandes ?? ""}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
           >
             <option value="">Tri par date</option>
             <option value="desc">Plus de commandes d&apos;abord</option>
@@ -125,9 +125,9 @@ export default async function PointsVentePage({
         </form>
 
         {/* Tableau desktop */}
-        <div className="hidden overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 md:block">
+        <div className="hidden overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:block">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500">
+            <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 dark:text-slate-500">
               <tr>
                 <th className="px-4 py-3">Photo</th>
                 <th className="px-4 py-3">Nom</th>
@@ -144,7 +144,7 @@ export default async function PointsVentePage({
                 const maps = mapsUrl(pv.latitude, pv.longitude);
                 const wa = waUrl(pv.telephoneVendeur);
                 return (
-                  <tr key={pv.id} className="border-t border-slate-100">
+                  <tr key={pv.id} className="border-t border-slate-100 dark:border-slate-800">
                     <td className="px-4 py-2.5">
                       {photo ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -154,14 +154,14 @@ export default async function PointsVentePage({
                           className="h-11 w-11 rounded-lg object-cover"
                         />
                       ) : (
-                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 text-slate-300">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-300">
                           <ImageOff size={16} />
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 font-medium text-slate-800">{pv.nom}</td>
+                    <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">{pv.nom}</td>
                     <td className="px-4 py-2.5">
-                      <p className="text-slate-700">{pv.vendeur ?? "—"}</p>
+                      <p className="text-slate-700 dark:text-slate-300">{pv.vendeur ?? "—"}</p>
                       {wa && (
                         <a
                           href={wa}
@@ -174,11 +174,11 @@ export default async function PointsVentePage({
                         </a>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-slate-600">
+                    <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">
                       {pv.ville?.nom ?? "—"}
                       {pv.quartier ? ` · ${pv.quartier.nom}` : ""}
                     </td>
-                    <td className="px-4 py-2.5 text-slate-600">{pv.type?.nom ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{pv.type?.nom ?? "—"}</td>
                     <td className="px-4 py-2.5">
                       <span className="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700">
                         {pv._count.commandes}
@@ -204,7 +204,7 @@ export default async function PointsVentePage({
               })}
               {data.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500">
                     Aucun point de vente trouvé.
                   </td>
                 </tr>
@@ -222,7 +222,7 @@ export default async function PointsVentePage({
             return (
               <div
                 key={pv.id}
-                className="flex gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-100"
+                className="flex gap-3 rounded-2xl bg-white dark:bg-slate-900 p-3 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800"
               >
                 {photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -232,18 +232,18 @@ export default async function PointsVentePage({
                     className="h-14 w-14 shrink-0 rounded-xl object-cover"
                   />
                 ) : (
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-300">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-300">
                     <ImageOff size={18} />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <p className="truncate font-medium text-slate-800">{pv.nom}</p>
+                    <p className="truncate font-medium text-slate-800 dark:text-slate-100">{pv.nom}</p>
                     <span className="shrink-0 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700">
                       {pv._count.commandes} cmd.
                     </span>
                   </div>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
                     {pv.ville?.nom ?? "—"} · {pv.quartier?.nom ?? "—"}
                   </p>
                   <div className="mt-1 flex items-center gap-3">
@@ -277,7 +277,7 @@ export default async function PointsVentePage({
         </div>
 
         {/* Pagination */}
-        <div className="mt-5 flex items-center justify-between text-sm text-slate-500">
+        <div className="mt-5 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
           <span>
             Page {pagination.page} / {pagination.totalPages}
           </span>
@@ -287,8 +287,8 @@ export default async function PointsVentePage({
               aria-disabled={pagination.page <= 1}
               className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 font-medium ${
                 pagination.page <= 1
-                  ? "pointer-events-none border-slate-100 text-slate-300"
-                  : "border-slate-200 text-slate-600"
+                  ? "pointer-events-none border-slate-100 dark:border-slate-800 text-slate-300"
+                  : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
               }`}
             >
               <ChevronLeft size={15} />
@@ -299,8 +299,8 @@ export default async function PointsVentePage({
               aria-disabled={pagination.page >= pagination.totalPages}
               className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 font-medium ${
                 pagination.page >= pagination.totalPages
-                  ? "pointer-events-none border-slate-100 text-slate-300"
-                  : "border-slate-200 text-slate-600"
+                  ? "pointer-events-none border-slate-100 dark:border-slate-800 text-slate-300"
+                  : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
               }`}
             >
               Suivant

@@ -30,7 +30,7 @@ export default async function HistoriquePage({
   const { data, pagination } = await listHistoriqueVisites(session.userId, page);
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-10">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-10">
       <div
         className="px-4 pb-6 pt-6 text-white"
         style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 55%, #2563eb 100%)" }}
@@ -52,7 +52,7 @@ export default async function HistoriquePage({
           const config = CONFIG_TYPE[v.typeVisite];
           const Icon = config.icon;
           return (
-            <div key={v.id} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+            <div key={v.id} className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
               <div className="mb-1.5 flex items-start justify-between">
                 <div className="flex items-center gap-2.5">
                   <span
@@ -62,14 +62,14 @@ export default async function HistoriquePage({
                     <Icon size={16} />
                   </span>
                   <div>
-                    <p className="font-semibold text-slate-800">{v.pointVenteNom}</p>
-                    <p className="text-xs text-slate-400">
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">{v.pointVenteNom}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
                       {config.label}
                       {v.villeNom ? ` · ${v.villeNom}` : ""}
                     </p>
                   </div>
                 </div>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-slate-400 dark:text-slate-500">
                   {new Date(v.dateVisite).toLocaleDateString("fr-FR")}
                 </span>
               </div>
@@ -79,7 +79,7 @@ export default async function HistoriquePage({
                 </p>
               )}
               {v.observation && (
-                <p className="mt-1.5 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                <p className="mt-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm text-slate-600 dark:text-slate-300">
                   {v.observation}
                 </p>
               )}
@@ -88,18 +88,18 @@ export default async function HistoriquePage({
         })}
 
         {data.length === 0 && (
-          <p className="rounded-2xl bg-white py-10 text-center text-sm text-slate-400 shadow-sm ring-1 ring-slate-100">
+          <p className="rounded-2xl bg-white dark:bg-slate-900 py-10 text-center text-sm text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
             Aucune visite enregistrée pour l'instant.
           </p>
         )}
 
         {pagination.totalPages > 1 && (
-          <div className="mt-3 flex items-center justify-between text-sm text-slate-500">
+          <div className="mt-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
             <Link
               href={`/historique?page=${pagination.page - 1}`}
               aria-disabled={pagination.page <= 1}
               className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 font-medium ${
-                pagination.page <= 1 ? "pointer-events-none border-slate-100 text-slate-300" : "border-slate-200 bg-white text-slate-600"
+                pagination.page <= 1 ? "pointer-events-none border-slate-100 dark:border-slate-800 text-slate-300" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
               }`}
             >
               <ChevronLeft size={15} />
@@ -110,7 +110,7 @@ export default async function HistoriquePage({
               href={`/historique?page=${pagination.page + 1}`}
               aria-disabled={pagination.page >= pagination.totalPages}
               className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 font-medium ${
-                pagination.page >= pagination.totalPages ? "pointer-events-none border-slate-100 text-slate-300" : "border-slate-200 bg-white text-slate-600"
+                pagination.page >= pagination.totalPages ? "pointer-events-none border-slate-100 dark:border-slate-800 text-slate-300" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300"
               }`}
             >
               Suivant

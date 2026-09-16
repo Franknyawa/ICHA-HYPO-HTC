@@ -73,14 +73,14 @@ export function PointVenteSearch({
       <div className="relative mb-2">
         <Search
           size={16}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
         />
         <input
           type="text"
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="Nom de la boutique ou du vendeur..."
-          className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-3 text-base text-slate-800 placeholder:text-slate-400"
+          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-3 pl-10 pr-3 text-base text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 dark:text-slate-500"
         />
       </div>
 
@@ -95,7 +95,7 @@ export function PointVenteSearch({
       </button>
       {gpsError && <p className="mb-3 text-xs text-alert">{gpsError}</p>}
 
-      {loading && <p className="text-sm text-slate-400">Recherche...</p>}
+      {loading && <p className="text-sm text-slate-400 dark:text-slate-500">Recherche...</p>}
 
       <div className="space-y-2">
         {resultats.map((r) => (
@@ -103,19 +103,19 @@ export function PointVenteSearch({
             key={r.id}
             type="button"
             onClick={() => onSelect(r)}
-            className="flex w-full items-center gap-3 rounded-xl bg-white p-3 text-left shadow-sm ring-1 ring-slate-100"
+            className="flex w-full items-center gap-3 rounded-xl bg-white dark:bg-slate-900 p-3 text-left shadow-sm ring-1 ring-slate-100 dark:ring-slate-800"
           >
             {r.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={r.photoUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
             ) : (
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-300">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-300">
                 <ImageOff size={16} />
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-slate-800">{r.nom}</p>
-              <p className="truncate text-xs text-slate-500">
+              <p className="truncate font-medium text-slate-800 dark:text-slate-100">{r.nom}</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
                 {r.vendeur ?? "—"} · {r.villeNom ?? "—"}
                 {r.quartierNom ? ` · ${r.quartierNom}` : ""}
               </p>
@@ -131,7 +131,7 @@ export function PointVenteSearch({
           </button>
         ))}
         {!loading && resultats.length === 0 && search.trim().length >= 2 && (
-          <p className="text-sm text-slate-400">Aucun résultat.</p>
+          <p className="text-sm text-slate-400 dark:text-slate-500">Aucun résultat.</p>
         )}
       </div>
     </div>

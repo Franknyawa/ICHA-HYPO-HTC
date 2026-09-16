@@ -848,15 +848,33 @@ admin) reste à faire, à la demande.
   `AdminLoadingSkeleton`, dashboard commercial, `StatBar` (partagé
   commercial + admin objectifs), page de connexion
 
-**Ce qui n'est PAS encore fait** (honnête sur la couverture réelle) : le
-contenu détaillé de la plupart des pages admin (points de vente,
-commandes, factures, rapports, paramètres, tracking, utilisateurs, stock,
-alertes, clients, objectifs) et les formulaires terrain (nouveau
-recensement, rotation, réassort) gardent leurs couleurs fixes — le bouton
-bascule existe globalement, mais tant que ces pages n'ont pas leurs
-propres classes `dark:`, elles restent visuellement identiques quel que
-soit le thème choisi. À étendre progressivement, page par page, comme
-convenu pour le reste de la refonte visuelle.
+### ✅ Correctif — cartes et contenu blancs sur fond sombre
+Victor a signalé (avec capture d'écran) que le dashboard admin gardait des
+cartes KPI et blocs graphiques entièrement blancs même en mode sombre —
+la classe `dark:` n'avait été posée que sur le layout/l'en-tête, pas sur
+le **contenu** de chaque page. Corrigé par un passage systématique
+(script de remplacement ciblé, pas page par page à la main) sur :
+- **Toutes les pages admin** : dashboard (cartes KPI, graphiques, bouton
+  Imprimer), alertes, clients, commandes, factures, objectifs, paramètres
+  (y compris toutes les modales de création/édition), points de vente,
+  rapports, stock, tracking (carte), utilisateurs
+- **Toutes les pages commerciales** : dashboard, historique, profil,
+  formulaire terrain (nouveau recensement), rotation, réassort
+- **Composants partagés** : recherche de point de vente, actions
+  commande/facture, carte de tracking
+
+Couleurs couvertes : fonds blancs/gris clairs, textes slate (toutes les
+nuances), bordures et contours, badges "Inactif", couleurs de
+placeholder — donc les champs de formulaire dans les modales aussi, pas
+seulement l'affichage.
+
+**Reste malgré tout à vérifier** : ce passage automatisé couvre les
+classes Tailwind répétitives, mais pas les couleurs codées en dur en CSS
+inline (dégradés `style={{ background: "..." }}` des en-têtes, qui restent
+volontairement bleus dans les deux thèmes — c'est un choix de marque, pas
+un oubli) ni les graphiques recharts (axes, tooltips) qui gardent leurs
+couleurs par défaut. Si un endroit précis reste moche en sombre, montre-le
+moi et je le corrige ciblé.
 
 Aucun changement de schéma — pas de migration nécessaire.
 

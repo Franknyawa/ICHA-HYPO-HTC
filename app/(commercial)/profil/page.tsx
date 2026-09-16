@@ -68,10 +68,10 @@ export default function ProfilPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
       <div className="w-full max-w-sm space-y-4">
         {/* Photo de profil */}
-        <div className="rounded-2xl bg-white p-6 text-center shadow-sm">
+        <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 text-center shadow-sm">
           <input
             ref={fileInputRef}
             type="file"
@@ -83,13 +83,13 @@ export default function ProfilPage() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="relative mx-auto mb-3 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-slate-100"
+            className="relative mx-auto mb-3 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
           >
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatarUrl} alt="Photo de profil" className="h-full w-full object-cover" />
             ) : (
-              <Camera size={24} className="text-slate-400" />
+              <Camera size={24} className="text-slate-400 dark:text-slate-500" />
             )}
             {avatarUploading && (
               <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-xs font-medium text-white">
@@ -111,14 +111,14 @@ export default function ProfilPage() {
 
         {/* Crédits en cours — reste à payer sur les ventes à crédit */}
         {credits && credits.total > 0 && (
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm">
             <div className="mb-3 flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-alert">
                 <CreditCard size={16} />
               </span>
               <div>
-                <p className="text-sm font-bold text-slate-800">Crédits en cours</p>
-                <p className="text-xs text-slate-400">Reste à percevoir chez tes clients</p>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Crédits en cours</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Reste à percevoir chez tes clients</p>
               </div>
             </div>
             <p className="mb-3 text-2xl font-extrabold text-alert">
@@ -130,14 +130,14 @@ export default function ProfilPage() {
                   key={d.venteId}
                   className="flex items-center justify-between rounded-lg bg-red-50/50 px-3 py-2 text-sm"
                 >
-                  <span className="text-slate-700">{d.pointVenteNom}</span>
+                  <span className="text-slate-700 dark:text-slate-300">{d.pointVenteNom}</span>
                   <span className="font-semibold text-alert">
                     {d.montantDu.toLocaleString("fr-FR")} FCFA
                   </span>
                 </div>
               ))}
               {credits.detail.length > 5 && (
-                <p className="text-center text-xs text-slate-400">
+                <p className="text-center text-xs text-slate-400 dark:text-slate-500">
                   + {credits.detail.length - 5} autre(s)
                 </p>
               )}

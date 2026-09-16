@@ -74,11 +74,11 @@ export default async function TrackingPage({
 
       <div className="p-4 md:p-6">
         {/* Bascule Visites du jour / Position actuelle */}
-        <div className="mb-4 inline-flex rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-100">
+        <div className="mb-4 inline-flex rounded-xl bg-white dark:bg-slate-900 p-1 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
           <Link
             href={`/admin/tracking?${buildQuery({ mode: "visites" })}`}
             className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold ${
-              mode === "visites" ? "bg-brand text-white" : "text-slate-500"
+              mode === "visites" ? "bg-brand text-white" : "text-slate-500 dark:text-slate-400 dark:text-slate-500"
             }`}
           >
             <History size={14} />
@@ -87,7 +87,7 @@ export default async function TrackingPage({
           <Link
             href={`/admin/tracking?${buildQuery({ mode: "positions" })}`}
             className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold ${
-              mode === "positions" ? "bg-brand text-white" : "text-slate-500"
+              mode === "positions" ? "bg-brand text-white" : "text-slate-500 dark:text-slate-400 dark:text-slate-500"
             }`}
           >
             <Radio size={14} />
@@ -103,23 +103,23 @@ export default async function TrackingPage({
           </p>
         )}
 
-        <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 md:grid-cols-4" action="/admin/tracking">
+        <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-4" action="/admin/tracking">
           <input type="hidden" name="mode" value={mode} />
           {mode === "visites" && (
             <input
               type="date"
               name="date"
               defaultValue={date}
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
             />
           )}
-          <select name="commercialId" defaultValue={commercialId} className="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+          <select name="commercialId" defaultValue={commercialId} className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm">
             <option value="">Tous les commerciaux</option>
             {commerciaux.map((c) => (
               <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>
             ))}
           </select>
-          <select name="binomeId" defaultValue={binomeId} className="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+          <select name="binomeId" defaultValue={binomeId} className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm">
             <option value="">Tous les binômes</option>
             {binomes.map((b) => (
               <option key={b.id} value={b.id}>{b.nom}</option>
@@ -133,9 +133,9 @@ export default async function TrackingPage({
         {points.length > 0 ? (
           <TrackingMapLoader points={points} />
         ) : (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-white py-16 shadow-sm ring-1 ring-slate-100">
+          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-white dark:bg-slate-900 py-16 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
             <MapPin size={28} className="text-slate-300" />
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-400 dark:text-slate-500">
               {mode === "visites"
                 ? "Aucune visite géolocalisée pour ces filtres."
                 : "Aucune position récente — les commerciaux doivent avoir l'app ouverte."}
