@@ -324,8 +324,8 @@ model Visite {
 
   @@index([commercialId])
   @@index([binomeId])
-  @@index([pointVenteId])
   @@index([dateVisite])
+  @@index([pointVenteId])
   @@map("visites")
 }
 
@@ -372,6 +372,7 @@ model Vente {
   @@index([pointVenteId])
   @@index([commercialId])
   @@index([clientId])
+  @@index([createdAt])
   @@index([dateVente])
   @@map("ventes")
 }
@@ -419,6 +420,7 @@ model Commande {
   @@index([commercialId])
   @@index([statut])
   @@index([dateCommande])
+  @@index([dateLivraisonPrevue])
   @@map("commandes")
 }
 

@@ -878,6 +878,41 @@ moi et je le corrige ciblé.
 
 Aucun changement de schéma — pas de migration nécessaire.
 
+### ✅ Optimisations de lenteur (sans changer de région)
+Diagnostic confirmé : lenteur uniforme sur toutes les pages = latence
+réseau fixe (Vercel USA ↔ Supabase Europe), pas un problème de code — le
+vrai correctif reste de rapprocher les deux (Vercel Pro + région Europe).
+Victor a choisi d'essayer d'abord les optimisations gratuites ; voici ce
+qui a été fait, avec les limites honnêtes de cette approche :
+- **Page Objectifs réécrite** (`lib/queries/objectifs-admin.ts`) — elle
+  refaisait 4 requêtes **par binôme** et 4 **par commercial** (boucle sur
+  `getStatsBinome`/`getStatsPersonnelles`), soit 30-40+ requêtes selon la
+  taille de l'équipe. Remplacé par des requêtes groupées à nombre fixe (9
+  au total, peu importe le nombre de binômes/commerciaux) — le
+  regroupement par entité se fait en JS après coup, plus en base.
+- **Index manquants ajoutés** — `Vente.createdAt`, `Visite.dateVisite`,
+  `Commande.dateLivraisonPrevue` n'avaient aucun index alors qu'ils sont
+  filtrés par date sur quasiment toutes les requêtes dashboard/rapports/
+  objectifs/agrégation. Sans index, Postgres relit toute la table à
+  chaque appel — l'impact grandit avec le volume de données au fil du
+  temps, donc c'était en train de s'aggraver mois après mois même sans y
+  toucher.
+
+**⚠️ Changement de schéma — migration nécessaire :**
+```sql
+CREATE INDEX IF NOT EXISTS ventes_created_at_idx ON ventes (created_at);
+CREATE INDEX IF NOT EXISTS visites_date_visite_idx ON visites (date_visite);
+CREATE INDEX IF NOT EXISTS commandes_date_livraison_prevue_idx ON commandes (date_livraison_prevue);
+```
+
+**Honnêteté sur ce que ça change réellement** : ces deux correctifs
+réduisent le *nombre* et le *coût* des requêtes, mais ne suppriment pas
+la latence réseau elle-même — chaque requête individuelle continue de
+traverser l'Atlantique. La page Objectifs devrait être nettement plus
+rapide (bien moins de requêtes), mais la lenteur de fond, uniforme sur
+toutes les pages, ne disparaîtra pas tant que la région ne sera pas
+alignée. C'est le plafond réel des optimisations gratuites.
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont
