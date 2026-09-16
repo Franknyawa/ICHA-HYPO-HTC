@@ -74,7 +74,7 @@ export default async function RapportsPage({
           <select
             name="commercialId"
             defaultValue={filters.commercialId ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
           >
             <option value="">Tous les commerciaux</option>
             {commerciaux.map((c) => (
@@ -86,7 +86,7 @@ export default async function RapportsPage({
           <select
             name="binomeId"
             defaultValue={filters.binomeId ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
           >
             <option value="">Tous les binômes</option>
             {binomes.map((b) => (
@@ -98,7 +98,7 @@ export default async function RapportsPage({
           <select
             name="villeId"
             defaultValue={filters.villeId ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
           >
             <option value="">Toutes les villes</option>
             {villes.map((v) => (
@@ -110,7 +110,7 @@ export default async function RapportsPage({
           <select
             name="quartierId"
             defaultValue={filters.quartierId ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
           >
             <option value="">Tous les quartiers</option>
             {quartiers.map((q) => (
@@ -122,7 +122,7 @@ export default async function RapportsPage({
           <select
             name="typeId"
             defaultValue={filters.typeId ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
           >
             <option value="">Tous les types de boutique</option>
             {types.map((t) => (
@@ -134,7 +134,7 @@ export default async function RapportsPage({
           <select
             name="produitCode"
             defaultValue={filters.produitCode ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
           >
             <option value="">Tous les produits</option>
             <option value="HYPO">HYPO</option>
@@ -144,13 +144,13 @@ export default async function RapportsPage({
             type="date"
             name="dateFrom"
             defaultValue={filters.dateFrom ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
           />
           <input
             type="date"
             name="dateTo"
             defaultValue={filters.dateTo ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
           />
           <button
             type="submit"

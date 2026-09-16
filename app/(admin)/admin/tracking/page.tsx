@@ -110,16 +110,16 @@ export default async function TrackingPage({
               type="date"
               name="date"
               defaultValue={date}
-              className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm"
+              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
             />
           )}
-          <select name="commercialId" defaultValue={commercialId} className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm">
+          <select name="commercialId" defaultValue={commercialId} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100">
             <option value="">Tous les commerciaux</option>
             {commerciaux.map((c) => (
               <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>
             ))}
           </select>
-          <select name="binomeId" defaultValue={binomeId} className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm">
+          <select name="binomeId" defaultValue={binomeId} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100">
             <option value="">Tous les binômes</option>
             {binomes.map((b) => (
               <option key={b.id} value={b.id}>{b.nom}</option>
