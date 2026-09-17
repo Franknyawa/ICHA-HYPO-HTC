@@ -103,6 +103,14 @@ export default async function TrackingPage({
           </p>
         )}
 
+        {mode === "visites" && (
+          <p className="mb-4 rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
+            La ligne pointillée relie les visites de chaque commercial dans
+            l'ordre chronologique — c'est son itinéraire de la journée
+            sélectionnée. Clique sur un point pour voir son numéro d'étape.
+          </p>
+        )}
+
         <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-4" action="/admin/tracking">
           <input type="hidden" name="mode" value={mode} />
           {mode === "visites" && (

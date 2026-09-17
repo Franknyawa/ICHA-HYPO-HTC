@@ -1,12 +1,39 @@
 import { prisma } from "@/lib/prisma";
 import type { TypeAlerte } from "@prisma/client";
 
-// Seuils — pas encore configurables en back office (voir README), choisis
-// raisonnablement en l'absence d'indication précise.
-const JOURS_CREDIT_RETARD = 7;
-const JOURS_PROSPECT_A_RELANCER = 5;
-const JOURS_CLIENT_INACTIF = 30;
-const JOURS_LIVRAISON_PROCHE = 2;
+// Seuils par défaut si jamais réglés en back office — voir
+// /admin/parametres, section "Seuils des alertes".
+const SEUILS_DEFAUT = {
+  joursCreditRetard: 7,
+  joursProspectARelancer: 5,
+  joursClientInactif: 30,
+  joursLivraisonProche: 2,
+};
+
+const CLES_SEUILS: Record<keyof typeof SEUILS_DEFAUT, string> = {
+  joursCreditRetard: "seuil_jours_credit_retard",
+  joursProspectARelancer: "seuil_jours_prospect_a_relancer",
+  joursClientInactif: "seuil_jours_client_inactif",
+  joursLivraisonProche: "seuil_jours_livraison_proche",
+};
+
+export async function getSeuilsAlertes() {
+  const rows = await prisma.parametreSysteme.findMany({
+    where: { cle: { in: Object.values(CLES_SEUILS) } },
+  });
+  const parCle = new Map(rows.map((r) => [r.cle, Number(r.valeur)]));
+
+  return {
+    joursCreditRetard: parCle.get(CLES_SEUILS.joursCreditRetard) ?? SEUILS_DEFAUT.joursCreditRetard,
+    joursProspectARelancer:
+      parCle.get(CLES_SEUILS.joursProspectARelancer) ?? SEUILS_DEFAUT.joursProspectARelancer,
+    joursClientInactif: parCle.get(CLES_SEUILS.joursClientInactif) ?? SEUILS_DEFAUT.joursClientInactif,
+    joursLivraisonProche:
+      parCle.get(CLES_SEUILS.joursLivraisonProche) ?? SEUILS_DEFAUT.joursLivraisonProche,
+  };
+}
+
+export { CLES_SEUILS };
 
 /**
  * Crée une alerte si aucune alerte NON RÉSOLUE identique (même type + même
@@ -57,9 +84,9 @@ async function genererAlertesStock() {
   }
 }
 
-async function genererAlertesCommandes() {
+async function genererAlertesCommandes(joursLivraisonProche: number) {
   const maintenant = new Date();
-  const dansXJours = new Date(maintenant.getTime() + JOURS_LIVRAISON_PROCHE * 24 * 3600 * 1000);
+  const dansXJours = new Date(maintenant.getTime() + joursLivraisonProche * 24 * 3600 * 1000);
 
   const commandes = await prisma.commande.findMany({
     where: { statut: "EN_ATTENTE" },
@@ -91,9 +118,9 @@ async function genererAlertesCommandes() {
   }
 }
 
-async function genererAlertesCredits() {
+async function genererAlertesCredits(joursCreditRetard: number) {
   const seuil = new Date();
-  seuil.setDate(seuil.getDate() - JOURS_CREDIT_RETARD);
+  seuil.setDate(seuil.getDate() - joursCreditRetard);
 
   const ventes = await prisma.vente.findMany({
     where: { createdAt: { lte: seuil }, paiements: { some: { estCredit: true } } },
@@ -111,7 +138,7 @@ async function genererAlertesCredits() {
     if (du > 0) {
       await creerAlerteSiAbsente({
         type: "CREDIT_RETARD",
-        message: `Crédit en retard chez ${v.pointVente.nom} : ${du.toLocaleString("fr-FR")} FCFA dû depuis plus de ${JOURS_CREDIT_RETARD} jours.`,
+        message: `Crédit en retard chez ${v.pointVente.nom} : ${du.toLocaleString("fr-FR")} FCFA dû depuis plus de ${joursCreditRetard} jours.`,
         entiteType: "Vente",
         entiteId: v.id,
       });
@@ -119,9 +146,9 @@ async function genererAlertesCredits() {
   }
 }
 
-async function genererAlertesProspects() {
+async function genererAlertesProspects(joursProspectARelancer: number) {
   const seuil = new Date();
-  seuil.setDate(seuil.getDate() - JOURS_PROSPECT_A_RELANCER);
+  seuil.setDate(seuil.getDate() - joursProspectARelancer);
 
   const prospects = await prisma.prospect.findMany({
     where: {
@@ -143,9 +170,9 @@ async function genererAlertesProspects() {
   }
 }
 
-async function genererAlertesClientsInactifs() {
+async function genererAlertesClientsInactifs(joursClientInactif: number) {
   const seuil = new Date();
-  seuil.setDate(seuil.getDate() - JOURS_CLIENT_INACTIF);
+  seuil.setDate(seuil.getDate() - joursClientInactif);
 
   const clients = await prisma.client.findMany({
     where: {
@@ -159,7 +186,7 @@ async function genererAlertesClientsInactifs() {
   for (const c of clients) {
     await creerAlerteSiAbsente({
       type: "CLIENT_INACTIF",
-      message: `Client inactif depuis plus de ${JOURS_CLIENT_INACTIF} jours : ${c.nom} (${c.pointVente.nom}).`,
+      message: `Client inactif depuis plus de ${joursClientInactif} jours : ${c.nom} (${c.pointVente.nom}).`,
       entiteType: "Client",
       entiteId: c.id,
     });
@@ -209,11 +236,12 @@ async function genererAlertesObjectifs(dateReference: Date) {
 
 /** Point d'entrée unique, appelé par le cron nocturne. */
 export async function genererToutesLesAlertes(dateVeille: Date) {
+  const seuils = await getSeuilsAlertes();
   await genererAlertesStock();
-  await genererAlertesCommandes();
-  await genererAlertesCredits();
-  await genererAlertesProspects();
-  await genererAlertesClientsInactifs();
+  await genererAlertesCommandes(seuils.joursLivraisonProche);
+  await genererAlertesCredits(seuils.joursCreditRetard);
+  await genererAlertesProspects(seuils.joursProspectARelancer);
+  await genererAlertesClientsInactifs(seuils.joursClientInactif);
   await genererAlertesObjectifs(dateVeille);
 }
 
@@ -223,9 +251,10 @@ export async function genererToutesLesAlertes(dateVeille: Date) {
  * veille (uniquement disponibles après le passage du cron nocturne).
  */
 export async function genererAlertesManuelles() {
+  const seuils = await getSeuilsAlertes();
   await genererAlertesStock();
-  await genererAlertesCommandes();
-  await genererAlertesCredits();
-  await genererAlertesProspects();
-  await genererAlertesClientsInactifs();
+  await genererAlertesCommandes(seuils.joursLivraisonProche);
+  await genererAlertesCredits(seuils.joursCreditRetard);
+  await genererAlertesProspects(seuils.joursProspectARelancer);
+  await genererAlertesClientsInactifs(seuils.joursClientInactif);
 }

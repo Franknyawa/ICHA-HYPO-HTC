@@ -12,6 +12,7 @@ import {
   Clock,
   Trash2,
   Merge,
+  BellRing,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
@@ -1195,6 +1196,77 @@ function ObjectifsIndividuelsManager() {
 
 // --- Durée de session ------------------------------------------------------
 
+// --- Seuils des alertes automatiques ------------------------------------
+
+const SEUILS_CONFIG: { cle: "joursCreditRetard" | "joursProspectARelancer" | "joursClientInactif" | "joursLivraisonProche"; label: string }[] = [
+  { cle: "joursCreditRetard", label: "Crédit en retard après (jours)" },
+  { cle: "joursProspectARelancer", label: "Prospect à relancer après (jours)" },
+  { cle: "joursClientInactif", label: "Client inactif après (jours)" },
+  { cle: "joursLivraisonProche", label: "Alerte livraison à venir (jours avant)" },
+];
+
+function SeuilsAlertesManager() {
+  const [seuils, setSeuils] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  function load() {
+    setLoading(true);
+    fetch("/api/parametres/alertes-seuils")
+      .then((r) => r.json())
+      .then((d) => setSeuils(d))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, []);
+
+  async function save(cle: string, valeur: number) {
+    setSaving(cle);
+    await fetch("/api/parametres/alertes-seuils", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cle, valeur }),
+    });
+    setSaving(null);
+    load();
+  }
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600 text-white">
+          <BellRing size={16} />
+        </span>
+        <div>
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">Seuils des alertes</h2>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            Utilisés par la génération automatique — voir /admin/alertes
+          </p>
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {SEUILS_CONFIG.map(({ cle, label }) => (
+            <div key={cle}>
+              <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                {label}
+              </label>
+              <ObjectifInput
+                defaultValue={seuils[cle] ?? 0}
+                saving={saving === cle}
+                onSave={(v) => save(cle, v)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SessionDureeManager() {
   const [minutes, setMinutes] = useState(720);
   const [loading, setLoading] = useState(true);
@@ -1536,6 +1608,7 @@ export default function ParametresPage() {
         </div>
         <ObjectifsIndividuelsManager />
         <SessionDureeManager />
+        <SeuilsAlertesManager />
         <div className="md:col-span-2">
           <PrixParTypeManager />
         </div>

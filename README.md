@@ -913,6 +913,40 @@ rapide (bien moins de requêtes), mais la lenteur de fond, uniforme sur
 toutes les pages, ne disparaîtra pas tant que la région ne sera pas
 alignée. C'est le plafond réel des optimisations gratuites.
 
+### ✅ Itinéraire des commerciaux + seuils d'alertes dynamiques
+- **Tracé d'itinéraire sur `/admin/tracking`** (mode "Visites du jour") —
+  une ligne pointillée relie désormais les visites de chaque commercial
+  dans l'ordre chronologique (un tracé par commercial, jamais mélangé
+  entre plusieurs personnes), et chaque point affiche son "Étape X / Y"
+  au clic. Ça répond directement au besoin "savoir où chacun est passé,
+  dans quel ordre" — pas juste des points isolés sur la carte.
+- **Seuils des alertes automatiques rendus configurables** — les 4
+  constantes codées en dur (crédit en retard après 7 jours, prospect à
+  relancer après 5 jours, client inactif après 30 jours, livraison à
+  venir dans les 2 jours) sont maintenant réglables depuis
+  `/admin/parametres`, section "Seuils des alertes". Réutilise le même
+  mécanisme clé/valeur que la durée de session (`ParametreSysteme`).
+
+**Sur "rendre tout dynamique" — ce qui reste volontairement figé, et
+pourquoi :**
+- **Modes de paiement** (Espèces/Mobile Money/Crédit partiel/Crédit
+  total) — chacun a un comportement de calcul complètement différent câblé
+  dans le code (l'un demande une confirmation, l'autre un montant partiel,
+  etc.). Les rendre ajoutables depuis le back office demanderait de
+  définir pour chaque nouveau mode COMMENT il se comporte (a-t-il besoin
+  d'un montant ? compte-t-il comme crédit ?) — un vrai système de règles
+  configurables, pas juste une liste éditable. Hors scope pour l'instant,
+  à envisager si un vrai besoin métier apparaît (ex: un 5e mode de
+  paiement précis à ajouter).
+- **Types de visite** (recensement/rotation/réassort) — chacun a sa propre
+  page avec ses propres champs. En ajouter un 4e depuis le back office
+  demanderait un vrai "constructeur de formulaire", pas juste une entrée
+  de configuration. Ajouter un nouveau type reste possible, mais ça
+  demande de construire sa page comme on l'a fait pour les 3 existants.
+
+Aucun changement de schéma — pas de migration nécessaire (`ParametreSysteme`
+existait déjà).
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont
