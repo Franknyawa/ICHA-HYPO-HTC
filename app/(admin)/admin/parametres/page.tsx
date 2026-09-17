@@ -13,6 +13,7 @@ import {
   Trash2,
   Merge,
   BellRing,
+  ChevronDown,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
@@ -46,6 +47,7 @@ function SimpleEntityManager({
   const [editOrdre, setEditOrdre] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [ouvert, setOuvert] = useState(true);
 
   function load() {
     setLoading(true);
@@ -115,7 +117,10 @@ function SimpleEntityManager({
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <button
+          onClick={() => setOuvert((v) => !v)}
+          className="flex flex-1 items-center gap-2 text-left"
+        >
           <span
             className="flex h-8 w-8 items-center justify-center rounded-lg text-white"
             style={{ backgroundColor: color }}
@@ -123,7 +128,11 @@ function SimpleEntityManager({
             <Icon size={16} />
           </span>
           <h2 className="font-bold text-slate-800 dark:text-slate-100">{labelSingulier}s</h2>
-        </div>
+          <ChevronDown
+            size={16}
+            className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`}
+          />
+        </button>
         <button
           onClick={() => {
             setShowCreate(true);
@@ -136,18 +145,20 @@ function SimpleEntityManager({
         </button>
       </div>
 
-      {error && (
-        <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>
-      )}
+      {ouvert && (
+        <>
+          {error && (
+            <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>
+          )}
 
-      {loading ? (
-        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
-      ) : (
-        <div className="space-y-1.5">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2"
+          {loading ? (
+            <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+          ) : (
+            <div className="space-y-1.5">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2"
             >
               <span className={`text-sm font-medium ${item.actif ? "text-slate-700 dark:text-slate-300" : "text-slate-400 dark:text-slate-500 line-through"}`}>
                 {avecOrdre && item.ordre ? `${item.ordre}. ` : ""}
@@ -168,7 +179,7 @@ function SimpleEntityManager({
                 <button
                   onClick={() => toggleActif(item)}
                   className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                    item.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 dark:text-slate-500"
+                    item.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
                   }`}
                 >
                   {item.actif ? "Actif" : "Inactif"}
@@ -180,6 +191,8 @@ function SimpleEntityManager({
             <p className="text-sm text-slate-400 dark:text-slate-500">Aucun élément.</p>
           )}
         </div>
+      )}
+        </>
       )}
 
       {showCreate && (
@@ -220,7 +233,7 @@ function SimpleEntityManager({
             />
             {avecOrdre && (
               <>
-                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
                   Ordre d&apos;affichage
                 </label>
                 <input
@@ -281,6 +294,7 @@ function ProduitsManager() {
     prixCarton: 0,
   });
   const [createError, setCreateError] = useState<string | null>(null);
+  const [ouvert, setOuvert] = useState(true);
 
   function load() {
     setLoading(true);
@@ -386,12 +400,13 @@ function ProduitsManager() {
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <button onClick={() => setOuvert((v) => !v)} className="flex flex-1 items-center gap-2 text-left">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-white">
             <Package size={16} />
           </span>
           <h2 className="font-bold text-slate-800 dark:text-slate-100">Produits & prix</h2>
-        </div>
+          <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+        </button>
         <button
           onClick={() => {
             setShowCreate(true);
@@ -404,7 +419,7 @@ function ProduitsManager() {
         </button>
       </div>
 
-      {loading ? (
+      {ouvert && (loading ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
         <div className="space-y-2">
@@ -417,7 +432,7 @@ function ProduitsManager() {
                 <p className={`text-sm font-semibold ${p.actif ? "text-slate-800 dark:text-slate-100" : "text-slate-400 dark:text-slate-500 line-through"}`}>
                   {p.code}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {p.prixSachet.toLocaleString("fr-FR")} FCFA/sachet
                   {p.prixFilet !== null ? ` · ${p.prixFilet.toLocaleString("fr-FR")} FCFA/filet` : ""}
                   {" · "}
@@ -431,7 +446,7 @@ function ProduitsManager() {
                 <button
                   onClick={() => toggleActif(p)}
                   className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                    p.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 dark:text-slate-500"
+                    p.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
                   }`}
                 >
                   {p.actif ? "Actif" : "Inactif"}
@@ -443,14 +458,14 @@ function ProduitsManager() {
             </div>
           ))}
         </div>
-      )}
+      ))}
 
       {editTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={handleSave} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
             <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Prix {editTarget.code}</h3>
 
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Prix par sachet (FCFA)</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix par sachet (FCFA)</label>
             <input
               type="number"
               min={0}
@@ -461,7 +476,7 @@ function ProduitsManager() {
 
             {editTarget.prixFilet !== null && (
               <>
-                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Prix par filet (FCFA)</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix par filet (FCFA)</label>
                 <input
                   type="number"
                   min={0}
@@ -472,7 +487,7 @@ function ProduitsManager() {
               </>
             )}
 
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Prix par carton (FCFA)</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix par carton (FCFA)</label>
             <input
               type="number"
               min={0}
@@ -508,7 +523,7 @@ function ProduitsManager() {
 
             <div className="mb-3 grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Code (ex: XYZ)</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Code (ex: XYZ)</label>
                 <input
                   type="text"
                   required
@@ -518,7 +533,7 @@ function ProduitsManager() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Volume (ml)</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Volume (ml)</label>
                 <input
                   type="number"
                   min={1}
@@ -530,7 +545,7 @@ function ProduitsManager() {
               </div>
             </div>
 
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Nom complet</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Nom complet</label>
             <input
               type="text"
               required
@@ -551,7 +566,7 @@ function ProduitsManager() {
             <div className="mb-3 grid grid-cols-2 gap-2">
               {createForm.aDesFilets && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Sachets/filet</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Sachets/filet</label>
                   <input
                     type="number"
                     min={1}
@@ -563,7 +578,7 @@ function ProduitsManager() {
               )}
               {createForm.aDesFilets && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Filets/carton</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Filets/carton</label>
                   <input
                     type="number"
                     min={1}
@@ -574,7 +589,7 @@ function ProduitsManager() {
                 </div>
               )}
               <div className={createForm.aDesFilets ? "col-span-2" : ""}>
-                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Sachets/carton</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Sachets/carton</label>
                 <input
                   type="number"
                   min={1}
@@ -588,7 +603,7 @@ function ProduitsManager() {
 
             <div className="mb-3 grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Prix/sachet</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix/sachet</label>
                 <input
                   type="number"
                   min={0}
@@ -598,7 +613,7 @@ function ProduitsManager() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Prix/carton</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix/carton</label>
                 <input
                   type="number"
                   min={0}
@@ -609,7 +624,7 @@ function ProduitsManager() {
               </div>
               {createForm.aDesFilets && (
                 <div className="col-span-2">
-                  <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Prix/filet</label>
+                  <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix/filet</label>
                   <input
                     type="number"
                     min={0}
@@ -651,6 +666,7 @@ function ObjectifsManager() {
   const [data, setData] = useState<ObjectifBinome[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [ouvert, setOuvert] = useState(true);
 
   function load() {
     setLoading(true);
@@ -688,14 +704,15 @@ function ObjectifsManager() {
 
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-      <div className="mb-3 flex items-center gap-2">
+      <button onClick={() => setOuvert((v) => !v)} className="mb-3 flex w-full items-center gap-2 text-left">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600 text-white">
           <Target size={16} />
         </span>
         <h2 className="font-bold text-slate-800 dark:text-slate-100">Objectifs (période en cours)</h2>
-      </div>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+      </button>
 
-      {loading ? (
+      {ouvert && (loading ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
         <div className="space-y-3">
@@ -704,7 +721,7 @@ function ObjectifsManager() {
               <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{b.nom}</p>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                  <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                     Cartons / jour
                   </label>
                   <ObjectifInput
@@ -716,7 +733,7 @@ function ObjectifsManager() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                  <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                     Cartons / semaine
                   </label>
                   <ObjectifInput
@@ -731,7 +748,7 @@ function ObjectifsManager() {
             </div>
           ))}
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -803,6 +820,7 @@ function QuartiersManager() {
   const [fusionVersId, setFusionVersId] = useState("");
 
   const [saving, setSaving] = useState(false);
+  const [ouvert, setOuvert] = useState(true);
 
   function load() {
     setLoading(true);
@@ -907,12 +925,13 @@ function QuartiersManager() {
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <button onClick={() => setOuvert((v) => !v)} className="flex flex-1 items-center gap-2 text-left">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
             <MapPin size={16} />
           </span>
           <h2 className="font-bold text-slate-800 dark:text-slate-100">Quartiers</h2>
-        </div>
+          <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+        </button>
         <button
           onClick={() => {
             setShowCreate(true);
@@ -925,6 +944,8 @@ function QuartiersManager() {
         </button>
       </div>
 
+      {ouvert && (
+        <>
       <select
         value={villeFiltre}
         onChange={(e) => setVilleFiltre(e.target.value)}
@@ -987,7 +1008,7 @@ function QuartiersManager() {
                       <button
                         onClick={() => toggleActif(q)}
                         className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          q.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 dark:text-slate-500"
+                          q.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
                         }`}
                       >
                         {q.actif ? "Actif" : "Inactif"}
@@ -1003,12 +1024,14 @@ function QuartiersManager() {
           )}
         </div>
       )}
+        </>
+      )}
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={handleCreate} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
             <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Nouveau quartier</h3>
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Ville</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Ville</label>
             <select
               value={newVilleId}
               onChange={(e) => setNewVilleId(e.target.value)}
@@ -1020,7 +1043,7 @@ function QuartiersManager() {
                 <option key={v.id} value={v.id}>{v.nom}</option>
               ))}
             </select>
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Nom du quartier</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Nom du quartier</label>
             <input
               type="text"
               value={newNom}
@@ -1075,7 +1098,7 @@ function QuartiersManager() {
               Les {fusionTarget._count.pointsVente} point(s) de vente de ce quartier seront
               déplacés vers le quartier choisi, puis "{fusionTarget.nom}" sera désactivé.
             </p>
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Fusionner vers</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Fusionner vers</label>
             <select
               value={fusionVersId}
               onChange={(e) => setFusionVersId(e.target.value)}
@@ -1120,6 +1143,7 @@ function ObjectifsIndividuelsManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ouvert, setOuvert] = useState(true);
 
   function load() {
     setLoading(true);
@@ -1155,19 +1179,20 @@ function ObjectifsIndividuelsManager() {
 
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-      <div className="mb-3 flex items-center gap-2">
+      <button onClick={() => setOuvert((v) => !v)} className="mb-3 flex w-full items-center gap-2 text-left">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
           <Target size={16} />
         </span>
-        <div>
+        <div className="flex-1">
           <h2 className="font-bold text-slate-800 dark:text-slate-100">Objectifs individuels</h2>
           <p className="text-xs text-slate-400 dark:text-slate-500">
             Appliqués à chaque commercial (distinct des objectifs par binôme ci-dessus)
           </p>
         </div>
-      </div>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+      </button>
 
-      {loading ? (
+      {ouvert && (loading ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
         <>
@@ -1177,7 +1202,7 @@ function ObjectifsIndividuelsManager() {
           <div className="grid grid-cols-3 gap-2">
             {data.map((o) => (
               <div key={o.periode}>
-                <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   {LABEL_PERIODE[o.periode]}
                 </label>
                 <ObjectifInput
@@ -1189,7 +1214,7 @@ function ObjectifsIndividuelsManager() {
             ))}
           </div>
         </>
-      )}
+      ))}
     </div>
   );
 }
@@ -1209,6 +1234,7 @@ function SeuilsAlertesManager() {
   const [seuils, setSeuils] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [ouvert, setOuvert] = useState(true);
 
   function load() {
     setLoading(true);
@@ -1233,19 +1259,20 @@ function SeuilsAlertesManager() {
 
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-      <div className="mb-3 flex items-center gap-2">
+      <button onClick={() => setOuvert((v) => !v)} className="mb-3 flex w-full items-center gap-2 text-left">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600 text-white">
           <BellRing size={16} />
         </span>
-        <div>
+        <div className="flex-1">
           <h2 className="font-bold text-slate-800 dark:text-slate-100">Seuils des alertes</h2>
           <p className="text-xs text-slate-400 dark:text-slate-500">
             Utilisés par la génération automatique — voir /admin/alertes
           </p>
         </div>
-      </div>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+      </button>
 
-      {loading ? (
+      {ouvert && (loading ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
         <div className="grid grid-cols-2 gap-3">
@@ -1262,7 +1289,7 @@ function SeuilsAlertesManager() {
             </div>
           ))}
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -1273,6 +1300,7 @@ function SessionDureeManager() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ouvert, setOuvert] = useState(true);
 
   useEffect(() => {
     fetch("/api/parametres/session-duree")
@@ -1304,19 +1332,20 @@ function SessionDureeManager() {
 
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-      <div className="mb-3 flex items-center gap-2">
+      <button onClick={() => setOuvert((v) => !v)} className="mb-3 flex w-full items-center gap-2 text-left">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700 text-white">
           <Clock size={16} />
         </span>
-        <div>
+        <div className="flex-1">
           <h2 className="font-bold text-slate-800 dark:text-slate-100">Durée de session</h2>
           <p className="text-xs text-slate-400 dark:text-slate-500">
             Avant déconnexion automatique — s'applique aux prochaines connexions
           </p>
         </div>
-      </div>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+      </button>
 
-      {loading ? (
+      {ouvert && (loading ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
         <>
@@ -1331,7 +1360,7 @@ function SessionDureeManager() {
                 }
                 className="w-16 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-2 text-sm"
               />
-              <span className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">h</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">h</span>
             </div>
             <div className="flex items-center gap-1.5">
               <input
@@ -1344,7 +1373,7 @@ function SessionDureeManager() {
                 }
                 className="w-16 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-2 text-sm"
               />
-              <span className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">min</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">min</span>
             </div>
             <button
               onClick={save}
@@ -1356,7 +1385,7 @@ function SessionDureeManager() {
           </div>
           <p className="text-xs text-slate-400 dark:text-slate-500">Soit {minutes} minutes au total</p>
         </>
-      )}
+      ))}
       {message && <p className="mt-2 text-xs text-green-600">{message}</p>}
       {error && <p className="mt-2 text-xs text-alert">{error}</p>}
     </div>
@@ -1473,7 +1502,7 @@ function LignePrixParType({
       <div className="mb-1.5 flex items-center justify-between">
         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{type.nom}</span>
         {override && (
-          <button onClick={reinitialiser} disabled={saving} className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 underline">
+          <button onClick={reinitialiser} disabled={saving} className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 underline">
             Réinitialiser au prix de base
           </button>
         )}
@@ -1524,6 +1553,7 @@ function PrixParTypeManager() {
   const [overrides, setOverrides] = useState<OverridePrix[]>([]);
   const [basesParProduit, setBasesParProduit] = useState<Record<string, { prixSachet: number; prixFilet: number | null; prixCarton: number }>>({});
   const [loading, setLoading] = useState(true);
+  const [ouvert, setOuvert] = useState(true);
 
   function load() {
     setLoading(true);
@@ -1548,40 +1578,53 @@ function PrixParTypeManager() {
 
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-      <div className="mb-1 flex items-center gap-2">
+      <button onClick={() => setOuvert((v) => !v)} className="mb-1 flex w-full items-center gap-2 text-left">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-700 text-white">
           <Package size={16} />
         </span>
         <h2 className="font-bold text-slate-800 dark:text-slate-100">Prix par type de boutique</h2>
-      </div>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+      </button>
       <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
         Personnalise le prix d'un produit pour un type de boutique précis — le
         formulaire terrain l'applique automatiquement dès que le type est
         choisi. Sans personnalisation, le prix de base du produit s'applique.
       </p>
 
-      {loading ? (
-        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
-      ) : (
-        <div className="space-y-4">
-          {produits.map((p) => (
-            <div key={p.id}>
-              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500">{p.code}</p>
-              <div className="space-y-1.5">
-                {types.map((t) => (
-                  <LignePrixParType
-                    key={t.id}
-                    produit={p}
-                    type={t}
-                    produitBase={basesParProduit[p.id]}
-                    override={overrides.find((o) => o.produitId === p.id && o.typeId === t.id)}
-                    onSaved={load}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+      {ouvert && (
+        loading ? (
+          <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+        ) : produits.length === 0 || types.length === 0 ? (
+          <p className="text-sm text-slate-400 dark:text-slate-500">
+            {produits.length === 0
+              ? "Aucun produit — ajoute un produit dans la section ci-contre d'abord."
+              : "Aucun type de boutique actif."}
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {produits.map((p) => {
+              const base = basesParProduit[p.id];
+              if (!base) return null; // sécurité : évite un plantage si pas encore synchronisé
+              return (
+                <div key={p.id}>
+                  <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{p.code}</p>
+                  <div className="space-y-1.5">
+                    {types.map((t) => (
+                      <LignePrixParType
+                        key={t.id}
+                        produit={p}
+                        type={t}
+                        produitBase={base}
+                        override={overrides.find((o) => o.produitId === p.id && o.typeId === t.id)}
+                        onSaved={load}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
       )}
     </div>
   );

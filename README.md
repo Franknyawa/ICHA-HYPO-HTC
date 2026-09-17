@@ -947,6 +947,26 @@ pourquoi :**
 Aucun changement de schéma — pas de migration nécessaire (`ParametreSysteme`
 existait déjà).
 
+### ✅ Sections repliables + correctif "Prix par type" invisible
+- **Correctif** — la section "Prix par type de boutique" pouvait
+  disparaître silencieusement si les prix de base n'étaient pas encore
+  synchronisés au moment du rendu (accès à une valeur `undefined`).
+  Sécurisé, avec un message clair maintenant si la liste est vraiment
+  vide ("Aucun produit" / "Aucun type de boutique actif") au lieu d'un
+  vide silencieux sans explication.
+- **Chaque section de `/admin/parametres` est maintenant repliable** —
+  clique sur le titre (chevron qui pivote) pour la réduire une fois
+  configurée, et gagner de la place à l'écran : Villes, Types de
+  boutique, Binômes, Produits & prix, Prix par type de boutique,
+  Objectifs par binôme, Objectifs individuels, Seuils des alertes, Durée
+  de session. Les boutons d'action ("Ajouter", "Nouveau") restent
+  accessibles même section repliée.
+- Nettoyage au passage de quelques classes de couleur dupliquées
+  (cosmétique, sans impact fonctionnel) laissées par un script de
+  conversion en mode sombre précédent.
+
+Aucun changement de schéma — pas de migration nécessaire.
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont
