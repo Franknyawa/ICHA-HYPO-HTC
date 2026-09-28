@@ -4,6 +4,11 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PdfExportButton } from "@/components/admin/PdfExportButton";
 import { Banknote, ShoppingCart, Droplet, Sparkles } from "lucide-react";
 
+// Données live (base de données) : jamais pré-généré statiquement au build
+// (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
+// une page admin ne doit de toute façon jamais servir de données figées).
+export const dynamic = "force-dynamic";
+
 export default async function RapportsPage({
   searchParams,
 }: {

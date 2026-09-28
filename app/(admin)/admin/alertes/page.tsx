@@ -1,6 +1,6 @@
 import { listAlertes } from "@/lib/queries/alertes";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
-import { ResoudreButton, GenererAlertesButton } from "@/components/admin/AlerteActions";
+import { ResoudreButton, VerifierAlerteButtons, GenererAlertesButton } from "@/components/admin/AlerteActions";
 import {
   Package,
   Clock,
@@ -11,6 +11,11 @@ import {
   TrendingDown,
   BellOff,
 } from "lucide-react";
+
+// Données live (base de données) : jamais pré-généré statiquement au build
+// (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
+// une page admin ne doit de toute façon jamais servir de données figées).
+export const dynamic = "force-dynamic";
 
 const CONFIG_TYPE: Record<string, { label: string; icon: React.ElementType; couleur: string; bg: string }> = {
   STOCK_FAIBLE: { label: "Stock faible", icon: Package, couleur: "#b45309", bg: "#fffbeb" },
@@ -94,19 +99,37 @@ export default async function AlertesPage({
                       <Icon size={16} />
                     </span>
                     <div>
-                      <p
-                        className="text-[10px] font-bold uppercase tracking-wide"
-                        style={{ color: config.couleur }}
-                      >
-                        {config.label}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p
+                          className="text-[10px] font-bold uppercase tracking-wide"
+                          style={{ color: config.couleur }}
+                        >
+                          {config.label}
+                        </p>
+                        {a.statut === "EN_ATTENTE_VERIFICATION" && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-800">
+                            À vérifier
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-slate-700 dark:text-slate-300">{a.message}</p>
                       <p className="text-xs text-slate-400 dark:text-slate-500">
                         {new Date(a.createdAt).toLocaleDateString("fr-FR")}
                       </p>
+                      {a.statut === "EN_ATTENTE_VERIFICATION" && a.declareePar && (
+                        <p className="mt-0.5 text-xs text-amber-700">
+                          Déclaré réglé par {a.declareePar.prenom} {a.declareePar.nom}
+                          {a.declareeAt ? ` le ${new Date(a.declareeAt).toLocaleDateString("fr-FR")}` : ""}
+                          {a.commentaireDeclaration ? ` — "${a.commentaireDeclaration}"` : ""}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <ResoudreButton id={a.id} />
+                  {a.statut === "EN_ATTENTE_VERIFICATION" ? (
+                    <VerifierAlerteButtons id={a.id} />
+                  ) : (
+                    <ResoudreButton id={a.id} />
+                  )}
                 </div>
               );
             })}

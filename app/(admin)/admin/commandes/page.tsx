@@ -5,6 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CommandeStatusActions } from "@/components/admin/CommandeStatusActions";
 
+// Données live (base de données) : jamais pré-généré statiquement au build
+// (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
+// une page admin ne doit de toute façon jamais servir de données figées).
+export const dynamic = "force-dynamic";
+
 function waUrl(tel: string | null) {
   if (!tel) return null;
   return `https://wa.me/${tel.replace(/[^\d]/g, "")}`;

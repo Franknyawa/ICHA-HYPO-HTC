@@ -34,10 +34,11 @@ export async function aggregateVentesDuJour(date: Date) {
   >();
 
   for (const v of ventes) {
-    const villeId = v.pointVente.villeId;
-    // Substitut "" pour "aucun binôme" — la clé composite Prisma générée
-    // pour la contrainte unique n'accepte pas `null` dans son type
-    // TypeScript, même si la colonne elle-même est nullable en base.
+    // Substitut "" pour "aucune ville" / "aucun binôme" — la clé composite
+    // Prisma générée pour la contrainte unique n'accepte pas `null` dans
+    // son type TypeScript, même si les colonnes elles-mêmes sont nullables
+    // en base.
+    const villeId = v.pointVente.villeId ?? "";
     const binomeId = v.commercial.binomeId ?? "";
     const cle = `${villeId}|${v.commercialId}|${binomeId}`;
     const existant = groupes.get(cle) ?? {

@@ -12,7 +12,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "tsx prisma/seed.ts",
-    "prisma:cleanup-types": "tsx prisma/cleanup-old-types.ts"
+    "prisma:cleanup-types": "tsx prisma/cleanup-old-types.ts",
+    "reset:launch": "tsx prisma/reset-for-launch.ts",
+    "create:first-admin": "tsx prisma/create-first-admin.ts"
   },
   "dependencies": {
     "next": "^14.2.0",
@@ -30,8 +32,6 @@
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",
     "recharts": "^2.12.7",
-    "leaflet": "^1.9.4",
-    "react-leaflet": "^4.2.1",
     "leaflet": "^1.9.4",
     "react-leaflet": "^4.2.1",
     "dotenv": "^16.4.5"

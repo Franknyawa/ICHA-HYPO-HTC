@@ -12,7 +12,7 @@ const updateUserSchema = z.object({
   role: z.enum(["ADMIN", "COMMERCIAL"]).optional(),
   binomeId: z.string().optional().nullable(),
   actif: z.boolean().optional(),
-  avatarUrl: z.string().optional().nullable(),
+  avatarUrl: z.string().url().optional().nullable(),
 });
 
 export async function PATCH(

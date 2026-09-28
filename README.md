@@ -967,6 +967,168 @@ existait déjà).
 
 Aucun changement de schéma — pas de migration nécessaire.
 
+### ✅ Correctif page Stock + audit sécurité/production + scripts de reset avant lancement
+
+**1. Pages admin qui "ne s'affichaient pas tout le temps" (Stock, et par
+extension Utilisateurs / Paramètres)**
+- Cause racine : ces pages sont des composants client qui chargent leurs
+  données via `fetch(...).then(r => r.json())`, **sans jamais gérer les
+  échecs** (session expirée → 401, erreur réseau, timeout Vercel/pooler
+  Supabase renvoyant une réponse non-JSON). Le résultat : la page restait
+  silencieusement vide, ou — cas de "Prix par type de boutique" dans
+  Paramètres — bloquée indéfiniment sur "Chargement..." (le `finally`
+  qui coupe le spinner était absent de cette branche précise).
+- Correctif : nouveau petit utilitaire `lib/client/apiFetch.ts`, utilisé
+  maintenant par Stock, Utilisateurs et les 8 sections de Paramètres :
+  - **401 (session expirée)** → redirection automatique vers `/login`
+    au lieu d'un écran vide sans explication.
+  - **Autre erreur** (réseau, JSON invalide, 4xx/5xx) → message d'erreur
+    affiché avec un bouton "Réessayer" (page Stock et Utilisateurs), ou au
+    minimum trace dans la console navigateur plutôt qu'un échec muet
+    (sections de Paramètres).
+  - Le bug du spinner bloqué indéfiniment sur "Prix par type de boutique"
+    (absence de `.finally`) est corrigé.
+- Corrigé aussi au passage : le formulaire "Seuil d'alerte" de la page
+  Stock n'informait pas l'utilisateur en cas d'échec d'enregistrement
+  (fermait la modale silencieusement) — affiche maintenant une alerte.
+
+**2. Audit sécurité / prêt-pour-la-production**
+- **Build cassé en production** — `lib/jobs/aggregate.ts` : `villeId`
+  pouvait être `null` et cassait le build Vercel (`Type 'string | null'
+  is not assignable to type 'string'`). Même correctif que celui déjà
+  appliqué à `binomeId`/`produitId` (substitut `""`).
+- **Faille réelle corrigée** — `app/api/cron/aggregate/route.ts` : si
+  `CRON_SECRET` n'était pas défini en production, la comparaison devenait
+  `authHeader !== "Bearer undefined"`, contournable en envoyant
+  littéralement `Authorization: Bearer undefined`. Le job refuse
+  maintenant systématiquement si `CRON_SECRET` est absent.
+- **Identifiants de démo faibles et documentés publiquement** —
+  `prisma/seed.ts` créait un compte `admin` / `changeme123` (et
+  `commercial1/2/3` avec le même mot de passe). Si ce seed avait jamais
+  tourné contre la base de production, ces identifiants devenus
+  "publics" (présents dans ce dépôt) auraient donné un accès admin
+  complet. Le script refuse maintenant de créer ces comptes sans
+  `SEED_DEMO_USERS=1` explicite, et jamais si `NODE_ENV=production`. **Le
+  script de reset ci-dessous supprime ces comptes s'ils existent déjà.**
+- **Upload photo** — aucune limite de taille ni de type MIME sur les
+  photos envoyées (`app/api/upload/route.ts`) : ajout d'une limite
+  (~8 Mo) et d'un allowlist strict (`image/png`, `image/jpeg`) — évite
+  un abus de stockage et empêche l'upload d'un type de fichier non prévu.
+- **En-têtes de sécurité HTTP** — absents jusqu'ici. Ajoutés dans
+  `next.config.js` : `X-Frame-Options: DENY`, `X-Content-Type-Options:
+  nosniff`, `Referrer-Policy`, `Permissions-Policy` (géolocalisation
+  limitée à l'app elle-même), `Strict-Transport-Security`. Pas de CSP
+  stricte pour l'instant (risque de casser le script anti-flash du mode
+  sombre et les tuiles OpenStreetMap sans tests approfondis) — à
+  envisager plus tard si besoin.
+- **Durcissement mineur** — validation `.url()` ajoutée sur `avatarUrl`
+  (au lieu d'une chaîne libre non vérifiée) ; nettoyage de dépendances
+  dupliquées dans `package.json`.
+- **Vérifié sans problème trouvé** : toutes les routes API sensibles sont
+  protégées par `requireAuth`/`requireAdmin` ; mots de passe hashés en
+  bcrypt ; sessions JWT + révocation côté serveur (table `Session`) ;
+  cookie `httpOnly`/`secure`/`sameSite=lax` ; limitation des tentatives
+  de connexion (5 échecs / 15 min) ; validation Zod sur (quasi) toutes
+  les entrées ; aucune requête SQL brute (`$queryRaw`/`$executeRaw`) —
+  tout passe par Prisma, donc pas d'injection SQL ; aucun secret exposé
+  côté client (`NEXT_PUBLIC_*`) ; `.env` correctement ignoré par Git ;
+  pagination bornée à 100 lignes max (pas de DoS par requête géante) ;
+  aucun code de contournement/`backdoor` trouvé.
+- **Point à surveiller, non bloquant** : un commercial authentifié peut
+  aujourd'hui modifier le statut de n'importe quel prospect en connaissant
+  son id (`app/api/prospects/[id]/route.ts` n'est pas restreint au
+  créateur/binôme) — risque faible (ids UUID non énumérables, petite
+  équipe de confiance) mais à garder en tête si l'équipe grandit.
+
+**3. Scripts pour vider l'application avant les vraies données**
+- `prisma/reset-for-launch.ts` (`npm run reset:launch`) — supprime
+  **toute** l'activité de test (visites, ventes, commandes, points de
+  vente, clients, prospects, photos, alertes, stock history, sessions,
+  logs de sync, données agrégées) et **tous les comptes utilisateurs** (y
+  compris l'admin de démo). **Conserve** le référentiel réel : villes,
+  quartiers, types de boutique, produits HYPO/HTC et leurs prix,
+  paramètres système. Remet le stock de chaque produit à 0 plutôt que de
+  supprimer la ligne (pour que HYPO/HTC restent visibles, prêts pour le
+  premier réassort réel). Protégé par une confirmation explicite :
+  `CONFIRM_RESET=OUI-JE-VEUX-TOUT-EFFACER npm run reset:launch`. Affiche
+  d'abord un état des lieux (nombre de lignes par table) avant de
+  supprimer quoi que ce soit.
+- `prisma/create-first-admin.ts` (`npm run create:first-admin`) — comme
+  le reset supprime tous les comptes (y compris l'admin), ce script crée
+  le tout premier admin réel (identifiant/mot de passe/nom/prénom
+  demandés de façon interactive, ou via variables d'environnement) ; les
+  comptes suivants se créent ensuite normalement depuis Paramètres >
+  Utilisateurs. Refuse de s'exécuter si un admin existe déjà.
+
+⚠️ Ces deux scripts sont fournis prêts à l'emploi mais n'ont pas pu être
+exécutés depuis cet environnement (pas d'accès à la base de production
+Supabase). À lancer par Victor, en local, avec le `DATABASE_URL` de
+production dans `.env`, dans cet ordre : `reset:launch` puis
+`create:first-admin`.
+
+Aucun changement de schéma — pas de migration nécessaire.
+
+### ✅ Vérification admin des crédits déclarés réglés + fiche client détaillée
+
+**1. Alertes crédit — déclaration terrain + vérification admin**
+- Nouveau cycle de vie pour les alertes (`Alerte.statut`, remplace l'ancien
+  booléen `resolue`) : `ACTIVE` → `EN_ATTENTE_VERIFICATION` → `RESOLUE`.
+  Le palier intermédiaire n'est utilisé que par `CREDIT_RETARD` pour
+  l'instant.
+- **Côté commercial** (dashboard) : chaque crédit en cours affiche
+  maintenant un bouton **"Marquer réglé"**. Un clic déclare le crédit
+  réglé sur le terrain — **aucun paiement n'est enregistré
+  automatiquement** (choix assumé : c'est une déclaration administrative,
+  pas une saisie de paiement détaillée). Le bouton devient "En attente de
+  vérification" tant que l'admin n'a pas tranché.
+- **Côté admin** (`/admin/alertes`) : une alerte en attente affiche qui a
+  déclaré, quand, et un commentaire éventuel, avec deux boutons
+  **Confirmer** (le crédit sort définitivement du suivi commercial) ou
+  **Rejeter** (la déclaration est écartée, l'alerte redevient active,
+  le crédit reste dû).
+- Un admin garde la possibilité de résoudre n'importe quelle alerte
+  directement (bouton "Résolue" existant), sans attendre de déclaration
+  du commercial.
+
+**2. Page Clients refaite — recherche, filtres, fiche détaillée**
+- L'ancien classement "top clients par ville" (lecture seule, sans
+  recherche) est remplacé par une liste paginée avec recherche
+  (nom/téléphone) et filtre par statut (actif/inactif) — l'API
+  `/api/clients` le supportait déjà, seule l'interface manquait.
+- Cliquer sur un client ouvre une fiche détaillée : coordonnées, point de
+  vente (ville/quartier/type), **crédit en cours total**, historique des
+  ventes (avec reste dû par vente) et des commandes.
+- Édition du nom/téléphone et bascule actif/inactif directement depuis la
+  fiche (admin uniquement).
+
+**Migration SQL à exécuter manuellement (Supabase → SQL Editor), avant de
+redéployer le code qui l'utilise :**
+
+```sql
+-- Nouveau statut d'alerte (remplace le booléen resolue)
+DO $$ BEGIN
+  CREATE TYPE "StatutAlerte" AS ENUM ('ACTIVE', 'EN_ATTENTE_VERIFICATION', 'RESOLUE');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+ALTER TABLE alertes ADD COLUMN IF NOT EXISTS statut "StatutAlerte" NOT NULL DEFAULT 'ACTIVE';
+UPDATE alertes SET statut = 'RESOLUE' WHERE resolue = true;
+ALTER TABLE alertes DROP COLUMN IF EXISTS resolue;
+
+ALTER TABLE alertes ADD COLUMN IF NOT EXISTS declaree_par_id TEXT REFERENCES users(id);
+ALTER TABLE alertes ADD COLUMN IF NOT EXISTS declaree_at TIMESTAMP(3);
+ALTER TABLE alertes ADD COLUMN IF NOT EXISTS commentaire_declaration TEXT;
+ALTER TABLE alertes ADD COLUMN IF NOT EXISTS verifiee_par_id TEXT REFERENCES users(id);
+ALTER TABLE alertes ADD COLUMN IF NOT EXISTS verifiee_at TIMESTAMP(3);
+
+DROP INDEX IF EXISTS alertes_type_resolue_idx;
+CREATE INDEX IF NOT EXISTS alertes_type_statut_idx ON alertes(type, statut);
+```
+
+Aucun changement de schéma côté Client/PointVente — la fiche détaillée et
+la recherche s'appuient sur les colonnes déjà existantes.
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont

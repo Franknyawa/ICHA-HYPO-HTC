@@ -6,7 +6,7 @@ import { handleApiError } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
 
-const schema = z.object({ avatarUrl: z.string() });
+const schema = z.object({ avatarUrl: z.string().url("URL invalide.") });
 
 export async function PATCH(req: NextRequest) {
   try {

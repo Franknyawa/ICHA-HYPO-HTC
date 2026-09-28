@@ -11,6 +11,11 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+// Données live (base de données) : jamais pré-généré statiquement au build
+// (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
+// une page admin ne doit de toute façon jamais servir de données figées).
+export const dynamic = "force-dynamic";
+
 const CONFIG_TYPE: Record<string, { label: string; icon: React.ElementType; couleur: string }> = {
   recensement: { label: "Nouveau recensement", icon: ClipboardList, couleur: "#1e40af" },
   rotation: { label: "Rotation et achalandage", icon: RefreshCw, couleur: "#4338ca" },

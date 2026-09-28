@@ -13,8 +13,12 @@ export const maxDuration = 60; // agrégation potentiellement longue à grand vo
  * fournissant le même secret.
  */
 export async function GET(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Si CRON_SECRET n'est pas configuré, on refuse systématiquement plutôt
+  // que de comparer à "Bearer undefined" (qu'un attaquant pourrait envoyer
+  // littéralement pour contourner la protection).
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 

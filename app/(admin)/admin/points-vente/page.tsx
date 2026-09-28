@@ -4,6 +4,11 @@ import { listPointsVente } from "@/lib/queries/points-vente";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 
+// Données live (base de données) : jamais pré-généré statiquement au build
+// (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
+// une page admin ne doit de toute façon jamais servir de données figées).
+export const dynamic = "force-dynamic";
+
 function mapsUrl(lat: unknown, lng: unknown) {
   if (lat == null || lng == null) return null;
   return `https://www.google.com/maps?q=${lat},${lng}`;

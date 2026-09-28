@@ -143,7 +143,23 @@ async function main() {
     });
   }
 
-  // Un admin de démo
+  // Comptes de démo (admin/changeme123 + commercial1/2/3) — UNIQUEMENT en
+  // développement local, et seulement si explicitement demandé. Ce garde-fou
+  // évite qu'un `npm run prisma:seed` lancé par erreur contre la base de
+  // production (ex: mauvais DATABASE_URL actif dans le terminal) ne
+  // recrée des comptes à mot de passe faible et connu de tous.
+  //
+  // Pour créer le premier admin réel en production, utiliser
+  // `npm run create:first-admin` à la place (voir prisma/create-first-admin.ts).
+  if (process.env.NODE_ENV === "production" || process.env.SEED_DEMO_USERS !== "1") {
+    console.log(
+      "Comptes de démo non créés (SEED_DEMO_USERS=1 requis, jamais en production). " +
+        "Référentiel de base (villes/types/produits) seedé normalement."
+    );
+    console.log("Seed terminé.");
+    return;
+  }
+
   const passwordHash = await bcrypt.hash("changeme123", 10);
   await prisma.user.upsert({
     where: { username: "admin" },
@@ -171,7 +187,7 @@ async function main() {
     });
   }
 
-  console.log("Seed terminé.");
+  console.log("Seed terminé (référentiel + comptes de démo).");
 }
 
 main()

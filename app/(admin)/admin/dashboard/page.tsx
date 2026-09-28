@@ -21,6 +21,11 @@ import {
   NotebookPen,
 } from "lucide-react";
 
+// Données live (base de données) : jamais pré-généré statiquement au build
+// (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
+// une page admin ne doit de toute façon jamais servir de données figées).
+export const dynamic = "force-dynamic";
+
 function formatFcfa(n: number) {
   return new Intl.NumberFormat("fr-FR").format(n) + " FCFA";
 }

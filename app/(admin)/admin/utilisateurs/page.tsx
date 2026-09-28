@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { compressImage } from "@/lib/utils/image";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { apiFetch, ApiError } from "@/lib/client/apiFetch";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 type UserRow = {
   id: string;
@@ -112,6 +114,7 @@ export default function UtilisateursPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [binomes, setBinomes] = useState<Binome[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [resetTarget, setResetTarget] = useState<UserRow | null>(null);
   const [sessionsTarget, setSessionsTarget] = useState<UserRow | null>(null);
@@ -147,9 +150,13 @@ export default function UtilisateursPage() {
   const [saving, setSaving] = useState(false);
 
   function loadUsers() {
-    fetch("/api/users")
-      .then((r) => r.json())
+    setLoading(true);
+    setLoadError(null);
+    apiFetch<{ data: UserRow[] }>("/api/users")
       .then((d) => setUsers(d.data ?? []))
+      .catch((e: ApiError) => {
+        if (e.status !== 401) setLoadError(e.message);
+      })
       .finally(() => setLoading(false));
   }
 
@@ -359,6 +366,18 @@ export default function UtilisateursPage() {
 
         {loading ? (
           <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Chargement...</p>
+        ) : loadError ? (
+          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white dark:bg-slate-900 p-8 text-center shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+            <AlertTriangle size={22} className="text-alert" />
+            <p className="text-sm text-slate-600 dark:text-slate-300">{loadError}</p>
+            <button
+              onClick={loadUsers}
+              className="flex items-center gap-1.5 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white"
+            >
+              <RefreshCw size={14} />
+              Réessayer
+            </button>
+          </div>
         ) : (
           <div className="space-y-6">
             {/* Administrateurs */}

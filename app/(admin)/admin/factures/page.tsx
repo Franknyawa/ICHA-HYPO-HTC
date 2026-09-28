@@ -5,6 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { FactureButton } from "@/components/admin/FactureButton";
 
+// Données live (base de données) : jamais pré-généré statiquement au build
+// (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
+// une page admin ne doit de toute façon jamais servir de données figées).
+export const dynamic = "force-dynamic";
+
 function buildQuery(params: Record<string, string | undefined>) {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v) sp.set(k, v);

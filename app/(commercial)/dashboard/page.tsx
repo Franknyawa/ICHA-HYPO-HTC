@@ -9,6 +9,7 @@ import { getCreditsCommercial } from "@/lib/queries/credits";
 import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { LogoutButton } from "@/components/LogoutButton";
 import { LocationHeartbeat } from "@/components/commercial/LocationHeartbeat";
+import { DeclarerCreditRegleButton } from "@/components/commercial/DeclarerCreditRegleButton";
 import { StatBar } from "@/components/StatBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
@@ -22,6 +23,11 @@ import {
   AlertTriangle,
   CreditCard,
 } from "lucide-react";
+
+// Données live (base de données) : jamais pré-généré statiquement au build
+// (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
+// une page admin ne doit de toute façon jamais servir de données figées).
+export const dynamic = "force-dynamic";
 
 export default async function CommercialDashboardPage() {
   const session = await getSession();
@@ -132,6 +138,10 @@ export default async function CommercialDashboardPage() {
                       <span className="text-xs text-slate-400 dark:text-slate-500">
                         Vendu le {new Date(c.dateVente).toLocaleDateString("fr-FR")}
                       </span>
+                      <DeclarerCreditRegleButton
+                        venteId={c.venteId}
+                        dejaDeclare={c.statutDeclaration === "EN_ATTENTE_VERIFICATION"}
+                      />
                     </div>
                   ))}
                   {credits.detail.length > 4 && (

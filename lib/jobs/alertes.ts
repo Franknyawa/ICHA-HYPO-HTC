@@ -39,6 +39,9 @@ export { CLES_SEUILS };
  * Crée une alerte si aucune alerte NON RÉSOLUE identique (même type + même
  * entité) n'existe déjà — évite d'empiler des doublons à chaque exécution
  * du job pour un problème qui persiste simplement d'un jour sur l'autre.
+ * "Non résolue" inclut EN_ATTENTE_VERIFICATION : si un commercial a déjà
+ * déclaré un crédit réglé et que l'admin n'a pas encore tranché, on ne
+ * recrée pas une alerte concurrente pour la même vente.
  */
 async function creerAlerteSiAbsente(params: {
   type: TypeAlerte;
@@ -51,7 +54,7 @@ async function creerAlerteSiAbsente(params: {
       type: params.type,
       entiteType: params.entiteType,
       entiteId: params.entiteId,
-      resolue: false,
+      statut: { not: "RESOLUE" },
     },
   });
   if (existante) return;

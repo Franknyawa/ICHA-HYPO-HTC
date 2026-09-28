@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { apiFetch, ApiError } from "@/lib/client/apiFetch";
 import {
   Package,
   AlertTriangle,
@@ -9,6 +10,7 @@ import {
   Minus,
   History,
   Settings2,
+  RefreshCw,
 } from "lucide-react";
 
 type StockItem = {
@@ -40,6 +42,7 @@ const LABEL_TYPE_MOUVEMENT: Record<string, string> = {
 export default function StockPage() {
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [ajusterTarget, setAjusterTarget] = useState<StockItem | null>(null);
   const [ajusterType, setAjusterType] = useState<"ENTREE" | "SORTIE">("ENTREE");
@@ -55,12 +58,16 @@ export default function StockPage() {
   const [historiqueTarget, setHistoriqueTarget] = useState<StockItem | null>(null);
   const [historique, setHistorique] = useState<Mouvement[]>([]);
   const [historiqueLoading, setHistoriqueLoading] = useState(false);
+  const [historiqueError, setHistoriqueError] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
-    fetch("/api/stock")
-      .then((r) => r.json())
+    setLoadError(null);
+    apiFetch<{ data: StockItem[] }>("/api/stock")
       .then((d) => setStocks(d.data ?? []))
+      .catch((e: ApiError) => {
+        if (e.status !== 401) setLoadError(e.message);
+      })
       .finally(() => setLoading(false));
   }
 
@@ -106,22 +113,30 @@ export default function StockPage() {
     e.preventDefault();
     if (!seuilTarget) return;
     setSaving(true);
-    await fetch(`/api/stock/${seuilTarget.produitId}/seuil`, {
+    const res = await fetch(`/api/stock/${seuilTarget.produitId}/seuil`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ seuilAlerte: seuilValeur }),
     });
-    setSeuilTarget(null);
     setSaving(false);
-    load();
+    if (res.ok) {
+      setSeuilTarget(null);
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      alert(d.error ?? "Échec de l'enregistrement du seuil.");
+    }
   }
 
   function ouvrirHistorique(item: StockItem) {
     setHistoriqueTarget(item);
     setHistoriqueLoading(true);
-    fetch(`/api/stock/${item.produitId}/mouvements`)
-      .then((r) => r.json())
+    setHistoriqueError(null);
+    apiFetch<{ data: Mouvement[] }>(`/api/stock/${item.produitId}/mouvements`)
       .then((d) => setHistorique(d.data ?? []))
+      .catch((e: ApiError) => {
+        if (e.status !== 401) setHistoriqueError(e.message);
+      })
       .finally(() => setHistoriqueLoading(false));
   }
 
@@ -132,6 +147,20 @@ export default function StockPage() {
       <div className="p-4 md:p-6">
         {loading ? (
           <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+        ) : loadError ? (
+          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white dark:bg-slate-900 p-8 text-center shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+            <AlertTriangle size={22} className="text-alert" />
+            <p className="text-sm text-slate-600 dark:text-slate-300">{loadError}</p>
+            <button
+              onClick={load}
+              className="flex items-center gap-1.5 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white"
+            >
+              <RefreshCw size={14} />
+              Réessayer
+            </button>
+          </div>
+        ) : stocks.length === 0 ? (
+          <p className="text-sm text-slate-400 dark:text-slate-500">Aucun produit en stock.</p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {stocks.map((s) => (
@@ -326,6 +355,8 @@ export default function StockPage() {
             </h3>
             {historiqueLoading ? (
               <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+            ) : historiqueError ? (
+              <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{historiqueError}</p>
             ) : historique.length === 0 ? (
               <p className="text-sm text-slate-400 dark:text-slate-500">Aucun mouvement enregistré.</p>
             ) : (

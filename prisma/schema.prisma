@@ -159,6 +159,8 @@ model User {
   notifications    Notification[]
   loginAttempts    LoginAttempt[]
   sessions         Session[]
+  alertesDeclarees Alerte[]         @relation("AlerteDeclareePar")
+  alertesVerifiees Alerte[]         @relation("AlerteVerifieePar")
 
   @@index([binomeId])
   @@index([role])
@@ -540,16 +542,44 @@ enum TypeAlerte {
   OBJECTIF_NON_ATTEINT
 }
 
+/// Cycle de vie d'une alerte. Pour la plupart des types, ACTIVE -> RESOLUE
+/// directement (un admin clique "Résolue"). Pour CREDIT_RETARD
+/// spécifiquement, un palier intermédiaire existe : le commercial déclare
+/// le crédit réglé sur le terrain (ACTIVE -> EN_ATTENTE_VERIFICATION), puis
+/// un admin confirme (-> RESOLUE) ou rejette (-> ACTIVE, la déclaration est
+/// écartée) — aucun paiement réel n'est enregistré automatiquement, c'est
+/// une confirmation administrative.
+enum StatutAlerte {
+  ACTIVE
+  EN_ATTENTE_VERIFICATION
+  RESOLUE
+}
+
 model Alerte {
-  id         String     @id @default(uuid())
+  id         String       @id @default(uuid())
   type       TypeAlerte
   message    String
-  entiteType String?    @map("entite_type")
-  entiteId   String?    @map("entite_id")
-  resolue    Boolean    @default(false)
+  entiteType String?      @map("entite_type")
+  entiteId   String?      @map("entite_id")
+  statut     StatutAlerte @default(ACTIVE)
+
+  // Déclaration par le commercial ("réglé sur le terrain") — CREDIT_RETARD
+  // uniquement pour l'instant, mais générique au cas où d'autres types
+  // auraient un jour besoin du même palier de vérification.
+  declareeParId          String?   @map("declaree_par_id")
+  declareePar            User?     @relation("AlerteDeclareePar", fields: [declareeParId], references: [id])
+  declareeAt             DateTime? @map("declaree_at")
+  commentaireDeclaration String?   @map("commentaire_declaration")
+
+  // Décision admin (confirmation ou rejet) — verifieeAt sert aussi de date
+  // de résolution pour les alertes résolues directement sans déclaration.
+  verifieeParId String?   @map("verifiee_par_id")
+  verifieePar   User?     @relation("AlerteVerifieePar", fields: [verifieeParId], references: [id])
+  verifieeAt    DateTime? @map("verifiee_at")
+
   createdAt  DateTime   @default(now()) @map("created_at")
 
-  @@index([type, resolue])
+  @@index([type, statut])
   @@index([createdAt])
   @@map("alertes")
 }

@@ -16,6 +16,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { apiFetch, ApiError } from "@/lib/client/apiFetch";
 
 type Entity = { id: string; nom: string; actif: boolean; ordre?: number };
 
@@ -51,9 +52,11 @@ function SimpleEntityManager({
 
   function load() {
     setLoading(true);
-    fetch(apiBase)
-      .then((r) => r.json())
+    apiFetch<{ data: Entity[] }>(apiBase)
       .then((d) => setItems(d.data ?? []))
+      .catch((e: ApiError) => {
+        if (e.status !== 401) console.error(e);
+      })
       .finally(() => setLoading(false));
   }
 
@@ -298,9 +301,11 @@ function ProduitsManager() {
 
   function load() {
     setLoading(true);
-    fetch("/api/parametres/produits")
-      .then((r) => r.json())
+    apiFetch<{ data: Produit[] }>("/api/parametres/produits")
       .then((d) => setProduits(d.data ?? []))
+      .catch((e: ApiError) => {
+        if (e.status !== 401) console.error(e);
+      })
       .finally(() => setLoading(false));
   }
 
@@ -670,9 +675,11 @@ function ObjectifsManager() {
 
   function load() {
     setLoading(true);
-    fetch("/api/parametres/objectifs")
-      .then((r) => r.json())
+    apiFetch<{ data: ObjectifBinome[] }>("/api/parametres/objectifs")
       .then((d) => setData(d.data ?? []))
+      .catch((e: ApiError) => {
+        if (e.status !== 401) console.error(e);
+      })
       .finally(() => setLoading(false));
   }
 
@@ -825,12 +832,17 @@ function QuartiersManager() {
   function load() {
     setLoading(true);
     Promise.all([
-      fetch("/api/parametres/villes").then((r) => r.json()),
-      fetch(`/api/parametres/quartiers${villeFiltre ? `?villeId=${villeFiltre}` : ""}`).then((r) => r.json()),
+      apiFetch<{ data: Entity[] }>("/api/parametres/villes"),
+      apiFetch<{ data: Quartier[] }>(
+        `/api/parametres/quartiers${villeFiltre ? `?villeId=${villeFiltre}` : ""}`
+      ),
     ])
       .then(([v, q]) => {
         setVilles(v.data ?? []);
         setQuartiers(q.data ?? []);
+      })
+      .catch((e: ApiError) => {
+        if (e.status !== 401) console.error(e);
       })
       .finally(() => setLoading(false));
   }
@@ -1147,9 +1159,11 @@ function ObjectifsIndividuelsManager() {
 
   function load() {
     setLoading(true);
-    fetch("/api/parametres/objectifs-individuels")
-      .then((r) => r.json())
+    apiFetch<{ data: ObjectifIndividuel[] }>("/api/parametres/objectifs-individuels")
       .then((d) => setData(d.data ?? []))
+      .catch((e: ApiError) => {
+        if (e.status !== 401) console.error(e);
+      })
       .finally(() => setLoading(false));
   }
 
@@ -1238,9 +1252,11 @@ function SeuilsAlertesManager() {
 
   function load() {
     setLoading(true);
-    fetch("/api/parametres/alertes-seuils")
-      .then((r) => r.json())
+    apiFetch<Record<string, number>>("/api/parametres/alertes-seuils")
       .then((d) => setSeuils(d))
+      .catch((e: ApiError) => {
+        if (e.status !== 401) console.error(e);
+      })
       .finally(() => setLoading(false));
   }
 
@@ -1303,9 +1319,11 @@ function SessionDureeManager() {
   const [ouvert, setOuvert] = useState(true);
 
   useEffect(() => {
-    fetch("/api/parametres/session-duree")
-      .then((r) => r.json())
+    apiFetch<{ minutes?: number }>("/api/parametres/session-duree")
       .then((d) => setMinutes(d.minutes ?? 720))
+      .catch((e: ApiError) => {
+        if (e.status !== 401) console.error(e);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -1558,20 +1576,26 @@ function PrixParTypeManager() {
   function load() {
     setLoading(true);
     Promise.all([
-      fetch("/api/parametres/produits").then((r) => r.json()),
-      fetch("/api/parametres/types").then((r) => r.json()),
-      fetch("/api/parametres/prix-par-type").then((r) => r.json()),
-    ]).then(([p, t, o]) => {
-      setProduits(p.data ?? []);
-      setTypes((t.data ?? []).filter((x: any) => x.actif));
-      setOverrides(o.data ?? []);
-      const bases: Record<string, any> = {};
-      for (const prod of p.data ?? []) {
-        bases[prod.id] = { prixSachet: prod.prixSachet, prixFilet: prod.prixFilet, prixCarton: prod.prixCarton };
-      }
-      setBasesParProduit(bases);
-      setLoading(false);
-    });
+      apiFetch<{
+        data: (ProduitBase & { prixSachet: number; prixCarton: number })[];
+      }>("/api/parametres/produits"),
+      apiFetch<{ data: (TypeBase & { actif: boolean })[] }>("/api/parametres/types"),
+      apiFetch<{ data: OverridePrix[] }>("/api/parametres/prix-par-type"),
+    ])
+      .then(([p, t, o]) => {
+        setProduits(p.data ?? []);
+        setTypes((t.data ?? []).filter((x) => x.actif));
+        setOverrides(o.data ?? []);
+        const bases: Record<string, any> = {};
+        for (const prod of p.data ?? []) {
+          bases[prod.id] = { prixSachet: prod.prixSachet, prixFilet: prod.prixFilet, prixCarton: prod.prixCarton };
+        }
+        setBasesParProduit(bases);
+      })
+      .catch((e: ApiError) => {
+        if (e.status !== 401) console.error(e);
+      })
+      .finally(() => setLoading(false));
   }
 
   useEffect(load, []);
