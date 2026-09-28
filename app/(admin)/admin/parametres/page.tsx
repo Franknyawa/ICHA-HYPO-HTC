@@ -1,0 +1,1661 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  MapPin,
+  Store,
+  Users2,
+  Package,
+  Target,
+  Plus,
+  Pencil,
+  Clock,
+  Trash2,
+  Merge,
+  BellRing,
+  ChevronDown,
+} from "lucide-react";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+
+type Entity = { id: string; nom: string; actif: boolean; ordre?: number };
+
+// --- Gestionnaire générique (Villes / Types / Binômes) -----------------
+// Les trois partagent exactement la même forme {id, nom, actif} et le
+// même cycle CRUD — un seul composant paramétré par son endpoint API.
+// `avecOrdre` active en plus un champ numérique d'ordre d'affichage
+// (utilisé pour les Types de boutique).
+
+function SimpleEntityManager({
+  apiBase,
+  labelSingulier,
+  icon: Icon,
+  color,
+  avecOrdre = false,
+}: {
+  apiBase: string;
+  labelSingulier: string;
+  icon: React.ElementType;
+  color: string;
+  avecOrdre?: boolean;
+}) {
+  const [items, setItems] = useState<Entity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newNom, setNewNom] = useState("");
+  const [editTarget, setEditTarget] = useState<Entity | null>(null);
+  const [editNom, setEditNom] = useState("");
+  const [editOrdre, setEditOrdre] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [ouvert, setOuvert] = useState(true);
+
+  function load() {
+    setLoading(true);
+    fetch(apiBase)
+      .then((r) => r.json())
+      .then((d) => setItems(d.data ?? []))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, [apiBase]);
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    const res = await fetch(apiBase, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nom: newNom }),
+    });
+    if (res.ok) {
+      setShowCreate(false);
+      setNewNom("");
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Échec de la création.");
+    }
+    setSaving(false);
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editTarget) return;
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`${apiBase}/${editTarget.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nom: editNom, ...(avecOrdre ? { ordre: editOrdre } : {}) }),
+    });
+    if (res.ok) {
+      setEditTarget(null);
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Échec de la mise à jour.");
+    }
+    setSaving(false);
+  }
+
+  async function toggleActif(item: Entity) {
+    setError(null);
+    const res = await fetch(`${apiBase}/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actif: !item.actif }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? `Échec de la mise à jour (${res.status}).`);
+      return;
+    }
+    load();
+  }
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+      <div className="mb-3 flex items-center justify-between">
+        <button
+          onClick={() => setOuvert((v) => !v)}
+          className="flex flex-1 items-center gap-2 text-left"
+        >
+          <span
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-white"
+            style={{ backgroundColor: color }}
+          >
+            <Icon size={16} />
+          </span>
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">{labelSingulier}s</h2>
+          <ChevronDown
+            size={16}
+            className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`}
+          />
+        </button>
+        <button
+          onClick={() => {
+            setShowCreate(true);
+            setError(null);
+          }}
+          className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300"
+        >
+          <Plus size={14} />
+          Ajouter
+        </button>
+      </div>
+
+      {ouvert && (
+        <>
+          {error && (
+            <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>
+          )}
+
+          {loading ? (
+            <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+          ) : (
+            <div className="space-y-1.5">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2"
+            >
+              <span className={`text-sm font-medium ${item.actif ? "text-slate-700 dark:text-slate-300" : "text-slate-400 dark:text-slate-500 line-through"}`}>
+                {avecOrdre && item.ordre ? `${item.ordre}. ` : ""}
+                {item.nom}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setEditTarget(item);
+                    setEditNom(item.nom);
+                    setEditOrdre(item.ordre ?? 0);
+                    setError(null);
+                  }}
+                  className="text-slate-400 dark:text-slate-500"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  onClick={() => toggleActif(item)}
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    item.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  {item.actif ? "Actif" : "Inactif"}
+                </button>
+              </div>
+            </div>
+          ))}
+          {items.length === 0 && (
+            <p className="text-sm text-slate-400 dark:text-slate-500">Aucun élément.</p>
+          )}
+        </div>
+      )}
+        </>
+      )}
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form onSubmit={handleCreate} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Nouveau {labelSingulier.toLowerCase()}</h3>
+            <input
+              type="text"
+              value={newNom}
+              onChange={(e) => setNewNom(e.target.value)}
+              required
+              placeholder="Nom"
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+            />
+            {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setShowCreate(false)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
+                {saving ? "..." : "Créer"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form onSubmit={handleEdit} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Modifier</h3>
+            <input
+              type="text"
+              value={editNom}
+              onChange={(e) => setEditNom(e.target.value)}
+              required
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+            />
+            {avecOrdre && (
+              <>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Ordre d&apos;affichage
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={editOrdre}
+                  onChange={(e) => setEditOrdre(Number(e.target.value) || 0)}
+                  className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+                />
+              </>
+            )}
+            {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setEditTarget(null)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
+                {saving ? "..." : "Enregistrer"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Produits : prix uniquement -----------------------------------------
+
+type Produit = {
+  id: string;
+  code: string;
+  nom: string;
+  prixSachet: number;
+  prixFilet: number | null;
+  prixCarton: number;
+  actif: boolean;
+};
+
+function ProduitsManager() {
+  const [produits, setProduits] = useState<Produit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editTarget, setEditTarget] = useState<Produit | null>(null);
+  const [form, setForm] = useState({ prixSachet: 0, prixFilet: 0, prixCarton: 0 });
+  const [saving, setSaving] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    code: "",
+    nom: "",
+    volumeMl: 0,
+    sachetsParCarton: 0,
+    aDesFilets: false,
+    filetsParCarton: 0,
+    sachetsParFilet: 0,
+    prixSachet: 0,
+    prixFilet: 0,
+    prixCarton: 0,
+  });
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [ouvert, setOuvert] = useState(true);
+
+  function load() {
+    setLoading(true);
+    fetch("/api/parametres/produits")
+      .then((r) => r.json())
+      .then((d) => setProduits(d.data ?? []))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, []);
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setCreateError(null);
+    const res = await fetch("/api/parametres/produits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: createForm.code.toUpperCase().replace(/\s+/g, "_"),
+        nom: createForm.nom,
+        volumeMl: createForm.volumeMl,
+        sachetsParCarton: createForm.sachetsParCarton,
+        filetsParCarton: createForm.aDesFilets ? createForm.filetsParCarton : null,
+        sachetsParFilet: createForm.aDesFilets ? createForm.sachetsParFilet : null,
+        prixSachet: createForm.prixSachet,
+        prixFilet: createForm.aDesFilets ? createForm.prixFilet : null,
+        prixCarton: createForm.prixCarton,
+      }),
+    });
+    if (res.ok) {
+      setShowCreate(false);
+      setCreateForm({
+        code: "",
+        nom: "",
+        volumeMl: 0,
+        sachetsParCarton: 0,
+        aDesFilets: false,
+        filetsParCarton: 0,
+        sachetsParFilet: 0,
+        prixSachet: 0,
+        prixFilet: 0,
+        prixCarton: 0,
+      });
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setCreateError(d.error ?? "Échec de la création.");
+    }
+    setSaving(false);
+  }
+
+  async function handleDelete(p: Produit) {
+    setDeleteError(null);
+    if (!confirm(`Supprimer définitivement ${p.code} ? Cette action est irréversible.`)) {
+      return;
+    }
+    const res = await fetch(`/api/parametres/produits/${p.id}`, { method: "DELETE" });
+    if (res.ok) {
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setDeleteError(d.error ?? "Échec de la suppression.");
+    }
+  }
+
+  async function toggleActif(p: Produit) {
+    await fetch(`/api/parametres/produits/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actif: !p.actif }),
+    });
+    load();
+  }
+
+  function openEdit(p: Produit) {
+    setEditTarget(p);
+    setForm({
+      prixSachet: p.prixSachet,
+      prixFilet: p.prixFilet ?? 0,
+      prixCarton: p.prixCarton,
+    });
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editTarget) return;
+    setSaving(true);
+    await fetch(`/api/parametres/produits/${editTarget.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prixSachet: form.prixSachet,
+        prixCarton: form.prixCarton,
+        ...(editTarget.prixFilet !== null ? { prixFilet: form.prixFilet } : {}),
+      }),
+    });
+    setEditTarget(null);
+    setSaving(false);
+    load();
+  }
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+      <div className="mb-3 flex items-center justify-between">
+        <button onClick={() => setOuvert((v) => !v)} className="flex flex-1 items-center gap-2 text-left">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-white">
+            <Package size={16} />
+          </span>
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">Produits & prix</h2>
+          <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+        </button>
+        <button
+          onClick={() => {
+            setShowCreate(true);
+            setCreateError(null);
+          }}
+          className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300"
+        >
+          <Plus size={14} />
+          Nouveau
+        </button>
+      </div>
+
+      {ouvert && (loading ? (
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+      ) : (
+        <div className="space-y-2">
+          {deleteError && (
+            <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{deleteError}</p>
+          )}
+          {produits.map((p) => (
+            <div key={p.id} className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2.5">
+              <div>
+                <p className={`text-sm font-semibold ${p.actif ? "text-slate-800 dark:text-slate-100" : "text-slate-400 dark:text-slate-500 line-through"}`}>
+                  {p.code}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {p.prixSachet.toLocaleString("fr-FR")} FCFA/sachet
+                  {p.prixFilet !== null ? ` · ${p.prixFilet.toLocaleString("fr-FR")} FCFA/filet` : ""}
+                  {" · "}
+                  {p.prixCarton.toLocaleString("fr-FR")} FCFA/carton
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => openEdit(p)} className="text-slate-400 dark:text-slate-500">
+                  <Pencil size={14} />
+                </button>
+                <button
+                  onClick={() => toggleActif(p)}
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    p.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  {p.actif ? "Actif" : "Inactif"}
+                </button>
+                <button onClick={() => handleDelete(p)} className="text-alert">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form onSubmit={handleSave} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Prix {editTarget.code}</h3>
+
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix par sachet (FCFA)</label>
+            <input
+              type="number"
+              min={0}
+              value={form.prixSachet}
+              onChange={(e) => setForm((f) => ({ ...f, prixSachet: Number(e.target.value) || 0 }))}
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+            />
+
+            {editTarget.prixFilet !== null && (
+              <>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix par filet (FCFA)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={form.prixFilet}
+                  onChange={(e) => setForm((f) => ({ ...f, prixFilet: Number(e.target.value) || 0 }))}
+                  className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+                />
+              </>
+            )}
+
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix par carton (FCFA)</label>
+            <input
+              type="number"
+              min={0}
+              value={form.prixCarton}
+              onChange={(e) => setForm((f) => ({ ...f, prixCarton: Number(e.target.value) || 0 }))}
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+            />
+
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setEditTarget(null)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
+                {saving ? "..." : "Enregistrer"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form
+            onSubmit={handleCreate}
+            className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg"
+          >
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Nouveau produit</h3>
+            <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
+              Apparaîtra automatiquement dans la Visite de réassort. Le
+              formulaire "Nouveau recensement" reste pour l'instant limité à
+              HYPO/HTC (voir README).
+            </p>
+
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Code (ex: XYZ)</label>
+                <input
+                  type="text"
+                  required
+                  value={createForm.code}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, code: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm uppercase"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Volume (ml)</label>
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  value={createForm.volumeMl || ""}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, volumeMl: Number(e.target.value) || 0 }))}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Nom complet</label>
+            <input
+              type="text"
+              required
+              value={createForm.nom}
+              onChange={(e) => setCreateForm((f) => ({ ...f, nom: e.target.value }))}
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+            />
+
+            <label className="mb-2 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={createForm.aDesFilets}
+                onChange={(e) => setCreateForm((f) => ({ ...f, aDesFilets: e.target.checked }))}
+              />
+              Ce produit se vend aussi par filet (comme HTC)
+            </label>
+
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              {createForm.aDesFilets && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Sachets/filet</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={createForm.sachetsParFilet || ""}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, sachetsParFilet: Number(e.target.value) || 0 }))}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+                  />
+                </div>
+              )}
+              {createForm.aDesFilets && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Filets/carton</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={createForm.filetsParCarton || ""}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, filetsParCarton: Number(e.target.value) || 0 }))}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+                  />
+                </div>
+              )}
+              <div className={createForm.aDesFilets ? "col-span-2" : ""}>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Sachets/carton</label>
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  value={createForm.sachetsParCarton || ""}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, sachetsParCarton: Number(e.target.value) || 0 }))}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix/sachet</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={createForm.prixSachet || ""}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, prixSachet: Number(e.target.value) || 0 }))}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix/carton</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={createForm.prixCarton || ""}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, prixCarton: Number(e.target.value) || 0 }))}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+                />
+              </div>
+              {createForm.aDesFilets && (
+                <div className="col-span-2">
+                  <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix/filet</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={createForm.prixFilet || ""}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, prixFilet: Number(e.target.value) || 0 }))}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+                  />
+                </div>
+              )}
+            </div>
+
+            {createError && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{createError}</p>}
+
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setShowCreate(false)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
+                {saving ? "..." : "Créer"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Objectifs : valeur courante par binôme -----------------------------
+
+type ObjectifBinome = {
+  id: string;
+  nom: string;
+  objectifJournalier: { id: string; valeurCartons: number } | null;
+  objectifHebdomadaire: { id: string; valeurCartons: number } | null;
+};
+
+function ObjectifsManager() {
+  const [data, setData] = useState<ObjectifBinome[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [ouvert, setOuvert] = useState(true);
+
+  function load() {
+    setLoading(true);
+    fetch("/api/parametres/objectifs")
+      .then((r) => r.json())
+      .then((d) => setData(d.data ?? []))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, []);
+
+  async function saveValeur(
+    binomeId: string,
+    periode: "JOURNALIER" | "HEBDOMADAIRE",
+    objectifId: string | null,
+    valeur: number
+  ) {
+    setSaving(`${binomeId}-${periode}`);
+    if (objectifId) {
+      await fetch(`/api/parametres/objectifs/${objectifId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ valeurCartons: valeur }),
+      });
+    } else {
+      await fetch("/api/parametres/objectifs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ binomeId, periode, valeurCartons: valeur }),
+      });
+    }
+    setSaving(null);
+    load();
+  }
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+      <button onClick={() => setOuvert((v) => !v)} className="mb-3 flex w-full items-center gap-2 text-left">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600 text-white">
+          <Target size={16} />
+        </span>
+        <h2 className="font-bold text-slate-800 dark:text-slate-100">Objectifs (période en cours)</h2>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+      </button>
+
+      {ouvert && (loading ? (
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+      ) : (
+        <div className="space-y-3">
+          {data.map((b) => (
+            <div key={b.id} className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3">
+              <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{b.nom}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    Cartons / jour
+                  </label>
+                  <ObjectifInput
+                    defaultValue={b.objectifJournalier?.valeurCartons ?? 42}
+                    saving={saving === `${b.id}-JOURNALIER`}
+                    onSave={(v) =>
+                      saveValeur(b.id, "JOURNALIER", b.objectifJournalier?.id ?? null, v)
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    Cartons / semaine
+                  </label>
+                  <ObjectifInput
+                    defaultValue={b.objectifHebdomadaire?.valeurCartons ?? 2500}
+                    saving={saving === `${b.id}-HEBDOMADAIRE`}
+                    onSave={(v) =>
+                      saveValeur(b.id, "HEBDOMADAIRE", b.objectifHebdomadaire?.id ?? null, v)
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ObjectifInput({
+  defaultValue,
+  saving,
+  onSave,
+}: {
+  defaultValue: number;
+  saving: boolean;
+  onSave: (v: number) => void;
+}) {
+  const [value, setValue] = useState(defaultValue);
+
+  // useState(defaultValue) ne capture que la valeur INITIALE — sans ce
+  // useEffect, si le serveur renvoie une valeur différente après un
+  // rechargement (ex: sauvegarde faite depuis un autre onglet), l'input
+  // resterait bloqué sur l'ancienne valeur affichée localement.
+  useEffect(() => {
+    setValue(defaultValue);
+  }, [defaultValue]);
+  return (
+    <div className="flex gap-1.5">
+      <input
+        type="number"
+        min={0}
+        value={value}
+        onChange={(e) => setValue(Number(e.target.value) || 0)}
+        className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-sm"
+      />
+      <button
+        onClick={() => onSave(value)}
+        disabled={saving}
+        className="shrink-0 rounded-lg bg-blue-700 px-2.5 text-xs font-semibold text-white disabled:opacity-50"
+      >
+        {saving ? "..." : "OK"}
+      </button>
+    </div>
+  );
+}
+
+// --- Quartiers, groupés par ville, avec fusion -----------------------
+
+type Quartier = {
+  id: string;
+  nom: string;
+  actif: boolean;
+  villeId: string;
+  ville: { nom: string };
+  _count: { pointsVente: number };
+};
+
+function QuartiersManager() {
+  const [villes, setVilles] = useState<Entity[]>([]);
+  const [quartiers, setQuartiers] = useState<Quartier[]>([]);
+  const [villeFiltre, setVilleFiltre] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [newNom, setNewNom] = useState("");
+  const [newVilleId, setNewVilleId] = useState("");
+
+  const [editTarget, setEditTarget] = useState<Quartier | null>(null);
+  const [editNom, setEditNom] = useState("");
+
+  const [fusionTarget, setFusionTarget] = useState<Quartier | null>(null);
+  const [fusionVersId, setFusionVersId] = useState("");
+
+  const [saving, setSaving] = useState(false);
+  const [ouvert, setOuvert] = useState(true);
+
+  function load() {
+    setLoading(true);
+    Promise.all([
+      fetch("/api/parametres/villes").then((r) => r.json()),
+      fetch(`/api/parametres/quartiers${villeFiltre ? `?villeId=${villeFiltre}` : ""}`).then((r) => r.json()),
+    ])
+      .then(([v, q]) => {
+        setVilles(v.data ?? []);
+        setQuartiers(q.data ?? []);
+      })
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, [villeFiltre]);
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    const res = await fetch("/api/parametres/quartiers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nom: newNom, villeId: newVilleId }),
+    });
+    if (res.ok) {
+      setShowCreate(false);
+      setNewNom("");
+      setNewVilleId("");
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Échec de la création.");
+    }
+    setSaving(false);
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editTarget) return;
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`/api/parametres/quartiers/${editTarget.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nom: editNom }),
+    });
+    if (res.ok) {
+      setEditTarget(null);
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Échec de la mise à jour.");
+    }
+    setSaving(false);
+  }
+
+  async function toggleActif(q: Quartier) {
+    setError(null);
+    const res = await fetch(`/api/parametres/quartiers/${q.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actif: !q.actif }),
+    });
+    if (res.ok) {
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Échec de la mise à jour.");
+    }
+  }
+
+  async function handleFusion(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fusionTarget || !fusionVersId) return;
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`/api/parametres/quartiers/${fusionTarget.id}/fusionner`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ versQuartierId: fusionVersId }),
+    });
+    if (res.ok) {
+      setFusionTarget(null);
+      setFusionVersId("");
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Échec de la fusion.");
+    }
+    setSaving(false);
+  }
+
+  // Groupés par ville pour un affichage lisible
+  const parVille = new Map<string, Quartier[]>();
+  for (const q of quartiers) {
+    const liste = parVille.get(q.ville.nom) ?? [];
+    liste.push(q);
+    parVille.set(q.ville.nom, liste);
+  }
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+      <div className="mb-3 flex items-center justify-between">
+        <button onClick={() => setOuvert((v) => !v)} className="flex flex-1 items-center gap-2 text-left">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
+            <MapPin size={16} />
+          </span>
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">Quartiers</h2>
+          <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+        </button>
+        <button
+          onClick={() => {
+            setShowCreate(true);
+            setError(null);
+          }}
+          className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300"
+        >
+          <Plus size={14} />
+          Ajouter
+        </button>
+      </div>
+
+      {ouvert && (
+        <>
+      <select
+        value={villeFiltre}
+        onChange={(e) => setVilleFiltre(e.target.value)}
+        className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+      >
+        <option value="">Toutes les villes</option>
+        {villes.map((v) => (
+          <option key={v.id} value={v.id}>{v.nom}</option>
+        ))}
+      </select>
+
+      {error && (
+        <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>
+      )}
+
+      {loading ? (
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+      ) : (
+        <div className="space-y-4">
+          {[...parVille.entries()].map(([villeNom, liste]) => (
+            <div key={villeNom}>
+              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                {villeNom}
+              </p>
+              <div className="space-y-1.5">
+                {liste.map((q) => (
+                  <div key={q.id} className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2">
+                    <div>
+                      <span className={`text-sm font-medium ${q.actif ? "text-slate-700 dark:text-slate-300" : "text-slate-400 dark:text-slate-500 line-through"}`}>
+                        {q.nom}
+                      </span>
+                      <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">
+                        {q._count.pointsVente} point(s) de vente
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setEditTarget(q);
+                          setEditNom(q.nom);
+                          setError(null);
+                        }}
+                        className="text-slate-400 dark:text-slate-500"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      {q._count.pointsVente > 0 && (
+                        <button
+                          onClick={() => {
+                            setFusionTarget(q);
+                            setFusionVersId("");
+                            setError(null);
+                          }}
+                          className="text-indigo-600"
+                          title="Fusionner avec un autre quartier"
+                        >
+                          <Merge size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => toggleActif(q)}
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          q.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+                        }`}
+                      >
+                        {q.actif ? "Actif" : "Inactif"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          {quartiers.length === 0 && (
+            <p className="text-sm text-slate-400 dark:text-slate-500">Aucun quartier.</p>
+          )}
+        </div>
+      )}
+        </>
+      )}
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form onSubmit={handleCreate} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Nouveau quartier</h3>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Ville</label>
+            <select
+              value={newVilleId}
+              onChange={(e) => setNewVilleId(e.target.value)}
+              required
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+            >
+              <option value="">Choisir...</option>
+              {villes.map((v) => (
+                <option key={v.id} value={v.id}>{v.nom}</option>
+              ))}
+            </select>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Nom du quartier</label>
+            <input
+              type="text"
+              value={newNom}
+              onChange={(e) => setNewNom(e.target.value)}
+              required
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+            />
+            {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setShowCreate(false)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
+                {saving ? "..." : "Créer"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form onSubmit={handleEdit} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Renommer le quartier</h3>
+            <input
+              type="text"
+              value={editNom}
+              onChange={(e) => setEditNom(e.target.value)}
+              required
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+            />
+            {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setEditTarget(null)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
+                {saving ? "..." : "Enregistrer"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {fusionTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form onSubmit={handleFusion} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
+            <h3 className="mb-1 font-semibold text-slate-800 dark:text-slate-100">
+              Fusionner "{fusionTarget.nom}"
+            </h3>
+            <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
+              Les {fusionTarget._count.pointsVente} point(s) de vente de ce quartier seront
+              déplacés vers le quartier choisi, puis "{fusionTarget.nom}" sera désactivé.
+            </p>
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Fusionner vers</label>
+            <select
+              value={fusionVersId}
+              onChange={(e) => setFusionVersId(e.target.value)}
+              required
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+            >
+              <option value="">Choisir...</option>
+              {quartiers
+                .filter((q) => q.villeId === fusionTarget.villeId && q.id !== fusionTarget.id)
+                .map((q) => (
+                  <option key={q.id} value={q.id}>{q.nom}</option>
+                ))}
+            </select>
+            {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setFusionTarget(null)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-indigo-600 py-2 text-sm font-medium text-white disabled:opacity-60">
+                {saving ? "..." : "Fusionner"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Objectifs individuels (par commercial, pas par binôme) --------------
+
+type ObjectifIndividuel = { periode: "JOURNALIER" | "HEBDOMADAIRE" | "MENSUEL"; valeurCartons: number };
+
+const LABEL_PERIODE: Record<string, string> = {
+  JOURNALIER: "Cartons / jour",
+  HEBDOMADAIRE: "Cartons / semaine",
+  MENSUEL: "Cartons / mois",
+};
+
+function ObjectifsIndividuelsManager() {
+  const [data, setData] = useState<ObjectifIndividuel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [ouvert, setOuvert] = useState(true);
+
+  function load() {
+    setLoading(true);
+    fetch("/api/parametres/objectifs-individuels")
+      .then((r) => r.json())
+      .then((d) => setData(d.data ?? []))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, []);
+
+  async function save(periode: string, valeur: number) {
+    setSaving(periode);
+    setError(null);
+    try {
+      const res = await fetch("/api/parametres/objectifs-individuels", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ periode, valeurCartons: valeur }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? `Échec de la sauvegarde (${res.status}).`);
+        return;
+      }
+      load();
+    } catch {
+      setError("Erreur réseau — la sauvegarde a échoué.");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+      <button onClick={() => setOuvert((v) => !v)} className="mb-3 flex w-full items-center gap-2 text-left">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
+          <Target size={16} />
+        </span>
+        <div className="flex-1">
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">Objectifs individuels</h2>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            Appliqués à chaque commercial (distinct des objectifs par binôme ci-dessus)
+          </p>
+        </div>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+      </button>
+
+      {ouvert && (loading ? (
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+      ) : (
+        <>
+          {error && (
+            <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>
+          )}
+          <div className="grid grid-cols-3 gap-2">
+            {data.map((o) => (
+              <div key={o.periode}>
+                <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                  {LABEL_PERIODE[o.periode]}
+                </label>
+                <ObjectifInput
+                  defaultValue={o.valeurCartons}
+                  saving={saving === o.periode}
+                  onSave={(v) => save(o.periode, v)}
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      ))}
+    </div>
+  );
+}
+
+// --- Durée de session ------------------------------------------------------
+
+// --- Seuils des alertes automatiques ------------------------------------
+
+const SEUILS_CONFIG: { cle: "joursCreditRetard" | "joursProspectARelancer" | "joursClientInactif" | "joursLivraisonProche"; label: string }[] = [
+  { cle: "joursCreditRetard", label: "Crédit en retard après (jours)" },
+  { cle: "joursProspectARelancer", label: "Prospect à relancer après (jours)" },
+  { cle: "joursClientInactif", label: "Client inactif après (jours)" },
+  { cle: "joursLivraisonProche", label: "Alerte livraison à venir (jours avant)" },
+];
+
+function SeuilsAlertesManager() {
+  const [seuils, setSeuils] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [ouvert, setOuvert] = useState(true);
+
+  function load() {
+    setLoading(true);
+    fetch("/api/parametres/alertes-seuils")
+      .then((r) => r.json())
+      .then((d) => setSeuils(d))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, []);
+
+  async function save(cle: string, valeur: number) {
+    setSaving(cle);
+    await fetch("/api/parametres/alertes-seuils", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cle, valeur }),
+    });
+    setSaving(null);
+    load();
+  }
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+      <button onClick={() => setOuvert((v) => !v)} className="mb-3 flex w-full items-center gap-2 text-left">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600 text-white">
+          <BellRing size={16} />
+        </span>
+        <div className="flex-1">
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">Seuils des alertes</h2>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            Utilisés par la génération automatique — voir /admin/alertes
+          </p>
+        </div>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+      </button>
+
+      {ouvert && (loading ? (
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {SEUILS_CONFIG.map(({ cle, label }) => (
+            <div key={cle}>
+              <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                {label}
+              </label>
+              <ObjectifInput
+                defaultValue={seuils[cle] ?? 0}
+                saving={saving === cle}
+                onSave={(v) => save(cle, v)}
+              />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SessionDureeManager() {
+  const [minutes, setMinutes] = useState(720);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [ouvert, setOuvert] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/parametres/session-duree")
+      .then((r) => r.json())
+      .then((d) => setMinutes(d.minutes ?? 720))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    setMessage(null);
+    setError(null);
+    const res = await fetch("/api/parametres/session-duree", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ minutes }),
+    });
+    if (res.ok) {
+      setMessage("Enregistré — s'applique aux prochaines connexions.");
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "Échec de l'enregistrement.");
+    }
+    setSaving(false);
+  }
+
+  const heuresEntieres = Math.floor(minutes / 60);
+  const minutesRestantes = minutes % 60;
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+      <button onClick={() => setOuvert((v) => !v)} className="mb-3 flex w-full items-center gap-2 text-left">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700 text-white">
+          <Clock size={16} />
+        </span>
+        <div className="flex-1">
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">Durée de session</h2>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            Avant déconnexion automatique — s'applique aux prochaines connexions
+          </p>
+        </div>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+      </button>
+
+      {ouvert && (loading ? (
+        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+      ) : (
+        <>
+          <div className="mb-2 flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={0}
+                value={heuresEntieres}
+                onChange={(e) =>
+                  setMinutes(Math.max(5, (Number(e.target.value) || 0) * 60 + minutesRestantes))
+                }
+                className="w-16 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-2 text-sm"
+              />
+              <span className="text-xs text-slate-500 dark:text-slate-400">h</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={0}
+                max={59}
+                value={minutesRestantes}
+                onChange={(e) =>
+                  setMinutes(Math.max(5, heuresEntieres * 60 + (Number(e.target.value) || 0)))
+                }
+                className="w-16 rounded-lg border border-slate-300 dark:border-slate-600 px-2 py-2 text-sm"
+              />
+              <span className="text-xs text-slate-500 dark:text-slate-400">min</span>
+            </div>
+            <button
+              onClick={save}
+              disabled={saving}
+              className="ml-auto rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {saving ? "..." : "Enregistrer"}
+            </button>
+          </div>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Soit {minutes} minutes au total</p>
+        </>
+      ))}
+      {message && <p className="mt-2 text-xs text-green-600">{message}</p>}
+      {error && <p className="mt-2 text-xs text-alert">{error}</p>}
+    </div>
+  );
+}
+
+// --- Prix par type de boutique --------------------------------------------
+
+type ProduitBase = { id: string; code: string; nom: string; prixFilet: number | null };
+type TypeBase = { id: string; nom: string };
+type OverridePrix = {
+  id: string;
+  produitId: string;
+  typeId: string;
+  prixSachet: number;
+  prixFilet: number | null;
+  prixCarton: number;
+};
+
+function LignePrixParType({
+  produit,
+  type,
+  produitBase,
+  override,
+  onSaved,
+}: {
+  produit: ProduitBase;
+  type: TypeBase;
+  produitBase: { prixSachet: number; prixFilet: number | null; prixCarton: number };
+  override: OverridePrix | undefined;
+  onSaved: () => void;
+}) {
+  const [personnalise, setPersonnalise] = useState(Boolean(override));
+  const [form, setForm] = useState({
+    prixSachet: override?.prixSachet ?? produitBase.prixSachet,
+    prixFilet: override?.prixFilet ?? produitBase.prixFilet ?? 0,
+    prixCarton: override?.prixCarton ?? produitBase.prixCarton,
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function enregistrer() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/parametres/prix-par-type", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          produitId: produit.id,
+          typeId: type.id,
+          prixSachet: form.prixSachet,
+          prixCarton: form.prixCarton,
+          ...(produit.prixFilet !== null ? { prixFilet: form.prixFilet } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? `Échec de l'enregistrement (${res.status}).`);
+        return;
+      }
+      onSaved();
+    } catch {
+      setError("Erreur réseau — la sauvegarde a échoué.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function reinitialiser() {
+    if (!override) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/parametres/prix-par-type/${override.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? "Échec de la réinitialisation.");
+        return;
+      }
+      setPersonnalise(false);
+      setForm({
+        prixSachet: produitBase.prixSachet,
+        prixFilet: produitBase.prixFilet ?? 0,
+        prixCarton: produitBase.prixCarton,
+      });
+      onSaved();
+    } catch {
+      setError("Erreur réseau.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!personnalise) {
+    return (
+      <div className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-950 px-3 py-2">
+        <span className="text-sm text-slate-600 dark:text-slate-300">{type.nom}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400 dark:text-slate-500">Prix de base</span>
+          <button
+            onClick={() => setPersonnalise(true)}
+            className="rounded-md bg-slate-200 dark:bg-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300"
+          >
+            Personnaliser
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg bg-blue-50/50 p-2.5">
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{type.nom}</span>
+        {override && (
+          <button onClick={reinitialiser} disabled={saving} className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 underline">
+            Réinitialiser au prix de base
+          </button>
+        )}
+      </div>
+      <div className={`grid gap-1.5 ${produit.prixFilet !== null ? "grid-cols-3" : "grid-cols-2"}`}>
+        <input
+          type="number"
+          min={0}
+          value={form.prixSachet}
+          onChange={(e) => setForm((f) => ({ ...f, prixSachet: Number(e.target.value) || 0 }))}
+          placeholder="Sachet"
+          className="rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs"
+        />
+        {produit.prixFilet !== null && (
+          <input
+            type="number"
+            min={0}
+            value={form.prixFilet}
+            onChange={(e) => setForm((f) => ({ ...f, prixFilet: Number(e.target.value) || 0 }))}
+            placeholder="Filet"
+            className="rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs"
+          />
+        )}
+        <input
+          type="number"
+          min={0}
+          value={form.prixCarton}
+          onChange={(e) => setForm((f) => ({ ...f, prixCarton: Number(e.target.value) || 0 }))}
+          placeholder="Carton"
+          className="rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs"
+        />
+      </div>
+      <button
+        onClick={enregistrer}
+        disabled={saving}
+        className="mt-1.5 w-full rounded-md bg-blue-700 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+      >
+        {saving ? "..." : "Enregistrer"}
+      </button>
+      {error && <p className="mt-1.5 text-[11px] text-alert">{error}</p>}
+    </div>
+  );
+}
+
+function PrixParTypeManager() {
+  const [produits, setProduits] = useState<ProduitBase[]>([]);
+  const [types, setTypes] = useState<TypeBase[]>([]);
+  const [overrides, setOverrides] = useState<OverridePrix[]>([]);
+  const [basesParProduit, setBasesParProduit] = useState<Record<string, { prixSachet: number; prixFilet: number | null; prixCarton: number }>>({});
+  const [loading, setLoading] = useState(true);
+  const [ouvert, setOuvert] = useState(true);
+
+  function load() {
+    setLoading(true);
+    Promise.all([
+      fetch("/api/parametres/produits").then((r) => r.json()),
+      fetch("/api/parametres/types").then((r) => r.json()),
+      fetch("/api/parametres/prix-par-type").then((r) => r.json()),
+    ]).then(([p, t, o]) => {
+      setProduits(p.data ?? []);
+      setTypes((t.data ?? []).filter((x: any) => x.actif));
+      setOverrides(o.data ?? []);
+      const bases: Record<string, any> = {};
+      for (const prod of p.data ?? []) {
+        bases[prod.id] = { prixSachet: prod.prixSachet, prixFilet: prod.prixFilet, prixCarton: prod.prixCarton };
+      }
+      setBasesParProduit(bases);
+      setLoading(false);
+    });
+  }
+
+  useEffect(load, []);
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+      <button onClick={() => setOuvert((v) => !v)} className="mb-1 flex w-full items-center gap-2 text-left">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-700 text-white">
+          <Package size={16} />
+        </span>
+        <h2 className="font-bold text-slate-800 dark:text-slate-100">Prix par type de boutique</h2>
+        <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
+      </button>
+      <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
+        Personnalise le prix d'un produit pour un type de boutique précis — le
+        formulaire terrain l'applique automatiquement dès que le type est
+        choisi. Sans personnalisation, le prix de base du produit s'applique.
+      </p>
+
+      {ouvert && (
+        loading ? (
+          <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
+        ) : produits.length === 0 || types.length === 0 ? (
+          <p className="text-sm text-slate-400 dark:text-slate-500">
+            {produits.length === 0
+              ? "Aucun produit — ajoute un produit dans la section ci-contre d'abord."
+              : "Aucun type de boutique actif."}
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {produits.map((p) => {
+              const base = basesParProduit[p.id];
+              if (!base) return null; // sécurité : évite un plantage si pas encore synchronisé
+              return (
+                <div key={p.id}>
+                  <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{p.code}</p>
+                  <div className="space-y-1.5">
+                    {types.map((t) => (
+                      <LignePrixParType
+                        key={t.id}
+                        produit={p}
+                        type={t}
+                        produitBase={base}
+                        override={overrides.find((o) => o.produitId === p.id && o.typeId === t.id)}
+                        onSaved={load}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+// --- Page principale -----------------------------------------------------
+
+export default function ParametresPage() {
+  return (
+    <main>
+      <AdminPageHeader
+        title="Paramètres"
+        subtitle="Villes, types de boutique, produits, binômes, objectifs — utilisés dans le formulaire terrain"
+      />
+
+      <div className="grid gap-4 p-4 md:grid-cols-2 md:p-6">
+        <SimpleEntityManager apiBase="/api/parametres/villes" labelSingulier="Ville" icon={MapPin} color="#4338ca" />
+        <QuartiersManager />
+        <SimpleEntityManager apiBase="/api/parametres/types" labelSingulier="Type de boutique" icon={Store} color="#1e40af" avecOrdre />
+        <SimpleEntityManager apiBase="/api/parametres/binomes" labelSingulier="Binôme" icon={Users2} color="#0f766e" />
+        <ProduitsManager />
+        <div className="md:col-span-2">
+          <ObjectifsManager />
+        </div>
+        <ObjectifsIndividuelsManager />
+        <SessionDureeManager />
+        <SeuilsAlertesManager />
+        <div className="md:col-span-2">
+          <PrixParTypeManager />
+        </div>
+      </div>
+    </main>
+  );
+}

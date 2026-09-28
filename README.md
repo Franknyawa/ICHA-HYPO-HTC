@@ -1,0 +1,984 @@
+# ICHA IMPORT — HYPO / HTC
+
+Plateforme de recensement, prospection, vente et suivi commercial terrain.
+PWA commerciale + Dashboard admin, sur une seule base de code Next.js.
+
+## Démarrage
+
+```bash
+npm install
+cp .env.example .env      # renseigner DATABASE_URL / DIRECT_URL
+npx prisma migrate dev --name init
+npm run prisma:seed
+npm run dev
+```
+
+Compte admin de démo créé par le seed : `admin` / `changeme123` (à changer immédiatement).
+
+## Structure
+
+```
+app/
+  (auth)/login          → connexion (commercial + admin)
+  (commercial)/         → PWA terrain (dashboard, nouvelle visite, historique)
+  (admin)/               → dashboard web (17 sous-modules, cf. §30 du cahier des charges)
+  api/                   → Route Handlers Next.js
+lib/                     → prisma client, auth, helpers offline/sync
+prisma/schema.prisma     → schéma complet (voir docs/architecture.md pour le détail)
+docs/architecture.md     → décisions techniques et ordre de développement du MVP
+public/manifest.json     → configuration PWA
+```
+
+## État actuel
+
+### ✅ Fondation
+Structure de dossiers, schéma de données complet (toutes les entités du cahier des
+charges avec index et idempotence), configuration Prisma/Vercel de base, seed de
+démarrage.
+
+### ✅ Module Authentification (§28 CDC)
+- Connexion par identifiant + mot de passe/code personnel (`app/(auth)/login`)
+- Session JWT en cookie httpOnly (`lib/auth/session.ts`, `lib/auth/edge.ts`)
+- Middleware de protection des routes `/admin/*` (ADMIN uniquement) et
+  `/dashboard`, `/visites`, `/historique` (COMMERCIAL uniquement) — `middleware.ts`
+- Limitation des tentatives de connexion : 5 échecs / 15 min par identifiant,
+  journalisées dans `LoginAttempt`
+- Helpers `requireAdmin()` / `requireCommercial()` pour protéger les futures
+  routes API (`lib/auth/rbac.ts`)
+- Redirection automatique selon le rôle après connexion
+
+**Reste à faire sur ce module** : page de gestion des comptes commerciaux côté
+admin (création/désactivation), déconnexion depuis l'UI (route déjà prête :
+`POST /api/auth/logout`), et éventuellement une expiration de session plus courte
+avec renouvellement automatique si besoin terrain.
+
+### ✅ Module Points de vente / Prospects / Clients
+- `GET/POST /api/points-vente` — liste paginée + recherche/filtres **côté serveur**
+  (ville, quartier, type, texte libre sur nom/vendeur/repère) ; création avec
+  idempotence (id = uuid généré côté PWA si fourni)
+- `GET/PATCH /api/points-vente/[id]` — détail (avec prospects/clients associés) et
+  mise à jour
+- `GET/POST /api/prospects`, `PATCH /api/prospects/[id]` — liste filtrée par point
+  de vente/statut, création, et conversion prospect → client (crée automatiquement
+  le client quand le statut passe à `CONVERTI`)
+- `GET/POST /api/clients` — liste paginée avec recherche
+- `GET /api/referentiels` — villes/quartiers/types de point de vente, mis en cache
+  côté navigateur 5 min (§19 doc scalabilité)
+- Page admin `app/(admin)/admin/points-vente` — tableau paginé (desktop) / cartes
+  empilées (mobile), recherche par formulaire GET
+
+**Reste à faire** : pages admin pour prospects/clients (listes + fiches), UI de
+sélection ville/quartier/type basée sur `/api/referentiels`.
+
+Mise à jour : la liste admin des points de vente affiche maintenant une
+**miniature de la dernière photo** prise sur place et un **lien "Voir sur la
+carte"** (Google Maps) basé sur les coordonnées GPS enregistrées à la
+création du point de vente.
+
+### ✅ Module Visites (formulaire terrain)
+- `POST /api/visites` — soumission complète en **une seule transaction** :
+  visite + point de vente (existant ou créé à la volée) + vente/lignes +
+  déduction de stock (verrou optimiste, `lib/services/stock.ts`) + paiement +
+  photos. Idempotent via `uuidClient` : un renvoi accidentel (coupure réseau)
+  renvoie l'enregistrement existant sans doublon.
+- `GET /api/visites` — liste paginée, filtrable par commercial/binôme/ville/date
+  (base du futur module Tracking/Carte)
+- Page PWA `app/(commercial)/visites/new` — formulaire complet : sélection ou
+  création de point de vente, capture GPS (`navigator.geolocation`), lignes de
+  vente HYPO/HTC avec conversion sachets/filets/cartons, paiement
+- Comptes de démo : `admin` / `changeme123` (ADMIN) et `commercial1` /
+  `changeme123` (COMMERCIAL, rattaché au Binôme 1)
+
+**Reste à faire** : cette version fonctionne **en ligne uniquement** — le mode
+hors-ligne (IndexedDB + Service Worker + file de synchronisation, §11/§12 CDC)
+est un module à part entière, pas encore développé. La capture photo (caméra)
+n'est pas non plus câblée : il manque un service de stockage objet (S3/R2)
+configuré dans `.env` (`STORAGE_*`) avant de pouvoir uploader de vraies photos.
+
+### ✅ Module Offline (IndexedDB + Service Worker)
+- `lib/offline/db.ts` — file d'attente locale (IndexedDB via `idb`) pour les
+  visites créées hors connexion, indexée par `uuidClient` (garantit l'absence
+  de doublon à la synchronisation, même en cas de rejeu)
+- `lib/offline/sync.ts` — rejoue automatiquement la file dès que
+  l'événement `online` se déclenche, plus une vérification de secours toutes
+  les 60s tant que l'onglet reste ouvert
+- `components/SyncStatusBanner.tsx` — bandeau visible sur le dashboard
+  commercial : nombre de visites en attente, statut connecté/hors ligne,
+  bouton de synchro manuelle
+- Formulaire `visites/new` mis à jour : détecte l'absence de connexion
+  *avant* d'essayer (pas de tentative vouée à l'échec), et bascule aussi en
+  file locale si le `fetch` échoue en cours de route malgré
+  `navigator.onLine`. Message affiché : « Données en attente de
+  synchronisation » (texte exact du §11 CDC)
+- `public/sw.js` + `components/PwaSetup.tsx` — Service Worker (cache l'app
+  shell pour permettre l'ouverture hors connexion) et gestion de l'invite
+  d'installation PWA (bouton flottant « Installer l'application »)
+
+### ✅ Module Visites — formulaire terrain (v2, aligné sur la liste de champs de Victor)
+- Grand titre **HYPO/HTC/ICHA IMPORT**, date/heure automatiques affichées
+- **Équipe** : choix du binôme (boutons façon radio, liste chargée depuis
+  `/api/referentiels`), nom de l'agent affiché depuis la session (`/api/me`)
+- **Point de vente** : nom, vendeur, ville (7 villes fixes, boutons radio),
+  quartier en **texte libre** (créé automatiquement sous la ville choisie
+  s'il n'existe pas déjà — pas de liste fermée à préremplir), repère exact,
+  type de boutique (5 types fixes, radio), présentoir OUI/NON, photo de la
+  devanture (accès direct à la caméra du téléphone via
+  `capture="environment"`, compression côté client avant envoi), position GPS
+- **Achat/commande du jour** : blocs HYPO (sachets + cartons, sous-titre
+  75ml/112 sachets par carton) et HTC (sachets + filets + cartons, sous-titre
+  60ml/12 filets de 10/120 sachets par carton) ; bloc **Commande** séparé
+  (produit, quantité en cartons, date de livraison prévue) pour les commandes
+  à livrer plus tard, distinctes de la vente immédiate ; montant total
+  encaissé ; mode de paiement (Espèces / Mobile Money / Crédit partiel /
+  Crédit total — le crédit est directement un mode, pas une case à part)
+- Comptes de démo étendus : `commercial1`/`commercial2` (Binôme 1),
+  `commercial3` (Binôme 2), tous `changeme123`
+- Objectifs pré-remplis par le seed : 42 cartons/jour et 2500 cartons/semaine
+  par binôme (à régénérer périodiquement — voir limitation ci-dessous)
+
+**Limitations connues, à corriger avant la production :**
+- La photo est envoyée en base64 directement dans la colonne `Photo.url` —
+  ça **contredit le principe posé dans le doc scalabilité** ("jamais stocker
+  les photos en base"). C'est un compromis temporaire tant qu'aucun service
+  de stockage objet (S3/R2) n'est configuré. À corriger en priorité avant
+  d'avoir un vrai volume de photos, sous peine de faire exploser la taille de
+  la base.
+- Les lignes de vente n'ont pas de prix unitaire saisi sur le terrain (seul
+  un montant total global est déclaré) — donc les statistiques de CA par
+  produit ne seront pas fiables tant qu'un prix n'est pas rattaché aux
+  produits (`Produit.prixUnitaire`, actuellement à 0 dans le seed).
+- Les objectifs (42/jour, 2500/semaine) sont insérés une fois pour la
+  journée/semaine du seed — il faudra un job périodique (cron) qui les
+  régénère automatiquement, sans quoi ils expirent silencieusement.
+
+### ✅ Module Dashboard admin (KPI)
+- `lib/queries/dashboard.ts` — agrégats calculés côté serveur pour la
+  journée en cours (visites, ventes, commandes en attente, cartons HYPO/HTC
+  vendus, CA, encaissements vs crédits) + stock courant par produit
+  (converti automatiquement en cartons via `Produit.sachetsParCarton`)
+- Page `/admin/dashboard` — 12 cartes KPI avec la même identité visuelle que
+  la PWA terrain (icônes lucide-react, couleurs par catégorie), en-tête
+  dégradé, lien rapide vers la liste des points de vente
+
+**Reste à faire** : ces chiffres sont recalculés à chaque chargement de page
+— acceptable au volume actuel (6 commerciaux), mais à surveiller si le
+volume grossit (voir §7/§9 doc scalabilité : vues matérialisées / tables
+d'agrégation à prévoir plus tard, les modèles `VentesJournalieres` et
+`PerformanceBinome` existent déjà dans le schéma pour ça).
+
+### ✅ Module Stockage photos — LWS (FTP), avec repli R2 possible
+- `lib/services/storage/index.ts` — routeur qui choisit le fournisseur de
+  stockage via `STORAGE_PROVIDER` (`lws` par défaut, `r2` en option)
+- `lib/services/storage/lws-ftp.ts` — upload vers l'espace mutualisé LWS de
+  Victor par FTP (`basic-ftp`), sous un dossier public du site (ex:
+  `public_html/photos`)
+- `lib/services/storage/r2.ts` — implémentation Cloudflare R2 gardée en
+  option (au cas où le FTP montre ses limites en bande passante/fiabilité)
+- `POST /api/upload` — reçoit une photo compressée (data URL) depuis la PWA,
+  l'envoie vers le provider actif, renvoie `{ url }`
+- Formulaire terrain : la photo est uploadée **immédiatement** après capture
+  (si réseau disponible), badge "Envoi en cours..." puis "✓ Envoyée". Repli
+  automatique sur l'ancien comportement (data URL en base) si l'upload
+  échoue — la visite reste utilisable dans tous les cas.
+- Variables à renseigner dans `.env` : `LWS_FTP_HOST`, `LWS_FTP_USER`,
+  `LWS_FTP_PASSWORD`, `LWS_FTP_BASE_PATH`, `LWS_PUBLIC_URL` (récupérables
+  dans cPanel LWS → FTP Accounts)
+
+**Reste à faire** : le cas "photo prise hors ligne puis synchronisée plus
+tard" utilise encore le repli data URL (pas de ré-upload différé au moment
+de la synchro) — acceptable en usage occasionnel hors ligne, à améliorer si
+le hors-ligne devient fréquent. À surveiller aussi : le FTP est plus lent et
+moins robuste qu'un stockage objet dédié — si les uploads deviennent lents
+ou peu fiables en usage réel, basculer sur R2 (déjà codé) via
+`STORAGE_PROVIDER=r2`.
+
+### ✅ Module Gestion des mots de passe et des comptes
+- `GET /api/users` (admin) — liste des comptes
+- `POST /api/users` (admin) — **crée un nouveau compte** (commercial ou
+  admin), identifiant + mot de passe initial définis directement par
+  l'admin, pas d'email ni de SMS (conforme à la demande : authentification
+  simple, comptes prédéfinis)
+- `PATCH /api/users/[id]/password` (admin) — réinitialise le mot de passe de
+  n'importe quel utilisateur, sans avoir besoin de l'ancien
+- `POST /api/auth/change-password` (tout utilisateur connecté) — change son
+  propre mot de passe, avec vérification de l'ancien
+- Page admin `/admin/utilisateurs` — liste des comptes, bouton "Nouveau
+  compte" (formulaire : prénom, nom, identifiant, mot de passe, rôle, binôme
+  si commercial) et bouton "Réinitialiser" par utilisateur
+- Page `/profil` (commercial) — changer son propre mot de passe, lien
+  accessible depuis le dashboard commercial
+- **Modification** (`PATCH /api/users/[id]`, admin) — nom/prénom/rôle/binôme
+- **Désactivation** (`DELETE /api/users/[id]`, admin) — désactive le compte
+  plutôt qu'une suppression physique (un commercial ayant déjà des
+  visites/ventes est lié à cet historique ; le supprimer casserait ces
+  données). Réactivable depuis la même page.
+- Page `/admin/utilisateurs` mise à jour : boutons Modifier / Réinitialiser
+  mot de passe / Désactiver-Réactiver par utilisateur
+
+### ✅ Module Prix produits & calcul automatique
+- Schéma : `Produit.prixSachet`, `prixFilet` (HTC uniquement), `prixCarton`
+  remplacent l'ancien `prixUnitaire` unique — un même produit se vend à
+  l'unité, au demi-gros (filet) ou en gros (carton), donc trois prix
+  distincts. Seedés avec les tarifs de Victor : HYPO 75 FCFA/sachet,
+  8400 FCFA/carton ; HTC 75 FCFA/sachet, 750 FCFA/filet, 9000 FCFA/carton.
+- `/api/referentiels` renvoie désormais aussi les produits actifs avec leurs
+  prix
+- Formulaire terrain : le **montant total encaissé se calcule
+  automatiquement** dès que les quantités HYPO/HTC sont saisies (badge
+  "Calculé automatiquement"), tout en restant modifiable pour les cas de
+  remise négociée ou de crédit partiel. Un **sous-total par ligne** s'affiche
+  aussi directement sur chaque carte produit (HYPO en bleu, HTC en teal).
+  **Mise à jour** : le comportement du montant dépend maintenant du mode de
+  paiement choisi — Espèces (montant calculé affiché, encaissé
+  intégralement), Mobile Money (case à cocher confirmant la réception),
+  Crédit partiel (le commercial saisit ce qu'il a reçu, le reste dû est
+  calculé et affiché), Crédit total (rien à saisir, tout est dû). La
+  soumission n'est **jamais bloquée** par ces champs. Le bloc "Le client
+  passe une commande" est repositionné en fin de formulaire, avec les mêmes
+  champs détaillés sachets/filets/cartons que l'achat du jour et son propre
+  calcul automatique du montant à percevoir à la livraison.
+
+**Reste à faire** : le "reste à payer" (crédit partiel/total) est calculé et
+affiché dans le formulaire au moment de la saisie, mais pas encore visible
+en relecture sur le profil du commercial après coup — ce sera à ajouter au
+dashboard commercial (une carte "Crédits en cours", calculable à partir des
+`Paiement.estCredit` déjà enregistrés vs `Vente.montantTotal`).
+
+### ✅ Module Photo de profil
+- Schéma : `User.avatarUrl` (nullable)
+- `PATCH /api/me/avatar` — un utilisateur connecté met à jour sa propre
+  photo (upload via le stockage actif — LWS ou R2 selon `STORAGE_PROVIDER`)
+- `PATCH /api/users/[id]` (admin) — accepte aussi `avatarUrl`, donc l'admin
+  peut définir/changer la photo de n'importe quel compte
+- Page `/profil` (commercial) — bouton photo en haut, upload + compression
+  identiques au mécanisme déjà utilisé pour les photos de point de vente
+- Page admin `/admin/utilisateurs` — miniature (ou initiales si pas de
+  photo) dans la liste, upload de photo directement dans la modale
+  "Modifier"
+
+### ✅ Module Téléphone vendeur, Observations, CA par binôme/vendeur
+- Schéma : `PointVente.telephoneVendeur`, `Visite.observation`
+- Formulaire terrain : champ "Téléphone du vendeur (WhatsApp)" juste après
+  le nom du vendeur ; nouvelle **section 4 "Observations"** en toute fin de
+  formulaire (zone de texte libre, optionnelle)
+- Page admin `/admin/points-vente` : téléphone affiché sous le nom du
+  vendeur, avec lien direct `wa.me` pour ouvrir WhatsApp
+- Dashboard admin : nouvelles sections **"CA du jour par binôme"** et **"CA
+  du jour par vendeur"** (barres comparatives), et **"Observations
+  récentes"** (8 dernières visites commentées, avec commercial/point de
+  vente/date)
+- `lib/queries/dashboard.ts` : `getCaParBinomeEtVendeur()`,
+  `getObservationsRecentes()`
+
+**Reste à faire** : le CA par binôme/vendeur est calculé sur la journée en
+cours (comme le reste du dashboard) — pas encore de filtre par période
+personnalisée (semaine, mois). Les observations affichées sont globales, pas
+encore filtrables par commercial ou par période non plus.
+
+### ✅ Module Navigation, filtres, classement clients, rapports & export PDF
+- **Navigation par onglets** — `app/(admin)/admin/layout.tsx`, sidebar sur
+  desktop (Tableau de bord, Points de vente, Clients, Rapports,
+  Utilisateurs), barre d'onglets en bas sur mobile. Toutes les pages admin
+  utilisent désormais un en-tête léger commun (`AdminPageHeader`) au lieu de
+  répéter chacune leur propre bandeau.
+- **Loader** — `loading.tsx` sur chaque route admin (mécanisme natif
+  Next.js), squelette animé pendant le chargement des données serveur.
+- **Filtres points de vente** — ville, quartier (dépendant de la ville),
+  type de boutique, et **tri par nombre de commandes** (croissant/décroissant),
+  en plus de la recherche texte déjà existante. Bouton Précédent/Suivant
+  redessiné avec icônes.
+- **Classement clients par ville** (`/admin/clients`) — clients groupés par
+  ville, triés par nombre de commandes décroissant au sein de chaque
+  groupe, top 3 avec médaille visuelle, lien WhatsApp direct.
+- **Rapports détaillés filtrables** (`/admin/rapports`) — filtrable par
+  commercial, binôme, ville, quartier, type de boutique, produit et période
+  (date début/fin). Cartes de totaux (ventes, CA, cartons HYPO/HTC) +
+  tableau détaillé par commercial.
+- **Export PDF** — bouton "Télécharger PDF" sur la page Rapports
+  (`jspdf` + `jspdf-autotable`, génération entièrement côté navigateur,
+  aucune donnée sensible transite par un serveur tiers).
+
+**Limitation connue** : quand un filtre "Produit" est appliqué, le CA
+affiché reste celui de la vente entière (tous produits confondus) — seuls
+les cartons sont filtrés par produit précisément. Corriger ça demanderait de
+faire remonter un prix par ligne de vente, ce qui n'est pas encore le cas
+(voir limitation notée dans le module Visites).
+
+Aucun changement de schéma dans ce module — pas de migration nécessaire.
+
+### ✅ Module Graphiques, impression, crédits sur profil
+- **Graphiques dashboard** (`recharts`, rendu SVG) — CA du jour par binôme,
+  CA du jour par vendeur, cartons HYPO vs HTC. Remplacent les anciennes
+  barres en CSS pur.
+- **Impression** — bouton "Imprimer" sur le dashboard (`window.print()`),
+  CSS dédié qui masque la sidebar/barre de navigation à l'impression pour
+  n'imprimer que le contenu utile (graphiques inclus, ce sont du SVG qui
+  s'imprime nettement).
+- **Indicateur de chargement sur l'export PDF** — le bouton "Télécharger
+  PDF" affiche désormais un spinner pendant la génération (c'était le vrai
+  manque de loader signalé).
+- **Reste à payer sur le profil du commercial** — `/api/me/credits` calcule,
+  pour chaque vente à crédit du commercial connecté, la différence entre la
+  valeur catalogue et ce qui a été effectivement payé ; le total et le
+  détail par point de vente s'affichent en haut de `/profil`.
+
+### ✅ Module Agrégation (préparation grande échelle)
+Première brique du plan de montée en charge (20 000+ clients) : au lieu de
+tout recalculer en direct à chaque chargement de page, les données
+historiques sont désormais pré-agrégées chaque nuit.
+- `lib/jobs/aggregate.ts` — deux fonctions idempotentes :
+  `aggregateVentesDuJour(date)` (remplit `VentesJournalieres`, groupé par
+  ville/commercial/binôme — pas par produit, car le montant n'est pas
+  ventilé par produit sur les lignes de vente) et
+  `aggregerPerformanceBinome(anneeMois)` (remplit `PerformanceBinome` :
+  cartons vendus, visites, nouveaux clients par binôme et par mois).
+  **Convention à connaître** : les colonnes optionnelles de la clé
+  composite (`binomeId`, `produitId`) utilisent `""` plutôt que `null`
+  pour représenter "aucun/tous" — Prisma exige des valeurs non-null dans
+  le type généré pour une recherche par contrainte unique composite, même
+  quand les colonnes elles-mêmes sont nullable en base.
+- `GET /api/cron/aggregate` — protégée par `CRON_SECRET`, agrège la
+  journée d'hier (aujourd'hui reste calculé en direct, il n'est pas
+  terminé) et le mois en cours
+- `vercel.json` — déclenche cette route chaque nuit à 1h (Vercel Cron,
+  inclus dans tous les plans Vercel)
+- Variable à ajouter dans `.env` **et** dans Vercel (Environment Variables) :
+  `CRON_SECRET` — génère une valeur aléatoire, identique aux deux endroits
+
+**Reste à faire** : ces tables sont maintenant remplies, mais le dashboard
+et les rapports continuent de calculer en direct depuis les tables
+transactionnelles (`Vente`, `Visite`...) même pour les dates passées — la
+prochaine étape est de faire lire `dashboard.ts`/`rapports.ts` depuis
+`VentesJournalieres`/`PerformanceBinome` quand la période demandée est
+entièrement dans le passé, pour profiter du gain de performance.
+
+**Pour tester le job manuellement** avant d'attendre la prochaine
+exécution nocturne :
+```bash
+curl https://ton-domaine.vercel.app/api/cron/aggregate \
+  -H "Authorization: Bearer TA_VALEUR_CRON_SECRET"
+```
+
+### ✅ Module Commandes (suivi admin)
+- `lib/queries/commandes.ts` — liste paginée, filtrable par statut, ville,
+  commercial, période
+- `GET /api/commandes` — liste
+- `PATCH /api/commandes/[id]` (admin uniquement) — change le statut
+  (En attente / Livrée / Annulée), réversible
+- Page `/admin/commandes` — chaque commande affiche le client/point de
+  vente, les lignes produit (HYPO/HTC avec quantités), les dates commande
+  et livraison prévue, un lien WhatsApp direct, et les boutons d'action
+  (Marquer livrée / Annuler / Réactiver)
+- Ajoutée à la navigation (sidebar desktop + barre mobile)
+
+Aucun changement de schéma — pas de migration nécessaire.
+
+### ✅ Correctif installation PWA (icônes manquantes)
+Le `manifest.json` référençait `/icons/icon-192.png` et
+`/icons/icon-512.png` depuis le tout début, mais ces fichiers n'avaient
+jamais été créés — un navigateur refuse d'installer une PWA sans ses
+icônes déclarées, c'est un critère bloquant. Corrigé :
+- `public/icons/icon-192.png` et `icon-512.png` — icône goutte d'eau sur
+  fond dégradé bleu marque, générée pour coller à l'identité déjà en place
+- `public/apple-touch-icon.png` — Safari iOS ne lit pas les icônes du
+  manifest de la même façon qu'Android, il lui faut ce fichier séparé
+- `app/layout.tsx` — métadonnées `icons` et `appleWebApp` ajoutées
+
+Aucun changement de schéma — pas de migration nécessaire.
+
+### ✅ Module Back Office — Paramètres (`/admin/parametres`)
+Rend modifiables, sans passer par du SQL manuel, les données qui
+structurent le formulaire terrain :
+- **Villes** et **Types de boutique** — ajout, renommage, activation/
+  désactivation (nouveau champ `actif` ajouté aux deux modèles — **cette
+  fois il y a bien un changement de schéma**, migration nécessaire)
+- **Produits** — modification des prix (sachet/filet/carton) uniquement ;
+  le champ `code` (HYPO/HTC) reste verrouillé côté API car il sert
+  d'identifiant dans toute la logique métier (calcul de prix, conversions)
+- **Binômes** — ajout, renommage, activation/désactivation
+- **Objectifs** — modification directe du nombre de cartons/jour et
+  cartons/semaine en vigueur pour chaque binôme (crée l'objectif de la
+  période en cours s'il n'existe pas encore)
+- `/api/referentiels` filtre désormais villes/types par `actif: true` —
+  désactiver une ville ou un type la retire immédiatement des listes du
+  formulaire terrain, sans supprimer l'historique qui y fait référence
+- Ajouté à la navigation (sidebar + barre mobile)
+
+**Limitations volontaires** : pas de suppression physique nulle part (une
+ville/un type/un binôme déjà utilisé ne peut être que désactivé, jamais
+supprimé — cohérent avec le reste de l'app). Les modes de paiement et la
+structure même du formulaire (ordre des sections, champs) restent codés en
+dur — les rendre configurables demanderait un vrai "form builder", hors
+scope pour l'instant.
+
+**⚠️ Cette fois il y a un changement de schéma** (`actif` sur `Ville` et
+`TypePointVente`) — migration à faire avant de tester :
+```sql
+ALTER TABLE villes ADD COLUMN IF NOT EXISTS actif BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE types_point_vente ADD COLUMN IF NOT EXISTS actif BOOLEAN NOT NULL DEFAULT true;
+```
+
+### ✅ Grosse mise à jour — Back office, sessions, dashboard commercial, formulaire terrain
+
+**Sessions serveur (au lieu de JWT sans état)**
+- Nouveau modèle `Session` — chaque connexion crée une ligne en base ; le
+  JWT référence son id. `getSession()` vérifie maintenant aussi que la
+  session n'est pas révoquée/expirée côté serveur, ce qui rend une
+  déconnexion à distance immédiatement effective (impossible avec un JWT
+  seul, qui resterait valide jusqu'à expiration naturelle).
+- Durée configurable en back office (`ParametreSysteme`, clé
+  `duree_session_heures`) — `/admin/parametres`
+- `/admin/utilisateurs` — bouton "Sessions actives" par utilisateur :
+  liste (appareil, dernière activité), déconnexion individuelle ou globale
+
+**Objectifs individuels + dashboard commercial refait**
+- Nouveau modèle `ObjectifIndividuel` — cartons/jour, /semaine, /mois,
+  appliqués à tous les commerciaux (distinct des objectifs par binôme déjà
+  en place), modifiable en back office (42/192/768 par défaut)
+- `lib/queries/commercial-stats.ts` — stats perso (jour/semaine/mois) et
+  binôme (jour/semaine), avec code couleur rouge (<50%) / orange (50-79%) /
+  vert (≥80%) — seuils choisis faute d'indication précise, ajustables dans
+  ce fichier si besoin
+- Dashboard commercial reconstruit : "Nouveau recensement" (renommé),
+  2 boutons "Visite de rotation et d'achalandage" / "Visite de réassort"
+  (visuellement présents, intentionnellement inertes — pas encore de page
+  dédiée), barres de progression colorées, rappels des commandes en
+  attente, **changement de mot de passe retiré**
+
+**Formulaire terrain**
+- Bouton retour vers l'accueil
+- Binôme affiché en lecture seule (vient du profil assigné par l'admin,
+  plus de sélection manuelle)
+- Quartier : liste déroulante des quartiers connus pour la ville
+  sélectionnée, avec repli "+ Autre / nouveau quartier" en texte libre.
+  **Limitation assumée** : ce n'est pas une détection GPS automatique —
+  sans coordonnées par quartier (qu'on n'a pas), une vraie auto-détection
+  ne serait pas fiable. C'est une liste contrainte, pas une automatisation.
+- Nouveau champ "Numéro WhatsApp du patron (si différent)"
+- **Deux photos de devanture** au lieu d'une (types `DEVANTURE_1`/`DEVANTURE_2`)
+- Présentoir déplacé après "Achat du jour", **suggéré automatiquement**
+  ("Oui") si sachets > 30 ET cartons > 1 pour HYPO ou HTC — reste modifiable
+- Types de boutique désormais triés par un champ `ordre` géré en back
+  office (au lieu de l'ordre alphabétique) — ordre initial du seed :
+  Boutique du quartier, Vendeur ambulant, Table Call Box/Kiosque,
+  Mini supermarché/Supérette, Grossiste
+- **Génération de facture PDF** après une vente — bouton "Télécharger la
+  facture" sur l'écran de confirmation (jsPDF, généré côté téléphone,
+  partageable/imprimable pour le client)
+
+**⚠️ Changement de schéma important — migration nécessaire avant de tester :**
+```sql
+ALTER TABLE villes ADD COLUMN IF NOT EXISTS actif BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE types_point_vente ADD COLUMN IF NOT EXISTS actif BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE types_point_vente ADD COLUMN IF NOT EXISTS ordre INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE points_vente ADD COLUMN IF NOT EXISTS telephone_patron TEXT;
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  user_agent TEXT,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP(3) NOT NULL,
+  last_seen_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  revoked BOOLEAN NOT NULL DEFAULT false
+);
+CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions (user_id);
+
+CREATE TABLE IF NOT EXISTS parametres_systeme (
+  cle TEXT PRIMARY KEY,
+  valeur TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS objectifs_individuels (
+  periode TEXT PRIMARY KEY,
+  valeur_cartons INTEGER NOT NULL,
+  updated_at TIMESTAMP(3) NOT NULL
+);
+```
+Puis relance le seed pour appliquer le nouvel ordre des types de boutique :
+```bash
+npm run prisma:seed
+```
+
+**Reste à faire dans ce lot** (pas encore fait, à reprendre) :
+- Les boutons "Visite de rotation et d'achalandage" / "Visite de réassort"
+  n'ont aucune page derrière — en attente de la structure que Victor doit
+  fournir
+- Pas d'interface pour lister/gérer manuellement les quartiers en back
+  office (ils se créent à la volée depuis le terrain, mais ne peuvent pas
+  encore être renommés/fusionnés depuis `/admin/parametres`)
+
+### ✅ Factures admin, produits dynamiques, recherche, rotation & réassort
+- **`/admin/factures`** — liste paginée de toutes les ventes (filtrable par
+  commercial/ville/période), bouton "Facture" par ligne générant le PDF à
+  partir des données déjà en base
+- **Produits dynamiques** — `produitCode` n'est plus limité à
+  `"HYPO"|"HTC"` côté validation/API ; l'admin peut créer de nouveaux
+  produits depuis `/admin/parametres` (code, nom, volume, conversions
+  sachets/filets/cartons, prix). **Limitation assumée** : le formulaire
+  "Nouveau recensement" garde son affichage figé à deux colonnes HYPO/HTC —
+  un produit ajouté apparaît dans la nouvelle Visite de réassort (rendu
+  dynamique), pas encore dans ce formulaire-là. Généraliser aussi
+  "Nouveau recensement" est la suite logique si plus de 2 produits arrivent.
+- **Recherche de point de vente** (`lib/queries/points-vente-recherche.ts`,
+  `/api/points-vente/recherche`, composant `PointVenteSearch`) — par nom de
+  boutique, nom de vendeur, ou proximité GPS (distance calculée
+  côté serveur). Réutilisée dans les deux nouvelles pages ci-dessous.
+- **Visite de rotation et d'achalandage** (`/visites/rotation`) — recherche
+  du point de vente existant, photo avec le boutiquier, rapport de visite
+  horodaté, bouton "{nom} passe une nouvelle commande" qui embarque le
+  point de vente déjà identifié vers la Visite de réassort
+- **Visite de réassort** (`/visites/reassort`) — recherche ou point de
+  vente pré-rempli (arrivée depuis la rotation), formulaire de commande
+  avec **tous les produits actifs rendus dynamiquement** (pas figé à
+  HYPO/HTC), calcul automatique du montant, les 4 modes de paiement,
+  génération de facture PDF, puis un champ rapport après la commande
+- **Dashboard commercial redessiné** — section "Alertes" unifiée
+  (crédits en cours + commandes en attente), boutons d'action reliés aux
+  nouvelles pages, mise en page resserrée
+
+Aucun changement de schéma dans ce module — pas de migration nécessaire.
+
+**Limite à surveiller** : la barre de navigation mobile compte maintenant
+8 onglets (Tableau de bord, Points de vente, Commandes, Factures, Clients,
+Rapports, Paramètres, Utilisateurs) — ça commence à être serré sur petit
+écran. À condenser (ex: un menu "Plus" regroupant les moins utilisés) si
+ça devient gênant en usage réel.
+
+### ✅ Facture PDF redessinée et centralisée
+- `lib/utils/facture-pdf.ts` — nouveau générateur unique, utilisé par les
+  3 endroits qui produisaient chacun leur propre PDF auparavant (formulaire
+  terrain, visite de réassort, liste admin des factures) — plus de code
+  dupliqué, un seul design à maintenir désormais.
+- Design : en-tête bleu marque avec bande d'accent, bloc "Point de vente" /
+  "Vendu par" sur fond gris clair, tableau produits avec lignes alternées
+  et en-tête coloré, bloc total aligné à droite avec le "Reste à payer"
+  mis en évidence sur fond rouge clair quand il y en a un, pied de page
+  avec message de remerciement.
+
+Aucun changement de schéma — pas de migration nécessaire.
+
+### ✅ Tracking des commerciaux (carte)
+- `lib/queries/tracking.ts` — positions GPS des visites du jour (déjà
+  enregistrées à chaque visite), filtrables par commercial/binôme/date
+- `/admin/tracking` — carte interactive (Leaflet + OpenStreetMap, gratuit,
+  aucune clé API nécessaire), un marqueur coloré par commercial, popup avec
+  point de vente + heure de passage au clic
+- **Barre de navigation mobile condensée** — 9 onglets ne tenaient plus sur
+  petit écran ; désormais 4 principaux + un menu "Plus" qui remonte du bas
+  pour le reste (limite notée précédemment, corrigée ici)
+
+Aucun changement de schéma — les coordonnées étaient déjà enregistrées.
+Nouvelles dépendances : `leaflet`, `react-leaflet`, `@types/leaflet`.
+
+**Reste à faire** : uniquement les visites géolocalisées apparaissent (le
+commercial doit avoir activé le GPS pendant sa visite) — pas de suivi en
+temps réel continu, juste les points où une visite a été enregistrée.
+
+### ✅ Tracking terrain (carte)
+- `/admin/tracking` — carte interactive (Leaflet + OpenStreetMap, gratuit,
+  aucune clé API requise) des visites géolocalisées, filtrable par
+  commercial, binôme et date (aujourd'hui par défaut)
+- Un point par visite, couleur stable par commercial (même commercial =
+  même couleur sur toute la carte), popup avec point de vente + heure
+- Légende sous la carte avec le nombre de visites par commercial du jour
+- `lib/queries/tracking.ts` — récupère les visites du jour avec position
+  GPS non nulle
+- `CircleMarker` plutôt que des marqueurs images classiques — évite le bug
+  classique des icônes Leaflet cassées avec Next.js/webpack
+- Ajoutée à la navigation (déjà présente dans le menu "Plus" mobile)
+
+Aucun changement de schéma — les coordonnées étaient déjà enregistrées à
+chaque visite. Nouvelles dépendances : `leaflet`, `react-leaflet`,
+`@types/leaflet`.
+
+### ✅ Corrections diverses + tracking en direct
+- **Bug objectifs individuels** — la sauvegarde échouait silencieusement
+  (aucune vérification `res.ok`, aucune erreur affichée). Corrigé avec
+  gestion d'erreur visible + resynchronisation de l'affichage après
+  rechargement. Si le problème persiste après ce correctif, le message
+  d'erreur affiché dira enfin pourquoi.
+- **Durée de session en minutes** — `duree_session_minutes` remplace
+  `duree_session_heures` (permet des réglages fins comme 30 min), champ
+  back office avec saisie heures + minutes séparées, converties
+  automatiquement.
+- **Date des crédits sur le dashboard commercial** — chaque crédit affiche
+  maintenant boutique, montant ET date de vente (comme les commandes en
+  attente).
+- **Tracking en direct** — nouveau bouton bascule sur `/admin/tracking`
+  entre "Visites du jour" (historique, déjà existant) et "Position
+  actuelle" (nouveau). Un léger battement de position est envoyé par la
+  PWA du commercial toutes les 3 minutes tant que le dashboard reste
+  ouvert (`components/commercial/LocationHeartbeat.tsx` →
+  `POST /api/me/position`). **Limitation assumée et annoncée dans
+  l'interface** : ce n'est pas un suivi permanent en arrière-plan — sans
+  l'app ouverte (surtout sur iOS, très restrictif), la position ne se met
+  plus à jour. La carte affiche l'heure du dernier battement reçu.
+
+**⚠️ Changement de schéma — migration nécessaire :**
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS derniere_position_lat DECIMAL(10,7);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS derniere_position_lng DECIMAL(10,7);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS derniere_position_at TIMESTAMP(3);
+```
+Si tu avais déjà réglé une durée de session avant ce correctif, elle est
+ignorée (ancienne clé `duree_session_heures`) — reconfigure-la depuis
+`/admin/parametres` après la mise à jour.
+
+### ✅ Cartes KPI cliquables sur le dashboard admin
+8 des 10 cartes du dashboard admin renvoient maintenant vers la page la
+plus pertinente, filtrée sur la journée en cours quand c'est pertinent :
+Visites → Tracking (visites du jour), Clients → liste clients, Ventes →
+Factures du jour, Commandes en attente → Commandes filtrées, Cartons
+HYPO/HTC → Rapports filtrés par produit, CA du jour → Rapports du jour,
+Encaissements → Factures du jour, Stock HYPO/HTC → Paramètres (pas encore
+de vraie page de gestion du stock, voir plan restant).
+
+**Non cliquables, faute de destination existante** : Prospects (pas de
+page admin dédiée) et Crédits en cours (pas de vue globale des crédits
+côté admin — seule la vue par commercial existe sur son profil).
+
+Aucun changement de schéma — pas de migration nécessaire.
+
+### ✅ Alertes automatiques
+Le modèle `Alerte` existait déjà en base (jamais utilisé jusqu'ici) — la
+logique de génération et l'interface manquaient, c'est fait :
+- `lib/jobs/alertes.ts` — 6 générateurs, un par type déjà prévu dans le
+  schéma : stock faible (sous le seuil défini sur chaque produit),
+  commande à livrer bientôt / en retard, crédit en retard (>7 jours),
+  prospect à relancer, client inactif (>30 jours sans vente/commande),
+  objectif journalier de binôme non atteint. Anti-doublon intégré : une
+  alerte déjà active pour la même entité n'est jamais recréée.
+- Génération automatique via le **cron nocturne existant**
+  (`/api/cron/aggregate`) — tourne juste après l'agrégation
+- **Génération manuelle** à la demande, bouton "Générer maintenant" sur la
+  page admin (tout sauf le contrôle d'objectifs, qui a besoin des données
+  agrégées de la veille)
+- `/admin/alertes` — liste filtrable par type, bouton "Résolue" par alerte
+- **Badge rouge** avec le nombre d'alertes actives, sur l'onglet Alertes
+  (sidebar desktop + barre mobile), rafraîchi à chaque navigation
+
+**Limitations assumées** : les seuils (7 jours crédit, 5 jours prospect,
+30 jours client inactif, 2 jours avant livraison) sont des constantes dans
+le code, pas encore réglables en back office — à ajouter si besoin de les
+ajuster. Le contrôle d'objectifs ne couvre que le niveau JOURNALIER par
+binôme (pas encore les objectifs individuels ni hebdo/mensuel).
+
+Aucun changement de schéma — pas de migration nécessaire.
+
+### ✅ Gestion du stock
+- **`/admin/stock`** — une carte par produit, cartons et sachets en un
+  coup d'œil, bordure rouge et badge "Faible" si sous le seuil d'alerte
+- **Réassort** (entrée) et **Retirer** (sortie — casse, produit périmé...),
+  au choix en cartons ou en sachets, avec motif optionnel — réutilise le
+  même service de mouvement de stock que la déduction automatique lors
+  d'une vente (même verrou optimiste anti-incohérence)
+- **Seuil d'alerte modifiable** par produit, directement lié aux alertes
+  "Stock faible" déjà en place
+- **Historique des mouvements** consultable par produit (entrées, sorties,
+  ventes)
+- Ajoutée à la navigation ; les cartes "Stock HYPO/HTC" du dashboard admin
+  pointent maintenant ici plutôt que vers Paramètres
+
+Aucun changement de schéma — pas de migration nécessaire (`Stock` et
+`MouvementStock` existaient déjà).
+
+### ✅ Historique des visites (commercial) + Objectifs & progression (admin)
+Les deux derniers points de la liste de départ.
+
+- **`/historique`** (commercial) — liste paginée de ses propres visites,
+  type déduit automatiquement (Nouveau recensement / Rotation et
+  achalandage / Réassort, selon les photos et la vente rattachées),
+  montant de vente et rapport affichés quand ils existent. Lien "Voir
+  l'historique de mes visites" ajouté sous les boutons d'action du
+  dashboard commercial.
+- **`/admin/objectifs`** — vue d'ensemble Réalisé/Objectif × 100, par
+  binôme (jour/semaine) et par commercial (jour/semaine/mois), même code
+  couleur rouge/orange/vert que le dashboard commercial. Réutilise
+  directement `getStatsBinome`/`getStatsPersonnelles` déjà construits pour
+  le dashboard commercial — aucune nouvelle logique de calcul.
+- `components/StatBar.tsx` — la barre de progression colorée était
+  dupliquée dans le dashboard commercial ; extraite en composant partagé,
+  utilisée maintenant aux deux endroits.
+
+Aucun changement de schéma — pas de migration nécessaire.
+
+### ✅ Prix par type de boutique
+Permet de vendre un même produit à un prix différent selon le type de
+boutique (ex : plus cher au détail en boutique de quartier, moins cher en
+gros chez un grossiste), sans complexifier le modèle produit lui-même.
+- Nouveau modèle `PrixParType` — une ligne optionnelle par combinaison
+  (produit, type de boutique) ; son absence = le prix de base du produit
+  s'applique tel quel
+- `/admin/parametres` → section "Prix par type de boutique" — une ligne
+  par type sous chaque produit, "Personnaliser" révèle les champs de prix,
+  "Réinitialiser au prix de base" supprime la surcharge
+- **Formulaire terrain** (`/visites/new`) — dès qu'un type de boutique est
+  choisi, le prix spécifique s'applique automatiquement au calcul du
+  montant (section Achat du jour et Commande future), avec repli
+  silencieux sur le prix de base si rien n'est personnalisé pour ce type
+- **Visite de réassort** — le type de boutique du point de vente est déjà
+  connu (renseigné à sa création), donc le bon prix s'applique
+  automatiquement sans redemander le type
+- `/api/referentiels` renvoie désormais aussi ces surcharges, chargées une
+  seule fois avec le reste des référentiels
+
+**⚠️ Changement de schéma — migration nécessaire :**
+```sql
+CREATE TABLE IF NOT EXISTS prix_par_type (
+  id TEXT PRIMARY KEY,
+  produit_id TEXT NOT NULL REFERENCES produits(id),
+  type_id TEXT NOT NULL REFERENCES types_point_vente(id),
+  prix_sachet DECIMAL(10,2) NOT NULL,
+  prix_filet DECIMAL(10,2),
+  prix_carton DECIMAL(10,2) NOT NULL,
+  updated_at TIMESTAMP(3) NOT NULL,
+  UNIQUE (produit_id, type_id)
+);
+```
+
+### ✅ Suppression / désactivation de produit
+- **Suppression réelle** possible seulement si le produit n'a **jamais**
+  été vendu ni commandé (aucune ligne historique associée) — sinon refus
+  clair avec message suggérant la désactivation, cohérent avec le
+  traitement des villes/types/binômes ailleurs dans l'app
+- Si suppression autorisée : ses éventuelles surcharges de prix par type
+  et sa fiche stock sont supprimées avec lui (transaction)
+- **Toggle Actif/Inactif** ajouté sur chaque produit (existait déjà côté
+  API mais pas dans l'interface) — un produit désactivé disparaît
+  immédiatement des formulaires terrain (`/api/referentiels` filtre déjà
+  par `actif: true`)
+
+Aucun changement de schéma — pas de migration nécessaire.
+
+### ✅ "Nouveau recensement" généralisé aux produits dynamiques
+Dernière limitation connue du module produits dynamiques, désormais
+traitée. Le formulaire terrain principal (`/visites/new`) — le plus
+utilisé, et jusqu'ici le seul encore figé à deux colonnes HYPO/HTC codées
+en dur — affiche maintenant **dynamiquement tous les produits actifs**,
+aussi bien dans la section "Achat du jour" que dans la commande future
+intégrée :
+- États remplacés par des maps génériques `{ [code]: {sachets, filets,
+  cartons} }`, un seul helper `updateQuantite()` partagé
+- Le champ "Filets" n'apparaît que si le produit a un `prixFilet` défini
+  (comme HTC) — s'adapte automatiquement à la structure de chaque produit
+- Calcul du montant, présentoir auto-détecté, et lignes envoyées au
+  serveur : tout généralisé à N produits, plus seulement 2
+- Petite palette de couleurs/icônes cyclique pour les cartes produit — un
+  3e produit ajouté en back office n'hérite plus par défaut du style HTC,
+  il obtient sa propre couleur distincte
+
+Concrètement : un produit créé depuis `/admin/parametres` apparaît
+maintenant **partout** — Visite de réassort (déjà fait) et Nouveau
+recensement (fait maintenant) — sans aucune modification de code
+supplémentaire nécessaire.
+
+Aucun changement de schéma — pas de migration nécessaire (le backend
+était déjà générique depuis l'ajout du module produits dynamiques).
+
+### ✅ Identité visuelle — logo, spinner, page de connexion redessinée
+Premier lot d'une refonte visuelle demandée par Victor ("revisiter toutes
+les pages") — celui-ci couvre le logo et la page de connexion ; le reste
+de l'app sera repris page par page dans les prochains échanges.
+- **Logo** — `public/brand/logo-hypo.png`. Le fichier fourni était un
+  JPEG avec un damier de transparence "cuit" dans l'image (pas une vraie
+  transparence) ; traitement par script Python (détection par saturation
+  colorimétrique + lissage des bords) pour en extraire un vrai PNG
+  transparent, recadré, couleur uniformisée.
+- **Icônes PWA regénérées** avec le vrai logo à la place de la goutte
+  d'eau générique précédente (`public/icons/icon-192.png`,
+  `icon-512.png`, `public/apple-touch-icon.png`)
+- **`components/Spinner.tsx`** — spinner SVG réutilisable (`<Spinner
+  size={18} />`) + `<FullPageSpinner label="..." />` pour les transitions
+  pleine page. Utilisé sur le bouton de connexion pour l'instant ; à
+  généraliser aux autres boutons "..." de l'app dans un prochain passage.
+- **`components/illustrations/BrandPatternIcons.tsx`** — deux icônes
+  SVG dessinées à la main (sachet, bouteille de javel), pensées pour un
+  motif de fond décoratif, pas des photos
+- **Page de connexion entièrement redessinée** — panneau de marque bleu
+  dégradé à gauche (desktop) avec motif de sachets/bouteilles dispersés en
+  transparence et le logo mis en valeur sur carte blanche, formulaire
+  épuré à droite avec icônes dans les champs, focus ring, et spinner sur
+  le bouton de connexion. S'empile verticalement sur mobile.
+
+**Ce qui n'est PAS encore fait** (honnête sur le "revisiter toutes les
+pages") : le reste de l'app garde son design actuel — dashboard commercial
+et admin, formulaires terrain, toutes les pages `/admin/*`. Je vais les
+reprendre systématiquement dans les prochains échanges plutôt que de tout
+promettre fait en un seul lot.
+
+Aucun changement de schéma — pas de migration nécessaire.
+
+### ✅ Gestion des quartiers en back office
+Dernier point de la liste de fonctionnalités d'origine, désormais traité.
+- Champ `actif` ajouté au modèle `Quartier` (cohérent avec villes/types/
+  binômes/produits) — un quartier désactivé disparaît immédiatement du
+  formulaire terrain (`/api/referentiels` filtre déjà dessus)
+- **`/admin/parametres`** — nouvelle section "Quartiers", groupés par
+  ville, avec le nombre de points de vente rattachés affiché sur chaque
+  ligne
+- **Renommer**, **activer/désactiver** — mêmes patterns que le reste
+- **Fusionner** — bouton dédié (icône fusion) sur les quartiers ayant au
+  moins un point de vente : tous ses points de vente sont réassignés au
+  quartier choisi, puis le quartier d'origine est désactivé (jamais
+  supprimé — cohérent avec le principe général de l'app : ne jamais
+  perdre de données historiques)
+
+**⚠️ Changement de schéma — migration nécessaire :**
+```sql
+ALTER TABLE quartiers ADD COLUMN IF NOT EXISTS actif BOOLEAN NOT NULL DEFAULT true;
+```
+
+**🎉 Avec ce module, tous les points de la liste de fonctionnalités
+d'origine — fonctionnelle ET visuelle (premier lot) — sont traités.** Le
+reste de la refonte visuelle (dashboard, formulaires terrain, autres pages
+admin) reste à faire, à la demande.
+
+### ✅ Mode clair / sombre (infrastructure + premier lot de pages)
+- **Infrastructure complète** : `darkMode: "class"` activé dans Tailwind,
+  `components/ThemeProvider.tsx` (contexte + persistance `localStorage`),
+  script anti-flash injecté dans `<head>` (`app/layout.tsx`) qui applique
+  la classe `dark` avant l'hydratation React — sans lui, on verrait un
+  flash de thème clair au chargement même si l'utilisateur a choisi sombre
+- **`components/ThemeToggle.tsx`** — bouton soleil/lune réutilisable
+- **Bouton de bascule ajouté** : sidebar admin (desktop) + barre flottante
+  mobile, dashboard commercial, page de connexion
+- **Variantes sombres appliquées** : layout admin (sidebar, navigation),
+  `AdminPageHeader` (donc l'en-tête de toutes les pages admin d'un coup),
+  `AdminLoadingSkeleton`, dashboard commercial, `StatBar` (partagé
+  commercial + admin objectifs), page de connexion
+
+### ✅ Correctif — cartes et contenu blancs sur fond sombre
+Victor a signalé (avec capture d'écran) que le dashboard admin gardait des
+cartes KPI et blocs graphiques entièrement blancs même en mode sombre —
+la classe `dark:` n'avait été posée que sur le layout/l'en-tête, pas sur
+le **contenu** de chaque page. Corrigé par un passage systématique
+(script de remplacement ciblé, pas page par page à la main) sur :
+- **Toutes les pages admin** : dashboard (cartes KPI, graphiques, bouton
+  Imprimer), alertes, clients, commandes, factures, objectifs, paramètres
+  (y compris toutes les modales de création/édition), points de vente,
+  rapports, stock, tracking (carte), utilisateurs
+- **Toutes les pages commerciales** : dashboard, historique, profil,
+  formulaire terrain (nouveau recensement), rotation, réassort
+- **Composants partagés** : recherche de point de vente, actions
+  commande/facture, carte de tracking
+
+Couleurs couvertes : fonds blancs/gris clairs, textes slate (toutes les
+nuances), bordures et contours, badges "Inactif", couleurs de
+placeholder — donc les champs de formulaire dans les modales aussi, pas
+seulement l'affichage.
+
+**Reste malgré tout à vérifier** : ce passage automatisé couvre les
+classes Tailwind répétitives, mais pas les couleurs codées en dur en CSS
+inline (dégradés `style={{ background: "..." }}` des en-têtes, qui restent
+volontairement bleus dans les deux thèmes — c'est un choix de marque, pas
+un oubli) ni les graphiques recharts (axes, tooltips) qui gardent leurs
+couleurs par défaut. Si un endroit précis reste moche en sombre, montre-le
+moi et je le corrige ciblé.
+
+Aucun changement de schéma — pas de migration nécessaire.
+
+### ✅ Optimisations de lenteur (sans changer de région)
+Diagnostic confirmé : lenteur uniforme sur toutes les pages = latence
+réseau fixe (Vercel USA ↔ Supabase Europe), pas un problème de code — le
+vrai correctif reste de rapprocher les deux (Vercel Pro + région Europe).
+Victor a choisi d'essayer d'abord les optimisations gratuites ; voici ce
+qui a été fait, avec les limites honnêtes de cette approche :
+- **Page Objectifs réécrite** (`lib/queries/objectifs-admin.ts`) — elle
+  refaisait 4 requêtes **par binôme** et 4 **par commercial** (boucle sur
+  `getStatsBinome`/`getStatsPersonnelles`), soit 30-40+ requêtes selon la
+  taille de l'équipe. Remplacé par des requêtes groupées à nombre fixe (9
+  au total, peu importe le nombre de binômes/commerciaux) — le
+  regroupement par entité se fait en JS après coup, plus en base.
+- **Index manquants ajoutés** — `Vente.createdAt`, `Visite.dateVisite`,
+  `Commande.dateLivraisonPrevue` n'avaient aucun index alors qu'ils sont
+  filtrés par date sur quasiment toutes les requêtes dashboard/rapports/
+  objectifs/agrégation. Sans index, Postgres relit toute la table à
+  chaque appel — l'impact grandit avec le volume de données au fil du
+  temps, donc c'était en train de s'aggraver mois après mois même sans y
+  toucher.
+
+**⚠️ Changement de schéma — migration nécessaire :**
+```sql
+CREATE INDEX IF NOT EXISTS ventes_created_at_idx ON ventes (created_at);
+CREATE INDEX IF NOT EXISTS visites_date_visite_idx ON visites (date_visite);
+CREATE INDEX IF NOT EXISTS commandes_date_livraison_prevue_idx ON commandes (date_livraison_prevue);
+```
+
+**Honnêteté sur ce que ça change réellement** : ces deux correctifs
+réduisent le *nombre* et le *coût* des requêtes, mais ne suppriment pas
+la latence réseau elle-même — chaque requête individuelle continue de
+traverser l'Atlantique. La page Objectifs devrait être nettement plus
+rapide (bien moins de requêtes), mais la lenteur de fond, uniforme sur
+toutes les pages, ne disparaîtra pas tant que la région ne sera pas
+alignée. C'est le plafond réel des optimisations gratuites.
+
+### ✅ Itinéraire des commerciaux + seuils d'alertes dynamiques
+- **Tracé d'itinéraire sur `/admin/tracking`** (mode "Visites du jour") —
+  une ligne pointillée relie désormais les visites de chaque commercial
+  dans l'ordre chronologique (un tracé par commercial, jamais mélangé
+  entre plusieurs personnes), et chaque point affiche son "Étape X / Y"
+  au clic. Ça répond directement au besoin "savoir où chacun est passé,
+  dans quel ordre" — pas juste des points isolés sur la carte.
+- **Seuils des alertes automatiques rendus configurables** — les 4
+  constantes codées en dur (crédit en retard après 7 jours, prospect à
+  relancer après 5 jours, client inactif après 30 jours, livraison à
+  venir dans les 2 jours) sont maintenant réglables depuis
+  `/admin/parametres`, section "Seuils des alertes". Réutilise le même
+  mécanisme clé/valeur que la durée de session (`ParametreSysteme`).
+
+**Sur "rendre tout dynamique" — ce qui reste volontairement figé, et
+pourquoi :**
+- **Modes de paiement** (Espèces/Mobile Money/Crédit partiel/Crédit
+  total) — chacun a un comportement de calcul complètement différent câblé
+  dans le code (l'un demande une confirmation, l'autre un montant partiel,
+  etc.). Les rendre ajoutables depuis le back office demanderait de
+  définir pour chaque nouveau mode COMMENT il se comporte (a-t-il besoin
+  d'un montant ? compte-t-il comme crédit ?) — un vrai système de règles
+  configurables, pas juste une liste éditable. Hors scope pour l'instant,
+  à envisager si un vrai besoin métier apparaît (ex: un 5e mode de
+  paiement précis à ajouter).
+- **Types de visite** (recensement/rotation/réassort) — chacun a sa propre
+  page avec ses propres champs. En ajouter un 4e depuis le back office
+  demanderait un vrai "constructeur de formulaire", pas juste une entrée
+  de configuration. Ajouter un nouveau type reste possible, mais ça
+  demande de construire sa page comme on l'a fait pour les 3 existants.
+
+Aucun changement de schéma — pas de migration nécessaire (`ParametreSysteme`
+existait déjà).
+
+### ✅ Sections repliables + correctif "Prix par type" invisible
+- **Correctif** — la section "Prix par type de boutique" pouvait
+  disparaître silencieusement si les prix de base n'étaient pas encore
+  synchronisés au moment du rendu (accès à une valeur `undefined`).
+  Sécurisé, avec un message clair maintenant si la liste est vraiment
+  vide ("Aucun produit" / "Aucun type de boutique actif") au lieu d'un
+  vide silencieux sans explication.
+- **Chaque section de `/admin/parametres` est maintenant repliable** —
+  clique sur le titre (chevron qui pivote) pour la réduire une fois
+  configurée, et gagner de la place à l'écran : Villes, Types de
+  boutique, Binômes, Produits & prix, Prix par type de boutique,
+  Objectifs par binôme, Objectifs individuels, Seuils des alertes, Durée
+  de session. Les boutons d'action ("Ajouter", "Nouveau") restent
+  accessibles même section repliée.
+- Nettoyage au passage de quelques classes de couleur dupliquées
+  (cosmétique, sans impact fonctionnel) laissées par un script de
+  conversion en mode sombre précédent.
+
+Aucun changement de schéma — pas de migration nécessaire.
+
+### 📋 Limitations restantes
+- **Boutons placeholder du dashboard commercial sans page dédiée propre**
+  — "Visite de rotation et d'achalandage" et "Visite de réassort" ont
+  bien leurs pages maintenant, mais si Victor prévoit d'autres types de
+  visite à l'avenir, il faudra les ajouter au même modèle
+- Pas de suivi de version pour les migrations Prisma (`prisma/migrations`
+  reste vide, tout est passé par SQL manuel) — pas bloquant, juste moins
+  traçable qu'un historique de migrations en bonne et due forme
+
+## Documents sources
+
+Ce projet est basé sur 3 documents fournis par Victor :
+1. Cahier des charges fonctionnel v1.1
+2. Exigences de scalabilité et gestion de grande base de données
+3. Infrastructure et déploiement (Vercel)

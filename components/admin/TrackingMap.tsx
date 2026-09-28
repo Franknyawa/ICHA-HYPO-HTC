@@ -1,0 +1,174 @@
+"use client";
+
+import { useEffect, useMemo } from "react";
+import { MapContainer, TileLayer, CircleMarker, Polyline, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+export type PointTracking = {
+  id: string;
+  dateVisite: string;
+  latitude: number;
+  longitude: number;
+  precisionGps: number | null;
+  pointVenteNom: string;
+  commercialId: string;
+  commercialNom: string;
+  binomeNom: string | null;
+};
+
+// Palette de couleurs stable par commercial — même commercial = même
+// couleur sur toute la carte, pour repérer ses trajets d'un coup d'œil.
+const PALETTE = ["#1e40af", "#0f766e", "#b45309", "#7e22ce", "#be123c", "#15803d", "#0369a1"];
+
+function couleurPour(commercialId: string) {
+  let hash = 0;
+  for (const ch of commercialId) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return PALETTE[hash % PALETTE.length];
+}
+
+// Douala par défaut si aucun point à afficher, plutôt qu'une carte vide
+// centrée sur l'océan (0,0).
+const CENTRE_DEFAUT: [number, number] = [4.0483, 9.7043];
+
+function AjusterVue({ points }: { points: PointTracking[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (points.length === 0) return;
+    const bounds = L.latLngBounds(points.map((p) => [p.latitude, p.longitude]));
+    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+  }, [points, map]);
+  return null;
+}
+
+export function TrackingMap({ points }: { points: PointTracking[] }) {
+  const legende = useMemo(() => {
+    const parCommercial = new Map<string, { nom: string; couleur: string; count: number }>();
+    for (const p of points) {
+      const existing = parCommercial.get(p.commercialId);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        parCommercial.set(p.commercialId, {
+          nom: p.commercialNom,
+          couleur: couleurPour(p.commercialId),
+          count: 1,
+        });
+      }
+    }
+    return [...parCommercial.values()];
+  }, [points]);
+
+  // Itinéraire = les points de CHAQUE commercial, triés par heure — un
+  // tracé (polyline) par commercial, pas un tracé global qui mélangerait
+  // les déplacements de plusieurs personnes en une ligne incohérente.
+  // N'a de sens qu'avec au moins 2 points ; un point isolé reste un
+  // simple marqueur.
+  const itineraires = useMemo(() => {
+    const parCommercial = new Map<string, PointTracking[]>();
+    for (const p of points) {
+      const liste = parCommercial.get(p.commercialId) ?? [];
+      liste.push(p);
+      parCommercial.set(p.commercialId, liste);
+    }
+    return [...parCommercial.entries()]
+      .map(([commercialId, pts]) => ({
+        commercialId,
+        couleur: couleurPour(commercialId),
+        positions: [...pts]
+          .sort((a, b) => new Date(a.dateVisite).getTime() - new Date(b.dateVisite).getTime())
+          .map((p) => [p.latitude, p.longitude] as [number, number]),
+      }))
+      .filter((it) => it.positions.length >= 2);
+  }, [points]);
+
+  const ordreParPoint = useMemo(() => {
+    const parCommercial = new Map<string, PointTracking[]>();
+    for (const p of points) {
+      const liste = parCommercial.get(p.commercialId) ?? [];
+      liste.push(p);
+      parCommercial.set(p.commercialId, liste);
+    }
+    const m = new Map<string, { ordre: number; total: number }>();
+    for (const liste of parCommercial.values()) {
+      const triee = [...liste].sort(
+        (a, b) => new Date(a.dateVisite).getTime() - new Date(b.dateVisite).getTime()
+      );
+      triee.forEach((p, i) => m.set(p.id, { ordre: i + 1, total: triee.length }));
+    }
+    return m;
+  }, [points]);
+
+  return (
+    <div>
+      <div className="mb-3 overflow-hidden rounded-2xl ring-1 ring-slate-100 dark:ring-slate-800">
+        <MapContainer
+          center={CENTRE_DEFAUT}
+          zoom={12}
+          style={{ height: "420px", width: "100%" }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <AjusterVue points={points} />
+          {itineraires.map((it) => (
+            <Polyline
+              key={it.commercialId}
+              positions={it.positions}
+              pathOptions={{ color: it.couleur, weight: 3, opacity: 0.55, dashArray: "6 6" }}
+            />
+          ))}
+          {points.map((p) => (
+            <CircleMarker
+              key={p.id}
+              center={[p.latitude, p.longitude]}
+              radius={8}
+              pathOptions={{
+                color: couleurPour(p.commercialId),
+                fillColor: couleurPour(p.commercialId),
+                fillOpacity: 0.8,
+                weight: 2,
+              }}
+            >
+              <Popup>
+                <div className="text-sm">
+                  <p className="font-semibold">{p.pointVenteNom}</p>
+                  <p className="text-slate-500 dark:text-slate-400">{p.commercialNom}</p>
+                  {ordreParPoint.has(p.id) && (
+                    <p className="font-medium text-slate-600">
+                      Étape {ordreParPoint.get(p.id)!.ordre} / {ordreParPoint.get(p.id)!.total}
+                    </p>
+                  )}
+                  <p className="text-slate-400 dark:text-slate-500">
+                    {new Date(p.dateVisite).toLocaleTimeString("fr-FR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              </Popup>
+            </CircleMarker>
+          ))}
+        </MapContainer>
+      </div>
+
+      {legende.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {legende.map((l) => (
+            <span
+              key={l.nom}
+              className="flex items-center gap-1.5 rounded-full bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800"
+            >
+              <span
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: l.couleur }}
+              />
+              {l.nom} ({l.count})
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
