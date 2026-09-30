@@ -1221,6 +1221,31 @@ depuis la mise en place initiale du schéma.
   stock négatif était déjà structurellement impossible avant cette
   refonte, elle réutilise simplement ce mécanisme existant.
 
+### ✅ Rapports par catégorie + export PDF / impression
+
+- La page `/admin/rapports` propose maintenant **5 catégories** de
+  rapport, sélectionnables via des pastilles (comme Commandes/Alertes) :
+  **Par commercial** (existant), **Par point de vente**, **Par ville**,
+  **Par quartier**, et **Par vente** (détail ligne par ligne, paginé,
+  30 ventes/page).
+- Les **filtres restent communs aux 5 catégories** (commercial, binôme,
+  ville, quartier, type de point de vente, produit, période) et sont
+  conservés en changeant de catégorie ou de page.
+- Les 4 tuiles de totaux (Ventes / CA / Cartons HYPO / Cartons HTC) en
+  haut de page portent toujours sur l'ensemble du filtre, quelle que
+  soit la catégorie affichée.
+- `lib/queries/rapports.ts` : une seule fonction `getRapport(filters,
+  vue, page)` — une seule requête `Vente` par appel, puis regroupement
+  (ou pagination pour "Par vente") fait en mémoire.
+- **Export PDF** (`components/admin/PdfExportButton.tsx`, généralisé)
+  génère désormais le PDF pour n'importe laquelle des 5 catégories,
+  avec les mêmes colonnes que le tableau affiché à l'écran.
+- **Impression** (`components/admin/ImprimerButton.tsx`) : nouveau
+  bouton "Imprimer" qui déclenche l'impression navigateur ; la
+  sidebar/nav admin et les filtres portent la classe Tailwind
+  `print:hidden` pour ne laisser que le tableau à l'impression.
+- Aucune migration SQL nécessaire (aucun changement de schéma).
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont

@@ -52,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:flex">
       {/* Sidebar — desktop uniquement */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 dark:border-slate-800 dark:bg-slate-900 md:flex">
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 dark:border-slate-800 dark:bg-slate-900 md:flex print:hidden">
         <div
           className="flex items-center gap-2 px-5 py-5"
           style={{ background: "linear-gradient(135deg, #1e3a8a, #2563eb)" }}
@@ -105,7 +105,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Bouton déconnexion + thème flottants — mobile uniquement (la
             sidebar, hors écran sur mobile, porte déjà ces boutons sur
             desktop) */}
-        <div className="fixed right-3 top-3 z-40 flex items-center gap-2 md:hidden">
+        <div className="fixed right-3 top-3 z-40 flex items-center gap-2 md:hidden print:hidden">
           <ThemeToggle className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-500 dark:text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 backdrop-blur dark:bg-slate-900/95 dark:text-slate-300 dark:ring-slate-700" />
           <LogoutButton className="flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 backdrop-blur dark:bg-slate-900/95 dark:text-slate-300 dark:ring-slate-700" />
         </div>
@@ -115,7 +115,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Barre de navigation — mobile uniquement. 4 onglets principaux +
           un menu "Plus" pour le reste, sinon 9 onglets ne tiennent pas sur
           un petit écran. */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 dark:border-slate-700 bg-white/95 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 dark:border-slate-700 bg-white/95 backdrop-blur md:hidden print:hidden">
         {NAV_ITEMS.slice(0, 4).map((item) => {
           const active = pathname.startsWith(item.href);
           const Icon = item.icon;

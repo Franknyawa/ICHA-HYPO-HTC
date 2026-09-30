@@ -2,16 +2,23 @@
 
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
-import type { RapportLigne } from "@/lib/queries/rapports";
 
+// Bouton d'export PDF générique — réutilisé par les 5 vues de la page
+// Rapports (commercial / point de vente / ville / quartier / vente).
+// Colonnes et lignes sont déjà formatées en texte par l'appelant, ce
+// composant ne fait que la mise en page jsPDF.
 export function PdfExportButton({
-  lignes,
-  totaux,
+  titre,
   filtreLabel,
+  colonnes,
+  lignes,
+  ligneTotal,
 }: {
-  lignes: RapportLigne[];
-  totaux: { nbVentes: number; caTotal: number; cartonsHypo: number; cartonsHtc: number };
+  titre: string;
   filtreLabel: string;
+  colonnes: string[];
+  lignes: string[][];
+  ligneTotal?: string[];
 }) {
   const [generating, setGenerating] = useState(false);
 
@@ -23,7 +30,10 @@ export function PdfExportButton({
       const { default: jsPDF } = await import("jspdf");
       const autoTable = (await import("jspdf-autotable")).default;
 
-      const doc = new jsPDF();
+      // Paysage dès que le tableau a beaucoup de colonnes (ex : détail
+      // par vente), pour éviter les colonnes trop écrasées.
+      const doc = new jsPDF(colonnes.length > 5 ? { orientation: "landscape" } : undefined);
+      const largeur = doc.internal.pageSize.getWidth();
 
       doc.setFontSize(16);
       doc.setTextColor(30, 64, 175); // bleu marque
@@ -31,31 +41,15 @@ export function PdfExportButton({
 
       doc.setFontSize(11);
       doc.setTextColor(100);
-      doc.text("Rapport commercial", 14, 25);
-      doc.text(filtreLabel || "Aucun filtre appliqué", 14, 31);
+      doc.text(titre, 14, 25);
+      doc.text(filtreLabel || "Aucun filtre appliqué", 14, 31, { maxWidth: largeur - 28 });
       doc.text(`Généré le ${new Date().toLocaleDateString("fr-FR")}`, 14, 37);
 
       autoTable(doc, {
         startY: 44,
-        head: [["Commercial", "Binôme", "Ventes", "Cartons HYPO", "Cartons HTC", "CA (FCFA)"]],
-        body: lignes.map((l) => [
-          l.commercialNom,
-          l.binomeNom ?? "—",
-          String(l.nbVentes),
-          String(l.cartonsHypo),
-          String(l.cartonsHtc),
-          l.caTotal.toLocaleString("fr-FR"),
-        ]),
-        foot: [
-          [
-            "TOTAL",
-            "",
-            String(totaux.nbVentes),
-            String(totaux.cartonsHypo),
-            String(totaux.cartonsHtc),
-            totaux.caTotal.toLocaleString("fr-FR"),
-          ],
-        ],
+        head: [colonnes],
+        body: lignes,
+        foot: ligneTotal ? [ligneTotal] : undefined,
         headStyles: { fillColor: [30, 64, 175] },
         footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: "bold" },
         styles: { fontSize: 9 },
@@ -81,7 +75,7 @@ export function PdfExportButton({
       ) : (
         <>
           <Download size={15} />
-          Télécharger PDF
+          PDF
         </>
       )}
     </button>

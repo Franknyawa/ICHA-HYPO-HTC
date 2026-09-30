@@ -1,18 +1,58 @@
-import { getRapport } from "@/lib/queries/rapports";
+import Link from "next/link";
+import { getRapport, type RapportVue } from "@/lib/queries/rapports";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PdfExportButton } from "@/components/admin/PdfExportButton";
-import { Banknote, ShoppingCart, Droplet, Sparkles } from "lucide-react";
+import { ImprimerButton } from "@/components/admin/ImprimerButton";
+import {
+  Banknote,
+  ShoppingCart,
+  Droplet,
+  Sparkles,
+  Users2,
+  Store,
+  Building2,
+  MapPin,
+  Receipt,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
 // une page admin ne doit de toute façon jamais servir de données figées).
 export const dynamic = "force-dynamic";
 
+const CATEGORIES: { vue: RapportVue; label: string; icon: React.ElementType }[] = [
+  { vue: "commercial", label: "Par commercial", icon: Users2 },
+  { vue: "point_vente", label: "Par point de vente", icon: Store },
+  { vue: "ville", label: "Par ville", icon: Building2 },
+  { vue: "quartier", label: "Par quartier", icon: MapPin },
+  { vue: "vente", label: "Par vente", icon: Receipt },
+];
+
+const TITRE_VUE: Record<RapportVue, string> = {
+  commercial: "Rapport par commercial",
+  point_vente: "Rapport par point de vente",
+  ville: "Rapport par ville",
+  quartier: "Rapport par quartier",
+  vente: "Rapport détaillé des ventes",
+};
+
+const fcfa = (n: number) => n.toLocaleString("fr-FR");
+
+function buildQuery(params: Record<string, string | undefined>) {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v) sp.set(k, v);
+  return sp.toString();
+}
+
 export default async function RapportsPage({
   searchParams,
 }: {
   searchParams: {
+    vue?: string;
+    page?: string;
     commercialId?: string;
     binomeId?: string;
     villeId?: string;
@@ -23,6 +63,9 @@ export default async function RapportsPage({
     dateTo?: string;
   };
 }) {
+  const vue: RapportVue = (CATEGORIES.find((c) => c.vue === searchParams.vue)?.vue ?? "commercial");
+  const page = Number(searchParams.page ?? "1") || 1;
+
   const filters = {
     commercialId: searchParams.commercialId || undefined,
     binomeId: searchParams.binomeId || undefined,
@@ -34,24 +77,30 @@ export default async function RapportsPage({
     dateTo: searchParams.dateTo || undefined,
   };
 
-  const [{ lignes, totaux }, commerciaux, binomes, villes, quartiers, types] =
-    await Promise.all([
-      getRapport(filters),
-      prisma.user.findMany({
-        where: { role: "COMMERCIAL" },
-        orderBy: { nom: "asc" },
-        select: { id: true, nom: true, prenom: true },
-      }),
-      prisma.binome.findMany({ orderBy: { nom: "asc" } }),
-      prisma.ville.findMany({ orderBy: { nom: "asc" } }),
-      prisma.quartier.findMany({
-        where: filters.villeId ? { villeId: filters.villeId } : undefined,
-        orderBy: { nom: "asc" },
-      }),
-      prisma.typePointVente.findMany({ orderBy: { nom: "asc" } }),
-    ]);
+  const [resultat, commerciaux, binomes, villes, quartiers, types] = await Promise.all([
+    getRapport(filters, vue, page),
+    prisma.user.findMany({
+      where: { role: "COMMERCIAL" },
+      orderBy: { nom: "asc" },
+      select: { id: true, nom: true, prenom: true },
+    }),
+    prisma.binome.findMany({ orderBy: { nom: "asc" } }),
+    prisma.ville.findMany({ orderBy: { nom: "asc" } }),
+    prisma.quartier.findMany({
+      where: filters.villeId ? { villeId: filters.villeId } : undefined,
+      orderBy: { nom: "asc" },
+    }),
+    prisma.typePointVente.findMany({ orderBy: { nom: "asc" } }),
+  ]);
+
+  const { totaux, lignes, pagination } = resultat;
 
   const filtreLabel = [
+    filters.commercialId && (() => {
+      const c = commerciaux.find((x) => x.id === filters.commercialId);
+      return c ? `${c.prenom} ${c.nom}` : undefined;
+    })(),
+    filters.binomeId && binomes.find((b) => b.id === filters.binomeId)?.nom,
     filters.villeId && villes.find((v) => v.id === filters.villeId)?.nom,
     filters.quartierId && quartiers.find((q) => q.id === filters.quartierId)?.nom,
     filters.typeId && types.find((t) => t.id === filters.typeId)?.nom,
@@ -62,20 +111,120 @@ export default async function RapportsPage({
     .filter(Boolean)
     .join(" · ");
 
+  const baseQuery = { ...filters, vue };
+
+  // --- Colonnes / lignes texte, pour le PDF ET pour garder le tableau
+  // affiché et le tableau exporté strictement identiques -----------------
+  let colonnesPdf: string[] = [];
+  let lignesPdf: string[][] = [];
+  let ligneTotalPdf: string[] | undefined;
+
+  if (vue === "commercial") {
+    colonnesPdf = ["Commercial", "Binôme", "Ventes", "Cartons HYPO", "Cartons HTC", "CA (FCFA)"];
+    lignesPdf = (lignes as any[]).map((l) => [
+      l.commercialNom,
+      l.binomeNom ?? "—",
+      String(l.nbVentes),
+      String(l.cartonsHypo),
+      String(l.cartonsHtc),
+      fcfa(l.caTotal),
+    ]);
+    ligneTotalPdf = ["TOTAL", "", String(totaux.nbVentes), String(totaux.cartonsHypo), String(totaux.cartonsHtc), fcfa(totaux.caTotal)];
+  } else if (vue === "point_vente") {
+    colonnesPdf = ["Point de vente", "Ville", "Quartier", "Ventes", "Cartons HYPO", "Cartons HTC", "CA (FCFA)"];
+    lignesPdf = (lignes as any[]).map((l) => [
+      l.pointVenteNom,
+      l.villeNom,
+      l.quartierNom ?? "—",
+      String(l.nbVentes),
+      String(l.cartonsHypo),
+      String(l.cartonsHtc),
+      fcfa(l.caTotal),
+    ]);
+    ligneTotalPdf = ["TOTAL", "", "", String(totaux.nbVentes), String(totaux.cartonsHypo), String(totaux.cartonsHtc), fcfa(totaux.caTotal)];
+  } else if (vue === "ville") {
+    colonnesPdf = ["Ville", "Ventes", "Cartons HYPO", "Cartons HTC", "CA (FCFA)"];
+    lignesPdf = (lignes as any[]).map((l) => [
+      l.villeNom,
+      String(l.nbVentes),
+      String(l.cartonsHypo),
+      String(l.cartonsHtc),
+      fcfa(l.caTotal),
+    ]);
+    ligneTotalPdf = ["TOTAL", String(totaux.nbVentes), String(totaux.cartonsHypo), String(totaux.cartonsHtc), fcfa(totaux.caTotal)];
+  } else if (vue === "quartier") {
+    colonnesPdf = ["Quartier", "Ville", "Ventes", "Cartons HYPO", "Cartons HTC", "CA (FCFA)"];
+    lignesPdf = (lignes as any[]).map((l) => [
+      l.quartierNom,
+      l.villeNom,
+      String(l.nbVentes),
+      String(l.cartonsHypo),
+      String(l.cartonsHtc),
+      fcfa(l.caTotal),
+    ]);
+    ligneTotalPdf = ["TOTAL", "", String(totaux.nbVentes), String(totaux.cartonsHypo), String(totaux.cartonsHtc), fcfa(totaux.caTotal)];
+  } else {
+    colonnesPdf = ["Date", "Commercial", "Point de vente", "Ville", "Quartier", "Client", "Produits", "Montant (FCFA)"];
+    lignesPdf = (lignes as any[]).map((l) => [
+      new Date(l.date).toLocaleDateString("fr-FR"),
+      l.commercialNom,
+      l.pointVenteNom,
+      l.villeNom,
+      l.quartierNom ?? "—",
+      l.clientNom ?? "—",
+      l.produitsResume,
+      fcfa(l.caTotal),
+    ]);
+    ligneTotalPdf = undefined; // page partielle en vue détaillée : pas de total trompeur dans ce PDF
+  }
+
   return (
     <main>
       <AdminPageHeader
         title="Rapports"
-        subtitle="Filtrable par commercial, binôme, ville, quartier, type, produit, période"
-        action={<PdfExportButton lignes={lignes} totaux={totaux} filtreLabel={filtreLabel} />}
+        subtitle={TITRE_VUE[vue]}
+        action={
+          <div className="flex items-center gap-2 print:hidden">
+            <ImprimerButton />
+            <PdfExportButton
+              titre={TITRE_VUE[vue]}
+              filtreLabel={filtreLabel}
+              colonnes={colonnesPdf}
+              lignes={lignesPdf}
+              ligneTotal={ligneTotalPdf}
+            />
+          </div>
+        }
       />
 
       <div className="p-4 md:p-6">
-        {/* Filtres */}
+        {/* Catégories de rapport */}
+        <div className="mb-4 flex flex-wrap gap-2 print:hidden">
+          {CATEGORIES.map((c) => {
+            const Icon = c.icon;
+            return (
+              <Link
+                key={c.vue}
+                href={`/admin/rapports?${buildQuery({ ...filters, vue: c.vue })}`}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                  vue === c.vue
+                    ? "bg-brand text-white"
+                    : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 ring-1 ring-slate-200 dark:ring-slate-700"
+                }`}
+              >
+                <Icon size={13} />
+                {c.label}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Filtres (communs aux 5 vues) */}
         <form
-          className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-4"
+          className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-4 print:hidden"
           action="/admin/rapports"
         >
+          <input type="hidden" name="vue" value={vue} />
           <select
             name="commercialId"
             defaultValue={filters.commercialId ?? ""}
@@ -165,6 +314,14 @@ export default async function RapportsPage({
           </button>
         </form>
 
+        {/* En-tête visible seulement à l'impression (le titre de page normal
+            est dans la sidebar/header, masqués à l'impression) */}
+        <div className="mb-3 hidden print:block">
+          <p className="text-lg font-bold text-slate-800">HYPO / HTC — ICHA IMPORT</p>
+          <p className="text-sm text-slate-500">{TITRE_VUE[vue]}</p>
+          {filtreLabel && <p className="text-xs text-slate-400">{filtreLabel}</p>}
+        </div>
+
         {/* Totaux */}
         <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
           <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
@@ -174,9 +331,7 @@ export default async function RapportsPage({
           </div>
           <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
             <Banknote size={16} className="mb-2 text-green-600" />
-            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">
-              {totaux.caTotal.toLocaleString("fr-FR")}
-            </p>
+            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{fcfa(totaux.caTotal)}</p>
             <p className="text-xs font-medium text-slate-400 dark:text-slate-500">CA (FCFA)</p>
           </div>
           <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
@@ -191,37 +346,38 @@ export default async function RapportsPage({
           </div>
         </div>
 
-        {/* Détail par commercial */}
-        <div className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+        {/* Tableau — colonnes selon la vue */}
+        <div className="overflow-x-auto rounded-2xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 dark:text-slate-500">
               <tr>
-                <th className="px-4 py-3">Commercial</th>
-                <th className="px-4 py-3">Binôme</th>
-                <th className="px-4 py-3">Ventes</th>
-                <th className="px-4 py-3">Cartons HYPO</th>
-                <th className="px-4 py-3">Cartons HTC</th>
-                <th className="px-4 py-3">CA (FCFA)</th>
+                {colonnesPdf.map((c) => (
+                  <th key={c} className="whitespace-nowrap px-4 py-3">
+                    {c}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {lignes.map((l) => (
-                <tr key={l.commercialId} className="border-t border-slate-100 dark:border-slate-800">
-                  <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">
-                    {l.commercialNom}
-                  </td>
-                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{l.binomeNom ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{l.nbVentes}</td>
-                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{l.cartonsHypo}</td>
-                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{l.cartonsHtc}</td>
-                  <td className="px-4 py-2.5 font-semibold text-slate-800 dark:text-slate-100">
-                    {l.caTotal.toLocaleString("fr-FR")}
-                  </td>
+              {lignesPdf.map((row, i) => (
+                <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
+                  {row.map((cell, j) => (
+                    <td
+                      key={j}
+                      className={`whitespace-nowrap px-4 py-2.5 ${
+                        j === row.length - 1
+                          ? "font-semibold text-slate-800 dark:text-slate-100"
+                          : "text-slate-600 dark:text-slate-300"
+                      }`}
+                    >
+                      {cell}
+                    </td>
+                  ))}
                 </tr>
               ))}
-              {lignes.length === 0 && (
+              {lignesPdf.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={colonnesPdf.length} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500">
                     Aucune donnée pour ces filtres.
                   </td>
                 </tr>
@@ -229,6 +385,41 @@ export default async function RapportsPage({
             </tbody>
           </table>
         </div>
+
+        {/* Pagination — uniquement pour la vue détail par vente */}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="mt-5 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 print:hidden">
+            <span>
+              Page {pagination.page} / {pagination.totalPages} · {pagination.total} ventes
+            </span>
+            <div className="flex gap-2">
+              <Link
+                href={`/admin/rapports?${buildQuery({ ...baseQuery, page: String(pagination.page - 1) })}`}
+                aria-disabled={pagination.page <= 1}
+                className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 font-medium ${
+                  pagination.page <= 1
+                    ? "pointer-events-none border-slate-100 dark:border-slate-800 text-slate-300"
+                    : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                }`}
+              >
+                <ChevronLeft size={15} />
+                Précédent
+              </Link>
+              <Link
+                href={`/admin/rapports?${buildQuery({ ...baseQuery, page: String(pagination.page + 1) })}`}
+                aria-disabled={pagination.page >= pagination.totalPages}
+                className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 font-medium ${
+                  pagination.page >= pagination.totalPages
+                    ? "pointer-events-none border-slate-100 dark:border-slate-800 text-slate-300"
+                    : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                }`}
+              >
+                Suivant
+                <ChevronRight size={15} />
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
