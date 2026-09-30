@@ -4,6 +4,7 @@ import { listCommandes, countCommandesParStatut, type StatutCommandeFiltre } fro
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CommandeStatusActions } from "@/components/admin/CommandeStatusActions";
+import { BonLivraisonButton } from "@/components/admin/BonLivraisonButton";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -176,6 +177,9 @@ export default async function CommandesPage({
                       <a href={wa} target="_blank" rel="noopener noreferrer" className="text-green-600">
                         <Phone size={15} />
                       </a>
+                    )}
+                    {(c.statut === "EN_LIVRAISON" || c.statut === "LIVREE") && (
+                      <BonLivraisonButton commande={c as any} />
                     )}
                     <CommandeStatusActions id={c.id} statut={c.statut} />
                   </div>

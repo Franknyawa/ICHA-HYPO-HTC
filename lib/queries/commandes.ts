@@ -41,7 +41,15 @@ export async function listCommandes(params: ListCommandesParams) {
       take,
       orderBy: { dateCommande: "desc" },
       include: {
-        pointVente: { select: { nom: true, telephoneVendeur: true, ville: { select: { nom: true } } } },
+        pointVente: {
+          select: {
+            nom: true,
+            vendeur: true,
+            telephoneVendeur: true,
+            ville: { select: { nom: true } },
+            quartier: { select: { nom: true } },
+          },
+        },
         client: { select: { nom: true } },
         commercial: { select: { nom: true, prenom: true } },
         lignes: { select: { nbSachets: true, nbFilets: true, nbCartons: true, produit: { select: { code: true } } } },
