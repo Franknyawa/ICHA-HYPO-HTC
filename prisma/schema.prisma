@@ -397,6 +397,7 @@ model VenteLigne {
 
 enum StatutCommande {
   EN_ATTENTE
+  EN_LIVRAISON
   LIVREE
   ANNULEE
 }

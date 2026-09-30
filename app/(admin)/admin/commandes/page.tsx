@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Phone, Truck, Clock, XCircle, ChevronLeft, ChevronRight } from "lucide-react";
-import { listCommandes } from "@/lib/queries/commandes";
+import { Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { listCommandes, countCommandesParStatut, type StatutCommandeFiltre } from "@/lib/queries/commandes";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CommandeStatusActions } from "@/components/admin/CommandeStatusActions";
@@ -15,12 +15,15 @@ function waUrl(tel: string | null) {
   return `https://wa.me/${tel.replace(/[^\d]/g, "")}`;
 }
 
-function StatutBadge({ statut }: { statut: "EN_ATTENTE" | "LIVREE" | "ANNULEE" }) {
-  const config = {
-    EN_ATTENTE: { label: "En attente", cls: "bg-amber-50 text-amber-700", icon: Clock },
-    LIVREE: { label: "Livrée", cls: "bg-green-50 text-green-700", icon: Truck },
-    ANNULEE: { label: "Annulée", cls: "bg-red-50 text-alert", icon: XCircle },
-  }[statut];
+const CONFIG_STATUT: Record<StatutCommandeFiltre, { label: string; cls: string; icon: React.ElementType }> = {
+  EN_ATTENTE: { label: "En attente", cls: "bg-amber-50 text-amber-700", icon: Clock },
+  EN_LIVRAISON: { label: "En livraison", cls: "bg-blue-50 text-brand", icon: Truck },
+  LIVREE: { label: "Livrée", cls: "bg-green-50 text-green-700", icon: CheckCircle2 },
+  ANNULEE: { label: "Annulée", cls: "bg-red-50 text-alert", icon: XCircle },
+};
+
+function StatutBadge({ statut }: { statut: StatutCommandeFiltre }) {
+  const config = CONFIG_STATUT[statut];
   const Icon = config.icon;
   return (
     <span className={`flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${config.cls}`}>
@@ -49,14 +52,17 @@ export default async function CommandesPage({
   };
 }) {
   const page = Number(searchParams.page ?? "1") || 1;
-  const statut = (searchParams.statut as "EN_ATTENTE" | "LIVREE" | "ANNULEE" | undefined) ?? undefined;
+  const statut = (searchParams.statut as StatutCommandeFiltre | undefined) ?? undefined;
   const villeId = searchParams.villeId ?? "";
   const commercialId = searchParams.commercialId ?? "";
   const dateFrom = searchParams.dateFrom ?? "";
   const dateTo = searchParams.dateTo ?? "";
 
-  const [{ data, pagination }, villes, commerciaux] = await Promise.all([
-    listCommandes({ page, statut, villeId, commercialId, dateFrom, dateTo }),
+  const filtresSansStatut = { villeId, commercialId, dateFrom, dateTo };
+
+  const [{ data, pagination }, { parStatut, total: totalToutStatut }, villes, commerciaux] = await Promise.all([
+    listCommandes({ page, statut, ...filtresSansStatut }),
+    countCommandesParStatut(filtresSansStatut),
     prisma.ville.findMany({ orderBy: { nom: "asc" } }),
     prisma.user.findMany({
       where: { role: "COMMERCIAL" },
@@ -72,11 +78,35 @@ export default async function CommandesPage({
       <AdminPageHeader title="Commandes" subtitle={`${pagination.total} au total`} />
 
       <div className="p-4 md:p-6">
+        {/* Pastilles de filtre rapide par statut */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          <Link
+            href={`/admin/commandes?${buildQuery({ ...filtresSansStatut })}`}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+              !statut ? "bg-brand text-white" : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 ring-1 ring-slate-200 dark:ring-slate-700"
+            }`}
+          >
+            Toutes ({totalToutStatut})
+          </Link>
+          {(Object.keys(CONFIG_STATUT) as StatutCommandeFiltre[]).map((s) => (
+            <Link
+              key={s}
+              href={`/admin/commandes?${buildQuery({ ...filtresSansStatut, statut: s })}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                statut === s ? "bg-brand text-white" : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 ring-1 ring-slate-200 dark:ring-slate-700"
+              }`}
+            >
+              {CONFIG_STATUT[s].label} ({parStatut[s]})
+            </Link>
+          ))}
+        </div>
+
         {/* Filtres */}
         <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-4" action="/admin/commandes">
           <select name="statut" defaultValue={statut ?? ""} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100">
             <option value="">Tous les statuts</option>
             <option value="EN_ATTENTE">En attente</option>
+            <option value="EN_LIVRAISON">En livraison</option>
             <option value="LIVREE">Livrée</option>
             <option value="ANNULEE">Annulée</option>
           </select>

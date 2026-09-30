@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Truck, XCircle, RotateCcw } from "lucide-react";
+import { CheckCircle2, Truck, XCircle, RotateCcw } from "lucide-react";
 
-type Statut = "EN_ATTENTE" | "LIVREE" | "ANNULEE";
+type Statut = "EN_ATTENTE" | "EN_LIVRAISON" | "LIVREE" | "ANNULEE";
 
 export function CommandeStatusActions({ id, statut }: { id: string; statut: Statut }) {
   const router = useRouter();
@@ -24,6 +24,30 @@ export function CommandeStatusActions({ id, statut }: { id: string; statut: Stat
   }
 
   if (statut === "EN_ATTENTE") {
+    return (
+      <div className="flex gap-1.5">
+        <button
+          onClick={() => updateStatut("EN_LIVRAISON")}
+          disabled={saving}
+          title="Valider la commande — le commercial est notifié"
+          className="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-brand disabled:opacity-50"
+        >
+          <CheckCircle2 size={13} />
+          Valider
+        </button>
+        <button
+          onClick={() => updateStatut("ANNULEE")}
+          disabled={saving}
+          className="flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-alert disabled:opacity-50"
+        >
+          <XCircle size={13} />
+          Annuler
+        </button>
+      </div>
+    );
+  }
+
+  if (statut === "EN_LIVRAISON") {
     return (
       <div className="flex gap-1.5">
         <button

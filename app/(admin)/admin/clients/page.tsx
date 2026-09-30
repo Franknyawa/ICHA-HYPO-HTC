@@ -49,7 +49,7 @@ type ClientDetail = {
   }[];
   commandes: {
     id: string;
-    statut: "EN_ATTENTE" | "LIVREE" | "ANNULEE";
+    statut: "EN_ATTENTE" | "EN_LIVRAISON" | "LIVREE" | "ANNULEE";
     dateCommande: string;
     dateLivraisonPrevue: string | null;
   }[];
@@ -57,6 +57,7 @@ type ClientDetail = {
 
 const LABEL_STATUT_COMMANDE: Record<string, string> = {
   EN_ATTENTE: "En attente",
+  EN_LIVRAISON: "En livraison",
   LIVREE: "Livrée",
   ANNULEE: "Annulée",
 };
@@ -469,6 +470,8 @@ function ClientDetailModal({
                               ? "text-green-700"
                               : c.statut === "ANNULEE"
                               ? "text-slate-400"
+                              : c.statut === "EN_LIVRAISON"
+                              ? "text-brand"
                               : "text-amber-700"
                           }`}
                         >

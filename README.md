@@ -1129,6 +1129,51 @@ CREATE INDEX IF NOT EXISTS alertes_type_statut_idx ON alertes(type, statut);
 Aucun changement de schéma côté Client/PointVente — la fiche détaillée et
 la recherche s'appuient sur les colonnes déjà existantes.
 
+### ✅ Notification du commercial + classement des commandes par statut
+
+**1. Nouveau statut intermédiaire "En livraison"**
+- `Commande.statut` passe de 3 à 4 valeurs :
+  `EN_ATTENTE` → `EN_LIVRAISON` → `LIVREE`, avec `ANNULEE` toujours
+  possible depuis `EN_ATTENTE` ou `EN_LIVRAISON`.
+- Côté admin (`/admin/commandes`), le bouton **"Valider"** remplace
+  l'ancien passage direct à "Livrée" : valider une commande la fait
+  passer en `EN_LIVRAISON` et **notifie le commercial** qui l'a
+  enregistrée (voir point 2). Une fois la marchandise réellement livrée,
+  un second bouton **"Livrée"** clôt la commande.
+
+**2. Notifications commercial**
+- Le modèle `Notification` existait déjà dans le schéma (prévu mais
+  jamais branché) — il est maintenant utilisé : quand l'admin valide une
+  commande, une notification est créée pour le commercial concerné, avec
+  un message du type *"Commande de {nom du vendeur} ({quartier}) : en
+  cours de livraison."*
+- Nouvelles routes `GET /api/notifications` (mes notifications + nombre
+  non lues), `PATCH /api/notifications/:id` (marquer une notification
+  lue) et `POST /api/notifications/mark-all-read`.
+- Cloche de notifications dans l'en-tête du dashboard commercial
+  (`components/commercial/NotificationsBell.tsx`) : badge avec le nombre
+  de notifications non lues, panneau déroulant, rafraîchi automatiquement
+  toutes les 45s pendant que le dashboard est ouvert.
+
+**3. Classement des commandes par statut (admin)**
+- La page `/admin/commandes` affiche maintenant des pastilles de filtre
+  rapide (comme la page Alertes) : **Toutes / En attente / En livraison /
+  Livrées / Annulées**, chacune avec son compteur, en plus du filtre
+  déroulant existant (ville, commercial, dates).
+
+**Migration SQL à exécuter manuellement (Supabase → SQL Editor), avant de
+redéployer le code qui l'utilise :**
+
+```sql
+-- Nouvelle valeur d'enum : ne peut pas être utilisée dans la même
+-- transaction que sa création — exécuter ce bloc seul, valider, puis
+-- continuer (l'éditeur SQL Supabase exécute déjà chaque requête ainsi).
+ALTER TYPE "StatutCommande" ADD VALUE IF NOT EXISTS 'EN_LIVRAISON';
+```
+
+Aucune autre migration nécessaire : la table `notifications` existe déjà
+depuis la mise en place initiale du schéma.
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont

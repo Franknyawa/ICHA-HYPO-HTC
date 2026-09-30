@@ -13,7 +13,9 @@ export async function GET(req: NextRequest) {
     const result = await listCommandes({
       page: sp.get("page") ? Number(sp.get("page")) : undefined,
       pageSize: sp.get("pageSize") ? Number(sp.get("pageSize")) : undefined,
-      statut: (sp.get("statut") as "EN_ATTENTE" | "LIVREE" | "ANNULEE" | null) ?? undefined,
+      statut:
+        (sp.get("statut") as "EN_ATTENTE" | "EN_LIVRAISON" | "LIVREE" | "ANNULEE" | null) ??
+        undefined,
       villeId: sp.get("villeId") ?? undefined,
       commercialId: sp.get("commercialId") ?? undefined,
       dateFrom: sp.get("dateFrom") ?? undefined,

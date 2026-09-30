@@ -6,10 +6,12 @@ import {
   getCommandesEnAttente,
 } from "@/lib/queries/commercial-stats";
 import { getCreditsCommercial } from "@/lib/queries/credits";
+import { getNotificationsCommercial } from "@/lib/queries/notifications";
 import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { LogoutButton } from "@/components/LogoutButton";
 import { LocationHeartbeat } from "@/components/commercial/LocationHeartbeat";
 import { DeclarerCreditRegleButton } from "@/components/commercial/DeclarerCreditRegleButton";
+import { NotificationsBell } from "@/components/commercial/NotificationsBell";
 import { StatBar } from "@/components/StatBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
@@ -33,11 +35,12 @@ export default async function CommercialDashboardPage() {
   const session = await getSession();
   if (!session) return null;
 
-  const [statsPerso, statsBinome, commandesEnAttente, credits] = await Promise.all([
+  const [statsPerso, statsBinome, commandesEnAttente, credits, notifications] = await Promise.all([
     getStatsPersonnelles(session.userId),
     session.binomeId ? getStatsBinome(session.binomeId) : Promise.resolve(null),
     getCommandesEnAttente(session.userId),
     getCreditsCommercial(session.userId),
+    getNotificationsCommercial(session.userId),
   ]);
 
   const nbAlertes = commandesEnAttente.length + (credits.total > 0 ? 1 : 0);
@@ -55,6 +58,12 @@ export default async function CommercialDashboardPage() {
             <Droplet size={16} />
           </span>
           <div className="flex items-center gap-2">
+            <NotificationsBell
+              initial={{
+                items: notifications.items.map((n) => ({ ...n, createdAt: n.createdAt.toISOString() })),
+                nonLues: notifications.nonLues,
+              }}
+            />
             <ThemeToggle className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white" />
             <LogoutButton className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-medium text-white" />
           </div>
