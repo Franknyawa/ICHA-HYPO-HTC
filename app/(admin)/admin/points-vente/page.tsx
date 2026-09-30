@@ -3,6 +3,8 @@ import { MapPin, ImageOff, Phone, ChevronLeft, ChevronRight } from "lucide-react
 import { listPointsVente } from "@/lib/queries/points-vente";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { PdfExportButton } from "@/components/admin/PdfExportButton";
+import { ImprimerButton } from "@/components/admin/ImprimerButton";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -59,16 +61,54 @@ export default async function PointsVentePage({
 
   const baseQuery = { search, villeId, quartierId, typeId, triCommandes };
 
+  const filtreLabelParts: string[] = [];
+  if (search) filtreLabelParts.push(`Recherche : "${search}"`);
+  const villeLabel = villes.find((v) => v.id === villeId)?.nom;
+  if (villeLabel) filtreLabelParts.push(`Ville : ${villeLabel}`);
+  const quartierLabel = quartiers.find((q) => q.id === quartierId)?.nom;
+  if (quartierLabel) filtreLabelParts.push(`Quartier : ${quartierLabel}`);
+  const typeLabel = types.find((t) => t.id === typeId)?.nom;
+  if (typeLabel) filtreLabelParts.push(`Type : ${typeLabel}`);
+  const filtreLabel = filtreLabelParts.length > 0 ? filtreLabelParts.join(" · ") : "Aucun filtre appliqué";
+
+  const colonnesPdf = ["Nom", "Vendeur", "Ville", "Quartier", "Type", "Commandes"];
+  const lignesPdf = data.map((pv) => [
+    pv.nom,
+    pv.vendeur ?? "—",
+    pv.ville?.nom ?? "—",
+    pv.quartier?.nom ?? "—",
+    pv.type?.nom ?? "—",
+    String(pv._count.commandes),
+  ]);
+
   return (
     <main>
+      {/* En-tête print-only, cohérent avec /admin/rapports */}
+      <div className="hidden print:block p-6 pb-2">
+        <h1 className="text-xl font-bold text-slate-900">HYPO / HTC — ICHA IMPORT</h1>
+        <p className="text-sm text-slate-500">Points de vente — {filtreLabel}</p>
+        <p className="text-sm text-slate-500">Généré le {new Date().toLocaleDateString("fr-FR")}</p>
+      </div>
+
       <AdminPageHeader
         title="Points de vente"
         subtitle={`${pagination.total} au total`}
+        action={
+          <div className="flex items-center gap-2 print:hidden">
+            <PdfExportButton
+              titre="Points de vente"
+              filtreLabel={filtreLabel}
+              colonnes={colonnesPdf}
+              lignes={lignesPdf}
+            />
+            <ImprimerButton />
+          </div>
+        }
       />
 
       <div className="p-4 md:p-6">
         {/* Filtres */}
-        <form className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-5" action="/admin/points-vente">
+        <form className="mb-4 grid grid-cols-2 gap-2 print:hidden md:grid-cols-5" action="/admin/points-vente">
           <input
             type="text"
             name="search"
@@ -164,7 +204,11 @@ export default async function PointsVentePage({
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">{pv.nom}</td>
+                    <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">
+                      <Link href={`/admin/points-vente/${pv.id}`} className="hover:underline">
+                        {pv.nom}
+                      </Link>
+                    </td>
                     <td className="px-4 py-2.5">
                       <p className="text-slate-700 dark:text-slate-300">{pv.vendeur ?? "—"}</p>
                       {wa && (
@@ -243,7 +287,12 @@ export default async function PointsVentePage({
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <p className="truncate font-medium text-slate-800 dark:text-slate-100">{pv.nom}</p>
+                    <Link
+                      href={`/admin/points-vente/${pv.id}`}
+                      className="truncate font-medium text-slate-800 dark:text-slate-100 hover:underline"
+                    >
+                      {pv.nom}
+                    </Link>
                     <span className="shrink-0 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700">
                       {pv._count.commandes} cmd.
                     </span>
@@ -282,7 +331,7 @@ export default async function PointsVentePage({
         </div>
 
         {/* Pagination */}
-        <div className="mt-5 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
+        <div className="mt-5 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 print:hidden">
           <span>
             Page {pagination.page} / {pagination.totalPages}
           </span>

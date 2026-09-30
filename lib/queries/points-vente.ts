@@ -59,3 +59,126 @@ export async function listPointsVente(params: ListPointsVenteParams) {
 
   return buildPaginatedResponse(data, total, page, pageSize);
 }
+
+/**
+ * Fiche détaillée d'un point de vente pour la page /admin/points-vente/[id]
+ * (mêmes principes de calcul crédit que getClientDetail dans
+ * lib/queries/clients.ts, appliqués au point de vente plutôt qu'au client).
+ */
+export async function getPointVenteDetail(id: string) {
+  const pointVente = await prisma.pointVente.findUnique({
+    where: { id },
+    include: {
+      ville: { select: { nom: true } },
+      quartier: { select: { nom: true } },
+      type: { select: { nom: true } },
+      createdBy: { select: { nom: true, prenom: true } },
+      ventes: {
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        select: {
+          id: true,
+          montantTotal: true,
+          createdAt: true,
+          commercial: { select: { nom: true, prenom: true } },
+          client: { select: { nom: true } },
+          lignes: {
+            select: { nbSachets: true, nbFilets: true, nbCartons: true, produit: { select: { code: true } } },
+          },
+          paiements: { select: { montant: true, modePaiement: true } },
+        },
+      },
+      commandes: {
+        orderBy: { dateCommande: "desc" },
+        take: 30,
+        select: {
+          id: true,
+          statut: true,
+          dateCommande: true,
+          dateLivraisonPrevue: true,
+          commercial: { select: { nom: true, prenom: true } },
+          lignes: {
+            select: { nbSachets: true, nbFilets: true, nbCartons: true, produit: { select: { code: true } } },
+          },
+        },
+      },
+      visites: {
+        orderBy: { dateVisite: "desc" },
+        take: 30,
+        select: {
+          id: true,
+          dateVisite: true,
+          observation: true,
+          commercial: { select: { nom: true, prenom: true } },
+        },
+      },
+      _count: { select: { visites: true, ventes: true, commandes: true } },
+    },
+  });
+  if (!pointVente) return null;
+
+  const resumeLignes = (lignes: { nbCartons: number; nbSachets: number; nbFilets: number; produit: { code: string } }[]) =>
+    lignes
+      .map((l) => {
+        const qte = l.nbCartons > 0 ? `${l.nbCartons} cartons` : l.nbFilets > 0 ? `${l.nbFilets} filets` : `${l.nbSachets} sachets`;
+        return `${l.produit.code} — ${qte}`;
+      })
+      .join(", ");
+
+  const ventes = pointVente.ventes.map((v) => {
+    const paye = v.paiements.reduce((s, p) => s + Number(p.montant), 0);
+    const montantTotal = Number(v.montantTotal);
+    return {
+      id: v.id,
+      createdAt: v.createdAt,
+      commercialNom: `${v.commercial.prenom} ${v.commercial.nom}`,
+      clientNom: v.client?.nom ?? null,
+      produitsResume: resumeLignes(v.lignes) || "—",
+      montantTotal,
+      montantPaye: paye,
+      montantDu: Math.max(0, montantTotal - paye),
+    };
+  });
+
+  const commandes = pointVente.commandes.map((c) => ({
+    id: c.id,
+    statut: c.statut,
+    dateCommande: c.dateCommande,
+    dateLivraisonPrevue: c.dateLivraisonPrevue,
+    commercialNom: `${c.commercial.prenom} ${c.commercial.nom}`,
+    produitsResume: resumeLignes(c.lignes) || "—",
+  }));
+
+  const visites = pointVente.visites.map((v) => ({
+    id: v.id,
+    dateVisite: v.dateVisite,
+    observation: v.observation,
+    commercialNom: `${v.commercial.prenom} ${v.commercial.nom}`,
+  }));
+
+  const totalVenteFcfa = ventes.reduce((s, v) => s + v.montantTotal, 0);
+  const resteAPayerFcfa = ventes.reduce((s, v) => s + v.montantDu, 0);
+
+  return {
+    id: pointVente.id,
+    nom: pointVente.nom,
+    vendeur: pointVente.vendeur,
+    telephoneVendeur: pointVente.telephoneVendeur,
+    telephonePatron: pointVente.telephonePatron,
+    repere: pointVente.repere,
+    latitude: pointVente.latitude,
+    longitude: pointVente.longitude,
+    presentoir: pointVente.presentoir,
+    ville: pointVente.ville,
+    quartier: pointVente.quartier,
+    type: pointVente.type,
+    createdBy: pointVente.createdBy,
+    createdAt: pointVente.createdAt,
+    nbVisites: pointVente._count.visites,
+    totalVenteFcfa,
+    resteAPayerFcfa,
+    ventes,
+    commandes,
+    visites,
+  };
+}

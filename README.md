@@ -1246,6 +1246,60 @@ depuis la mise en place initiale du schéma.
   `print:hidden` pour ne laisser que le tableau à l'impression.
 - Aucune migration SQL nécessaire (aucun changement de schéma).
 
+### ✅ Correctif — montants FCFA illisibles dans les PDF
+
+- Bug signalé par Victor (capture d'écran) : dans le PDF exporté des
+  rapports, un montant comme `1 153 350` s'affichait `1 / 1 5 3 / 3 5
+  0`. Cause : `toLocaleString("fr-FR")` insère un espace fine
+  insécable (U+202F) comme séparateur de milliers, correct à l'écran
+  mais indessinable par la police Helvetica intégrée à jsPDF.
+- Correctif centralisé dans un nouvel utilitaire partagé
+  `lib/utils/format.ts` (`formatMontant` / `formatFcfa`), qui construit
+  le séparateur de milliers avec un espace normal. `lib/utils/facture-
+  pdf.ts` (facture + bon de livraison) et `app/(admin)/admin/rapports/
+  page.tsx` utilisent désormais tous les deux cette même fonction —
+  plus aucune duplication de la logique de formatage.
+- Aucune migration SQL nécessaire.
+
+### ✅ Fiche détaillée point de vente + filtres/export sur la liste
+
+- En cliquant sur le nom d'un point de vente dans `/admin/points-vente`
+  (tableau desktop ou cartes mobile), on accède maintenant à une fiche
+  détaillée `/admin/points-vente/[id]` — même principe de structure que
+  l'exemple montré par Victor, mais avec l'identité visuelle ICHA
+  (bleu/teal), pas le style crème/doré de l'autre projet de référence.
+- La fiche affiche : bouton retour, carte d'en-tête (nom · type · ville
+  · quartier), bloc **Interlocuteur** (vendeur + téléphones vendeur/
+  patron, lien WhatsApp), bloc **Localisation** (repère + lien "Voir sur
+  la carte"), la mention "Recensé par {prénom nom} le {date}", 3 tuiles
+  statistiques (**Visite(s)**, **Total vendu (FCFA)**, **Reste à payer
+  (FCFA)**), puis les listes **Ventes**, **Commandes** et **Historique
+  des visites**.
+  - ⚠️ Différence assumée avec l'exemple de référence : dans le schéma
+    ICHA, le modèle `Commande` (bon de commande à livrer) ne porte
+    aucun montant — seul `Vente` en porte. "Total vendu" / "Reste à
+    payer" sont donc calculés à partir des **ventes** du point de vente
+    (montant total moins paiements reçus), pas des commandes. Les
+    commandes sont affichées avec leur statut (`EN_ATTENTE` /
+    `EN_LIVRAISON` / `LIVREE` / `ANNULEE`) et le résumé des produits,
+    sans montant.
+  - ICHA n'ayant pas de notion de "potentiel" / "veut commander" sur les
+    visites (seulement un champ `observation` libre), ces indicateurs
+    de l'exemple de référence n'ont pas d'équivalent ici et ne sont pas
+    repris.
+  - Nouvelle fonction `getPointVenteDetail(id)` dans
+    `lib/queries/points-vente.ts`, construite sur le même principe de
+    calcul crédit que `getClientDetail` (`lib/queries/clients.ts`).
+- La **liste** `/admin/points-vente` avait déjà tous ses filtres
+  (recherche, ville, quartier, type, tri par nombre de commandes) — il
+  manquait seulement l'export. Ajout de **Export PDF** et
+  **Imprimer** en haut de page (mêmes composants génériques que
+  `/admin/rapports` : `PdfExportButton` / `ImprimerButton`), qui
+  respectent les filtres actifs.
+- Aucune migration SQL nécessaire (aucun changement de schéma — cette
+  fiche ne fait qu'ajouter une nouvelle requête de lecture sur des
+  tables/relations existantes).
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont
