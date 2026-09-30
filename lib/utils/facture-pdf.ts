@@ -2,6 +2,8 @@
 // la visite de réassort et la liste admin des factures, pour garantir un
 // rendu identique et éviter de dupliquer la mise en page trois fois.
 
+import { formatFcfa } from "./format";
+
 export type FactureLigne = {
   produitCode: string;
   nbSachets: number;
@@ -31,16 +33,6 @@ const COULEUR_GRIS_BORDURE: [number, number, number] = [226, 232, 240]; // slate
 const COULEUR_GRIS_TEXTE: [number, number, number] = [71, 85, 105]; // slate-600
 const COULEUR_GRIS_LEGER: [number, number, number] = [148, 163, 184]; // slate-400
 const COULEUR_ENCRE: [number, number, number] = [15, 23, 42]; // slate-900
-
-// Formatage FCFA avec un espace normal comme séparateur de milliers.
-// (toLocaleString("fr-FR") insère un espace insécable étroit — U+202F —
-// que la police Helvetica embarquée dans jsPDF ne sait pas dessiner,
-// ce qui produit un artefact du type "45 /500 FCFA" au lieu de "45 500 FCFA".)
-function formatFcfa(montant: number): string {
-  const entier = Math.round(montant);
-  const avecEspaces = entier.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return `${avecEspaces} FCFA`;
-}
 
 // Le logo est chargé une seule fois (même origine, donc pas de souci CORS)
 // et mis en cache pour les générations suivantes dans la même session.

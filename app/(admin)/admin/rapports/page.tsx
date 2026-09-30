@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PdfExportButton } from "@/components/admin/PdfExportButton";
 import { ImprimerButton } from "@/components/admin/ImprimerButton";
+import { formatMontant } from "@/lib/utils/format";
 import {
   Banknote,
   ShoppingCart,
@@ -39,7 +40,10 @@ const TITRE_VUE: Record<RapportVue, string> = {
   vente: "Rapport détaillé des ventes",
 };
 
-const fcfa = (n: number) => n.toLocaleString("fr-FR");
+// Espace normal comme séparateur de milliers (pas .toLocaleString, dont
+// l'espace insécable étroit U+202F casse le rendu dans les PDF jsPDF —
+// voir lib/utils/format.ts).
+const fcfa = formatMontant;
 
 function buildQuery(params: Record<string, string | undefined>) {
   const sp = new URLSearchParams();
