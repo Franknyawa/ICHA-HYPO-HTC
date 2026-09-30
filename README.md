@@ -1174,6 +1174,53 @@ ALTER TYPE "StatutCommande" ADD VALUE IF NOT EXISTS 'EN_LIVRAISON';
 Aucune autre migration nécessaire : la table `notifications` existe déjà
 depuis la mise en place initiale du schéma.
 
+### ✅ Bon de livraison PDF
+
+- Une fois une commande validée (`EN_LIVRAISON`) ou livrée (`LIVREE`),
+  un bouton **"Bon de livraison"** apparaît à côté des actions de statut
+  sur `/admin/commandes` (`components/admin/BonLivraisonButton.tsx`).
+- Génère un PDF (`lib/utils/bon-livraison-pdf.ts`) avec la même identité
+  visuelle que la facture (logo, bandeau bleu) mais **sans aucun
+  montant** : n° de commande, date de livraison, bloc "LIVRÉ À" / "LIVRÉ
+  PAR", tableau des produits (sachets/filets/cartons, pas de prix), case
+  "Marchandise reçue conforme...", zone de signatures, mention "Document
+  de livraison — sans valeur fiscale".
+- Aucune migration SQL nécessaire (aucun changement de schéma).
+
+### ✅ Refonte de la page Stock (`/admin/stock`)
+
+- La page passe d'un affichage en cartes avec 3 modales séparées
+  (ajuster / seuil / historique) à un **tableau pleine largeur**
+  (Produit | Stock disponible | Seuil d'alerte | Statut), dans les
+  couleurs bleu/teal habituelles d'ICHA (le style crème/or d'une
+  maquette de référence n'a volontairement pas été repris — seule la
+  structure l'a été).
+- Le seuil d'alerte s'édite désormais **en ligne** (icône crayon à côté
+  de la valeur), sans modale.
+- Les 2 boutons "Réassort"/"Retirer" sont remplacés par un **formulaire
+  unique "Enregistrer un mouvement manuel"**, avec un type à 2 options :
+  - **Entrée** : ajoute la quantité saisie au stock existant.
+  - **Ajustement** : la quantité saisie est le **nouveau total** ; le
+    delta par rapport au stock actuel est calculé côté client puis
+    envoyé au même endpoint existant (`POST
+    /api/stock/[produitId]/ajuster`, type `ENTREE` si le delta est
+    positif, `SORTIE` s'il est négatif) — **aucun changement de
+    schéma ni de service** : le verrou optimiste déjà en place dans
+    `applyStockMovement()` (`lib/services/stock.ts`) empêche déjà tout
+    passage sous zéro, pour ce nouveau type comme pour les mouvements
+    existants (réassort manuel, vente).
+- Les 2 anciennes modales "Historique" (une par produit) sont remplacées
+  par un **tableau d'historique combiné**, tous produits confondus, en
+  bas de page, alimenté par une nouvelle fonction
+  `getMouvementsRecentsTous()` (`lib/queries/stock.ts`) et une nouvelle
+  route `GET /api/stock/mouvements`.
+- L'ancienne route `GET /api/stock/[produitId]/mouvements` (historique
+  par produit) est conservée telle quelle — elle ne gêne pas et pourrait
+  resservir plus tard.
+- Aucune migration SQL nécessaire (aucun changement de schéma) — le
+  stock négatif était déjà structurellement impossible avant cette
+  refonte, elle réutilise simplement ce mécanisme existant.
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont
