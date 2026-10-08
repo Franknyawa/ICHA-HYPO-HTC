@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { PointVenteSearch, type ResultatRecherche } from "@/components/commercial/PointVenteSearch";
 import { queuePendingVisite } from "@/lib/offline/db";
+import { chargerReferentiels, chargerMe, pointVenteLocal } from "@/lib/offline/referentiels";
 import { syncPendingVisites } from "@/lib/offline/sync";
 import { genererFacturePdf } from "@/lib/utils/facture-pdf";
 
@@ -72,30 +73,41 @@ function ReassortContent() {
   const [facturePdfLoading, setFacturePdfLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/referentiels")
-      .then((r) => r.json())
+    chargerReferentiels()
       .then((d) => {
         setProduits(d.produits ?? []);
         setPrixParType(d.prixParType ?? []);
-      });
-    fetch("/api/me")
-      .then((r) => r.json())
-      .then((d) => setSession(d));
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Données indisponibles."));
+    chargerMe()
+      .then((d) => setSession(d))
+      .catch(() => {});
 
     if (pointVenteIdPrefill) {
-      fetch(`/api/points-vente/${pointVenteIdPrefill}`)
-        .then((r) => r.json())
-        .then((d) => {
-          setPointVente({
-            id: d.id,
-            nom: d.nom,
-            vendeur: d.vendeur,
-            telephoneVendeur: d.telephoneVendeur,
-            villeNom: d.ville?.nom ?? null,
-            quartierNom: d.quartier?.nom ?? null,
-            typeId: d.typeId ?? null,
-            photoUrl: null,
-          });
+      // En ligne : fiche du serveur ; sinon (ou en cas d'échec) copie locale.
+      const depuisServeur = navigator.onLine
+        ? fetch(`/api/points-vente/${pointVenteIdPrefill}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) =>
+              d
+                ? {
+                    id: d.id,
+                    nom: d.nom,
+                    vendeur: d.vendeur,
+                    telephoneVendeur: d.telephoneVendeur,
+                    villeNom: d.ville?.nom ?? null,
+                    quartierNom: d.quartier?.nom ?? null,
+                    typeId: d.typeId ?? null,
+                    photoUrl: null,
+                  }
+                : null
+            )
+            .catch(() => null)
+        : Promise.resolve(null);
+      depuisServeur
+        .then(async (pv) => pv ?? (await pointVenteLocal(pointVenteIdPrefill)))
+        .then((pv) => {
+          if (pv) setPointVente(pv);
         })
         .finally(() => setChargementPrefill(false));
     }

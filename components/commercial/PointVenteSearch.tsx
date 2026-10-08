@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Search, MapPin, ImageOff, Phone } from "lucide-react";
+import { Search, MapPin, ImageOff, Phone, WifiOff } from "lucide-react";
+import { rechercherPointsVenteLocal } from "@/lib/offline/referentiels";
 
 export type ResultatRecherche = {
   id: string;
@@ -25,6 +26,7 @@ export function PointVenteSearch({
   const [loading, setLoading] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [localOnly, setLocalOnly] = useState(false);
 
   async function lancerRecherche(params: { search?: string; lat?: number; lng?: number }) {
     setLoading(true);
@@ -32,9 +34,19 @@ export function PointVenteSearch({
     if (params.search) sp.set("search", params.search);
     if (params.lat != null) sp.set("lat", String(params.lat));
     if (params.lng != null) sp.set("lng", String(params.lng));
-    const res = await fetch(`/api/points-vente/recherche?${sp.toString()}`);
-    const d = await res.json().catch(() => ({ data: [] }));
-    setResultats(d.data ?? []);
+    // En ligne : résultats du serveur (à jour, avec photos). Sinon, ou si le
+    // serveur ne répond pas : recherche dans la copie locale des points de vente.
+    let obtenus: ResultatRecherche[] | null = null;
+    if (navigator.onLine) {
+      try {
+        const res = await fetch(`/api/points-vente/recherche?${sp.toString()}`);
+        if (res.ok) obtenus = (await res.json()).data ?? [];
+      } catch {
+        // repli local ci-dessous
+      }
+    }
+    setLocalOnly(obtenus === null);
+    setResultats(obtenus ?? (await rechercherPointsVenteLocal(params)));
     setLoading(false);
   }
 
@@ -95,6 +107,11 @@ export function PointVenteSearch({
       </button>
       {gpsError && <p className="mb-3 text-xs text-alert">{gpsError}</p>}
 
+      {localOnly && (
+        <p className="mb-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <WifiOff size={13} /> Hors ligne — recherche dans la liste enregistrée sur le téléphone.
+        </p>
+      )}
       {loading && <p className="text-sm text-slate-400 dark:text-slate-500">Recherche...</p>}
 
       <div className="space-y-2">

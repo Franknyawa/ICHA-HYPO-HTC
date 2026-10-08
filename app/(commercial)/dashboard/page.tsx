@@ -8,7 +8,6 @@ import {
 } from "@/lib/queries/commercial-stats";
 import { getCreditsCommercial } from "@/lib/queries/credits";
 import { getNotificationsCommercial } from "@/lib/queries/notifications";
-import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { LogoutButton } from "@/components/LogoutButton";
 import { LocationHeartbeat } from "@/components/commercial/LocationHeartbeat";
 import { DeclarerCreditRegleButton } from "@/components/commercial/DeclarerCreditRegleButton";
@@ -75,8 +74,6 @@ export default async function CommercialDashboardPage() {
       </div>
 
       <div className="-mt-4 space-y-4 px-4">
-        <SyncStatusBanner />
-
         {/* Actions terrain */}
         <div className="grid grid-cols-1 gap-2.5">
           <Link

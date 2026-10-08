@@ -22,6 +22,7 @@ import {
   Download,
 } from "lucide-react";
 import { queuePendingVisite } from "@/lib/offline/db";
+import { chargerReferentiels, chargerMe } from "@/lib/offline/referentiels";
 import { syncPendingVisites } from "@/lib/offline/sync";
 import { compressImage } from "@/lib/utils/image";
 import { genererFacturePdf } from "@/lib/utils/facture-pdf";
@@ -241,6 +242,9 @@ export default function NouvelleVisitePage() {
   const [session, setSession] = useState<Session | null>(null);
   const [villes, setVilles] = useState<Ville[]>([]);
   const [quartiers, setQuartiers] = useState<{ id: string; nom: string }[]>([]);
+  // Tous les quartiers, gardés en mémoire : le filtrage par ville se fait en
+  // local, donc le choix du quartier fonctionne aussi sans réseau.
+  const [tousQuartiers, setTousQuartiers] = useState<{ id: string; nom: string; villeId: string }[]>([]);
   const [quartierModeLibre, setQuartierModeLibre] = useState(false);
   const [types, setTypes] = useState<TypePV[]>([]);
   const [produits, setProduits] = useState<Produit[]>([]);
@@ -299,17 +303,18 @@ export default function NouvelleVisitePage() {
   const [queuedOffline, setQueuedOffline] = useState(false);
 
   useEffect(() => {
-    fetch("/api/me")
-      .then((r) => r.json())
-      .then((d) => setSession(d));
-    fetch("/api/referentiels")
-      .then((r) => r.json())
+    chargerMe()
+      .then((d) => setSession(d))
+      .catch(() => {});
+    chargerReferentiels()
       .then((d) => {
         setVilles(d.villes ?? []);
         setTypes(d.types ?? []);
         setProduits(d.produits ?? []);
         setPrixParType(d.prixParType ?? []);
-      });
+        setTousQuartiers(d.quartiers ?? []);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Données indisponibles."));
   }, []);
 
   // Quartiers rechargés dès que la ville change — le quartier n'est plus un
@@ -321,10 +326,8 @@ export default function NouvelleVisitePage() {
       setQuartiers([]);
       return;
     }
-    fetch(`/api/referentiels?villeId=${villeId}`)
-      .then((r) => r.json())
-      .then((d) => setQuartiers(d.quartiers ?? []));
-  }, [villeId]);
+    setQuartiers(tousQuartiers.filter((q) => q.villeId === villeId));
+  }, [villeId, tousQuartiers]);
 
   function captureGps() {
     setGpsError(null);
@@ -726,13 +729,13 @@ export default function NouvelleVisitePage() {
           <div className="mb-4 grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-indigo-50/70 px-3 py-2.5">
               <FieldLabel>Date</FieldLabel>
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <p suppressHydrationWarning className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 {now.toLocaleDateString("fr-FR")}
               </p>
             </div>
             <div className="rounded-xl bg-indigo-50/70 px-3 py-2.5">
               <FieldLabel>Heure</FieldLabel>
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <p suppressHydrationWarning className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 {now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
               </p>
             </div>

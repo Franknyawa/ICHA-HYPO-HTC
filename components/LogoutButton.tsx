@@ -3,14 +3,32 @@
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { useState } from "react";
+import { clearOfflineCaches } from "@/lib/offline/db";
 
 export function LogoutButton({ className }: { className?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function handleLogout() {
+    if (!navigator.onLine) {
+      // Hors ligne, la session ne peut pas être fermée côté serveur : on le dit
+      // plutôt que de faire croire à une déconnexion.
+      window.alert("Déconnexion impossible hors ligne. Reconnecte-toi à internet puis réessaie.");
+      return;
+    }
     setLoading(true);
-    await fetch("/api/auth/logout", { method: "POST" });
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      setLoading(false);
+      return;
+    }
+    // Rien d'un utilisateur ne doit rester sur le téléphone : pages et données
+    // de référence effacées. Les visites en attente, elles, sont conservées
+    // (et ne partiront que sous le compte qui les a saisies).
+    await clearOfflineCaches();
+    const sw = await navigator.serviceWorker?.getRegistration();
+    sw?.active?.postMessage({ type: "VIDER_PAGES" });
     router.push("/login");
     router.refresh();
   }

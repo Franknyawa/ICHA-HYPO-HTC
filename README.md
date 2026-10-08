@@ -1378,6 +1378,18 @@ CREATE INDEX IF NOT EXISTS "alertes_entite_type_entite_id_idx" ON "alertes" ("en
 
 - Les libellés « HYPO / HTC » restent dans rapports/dashboard/stock : ils seront remplacés par des catégories dynamiques à l'étape multi-catégories.
 
+### ✅ Mode hors ligne et synchronisation automatique (espace terrain)
+
+- **Ouverture sans réseau** : le service worker (`public/sw.js`, v3) met réellement en cache les fichiers JS/CSS (avant, ils n'étaient jamais gardés, donc l'app ne s'ouvrait pas sans réseau) et les écrans terrain (dashboard, nouvelle visite, rotation, réassort, historique, profil). Réseau d'abord, dernière version connue si le réseau est absent ou met plus de 4 s. L'admin n'est jamais mis en cache.
+- **Préchargement** : au démarrage (en ligne), `OfflineManager` demande au service worker de télécharger tous les écrans terrain et le code de génération de factures PDF ; les écrans fonctionnent donc hors ligne même s'ils n'ont jamais été ouverts.
+- **Données en local (IndexedDB, `lib/offline/referentiels.ts`)** : produits, prix, villes, quartiers, types de boutique, profil et liste des points de vente (`/api/points-vente/hors-ligne`, 5 000 max). Rafraîchies au démarrage, au retour réseau et toutes les 20 min. Le choix du quartier se fait en local.
+- **Recherche de point de vente hors ligne** (rotation/réassort) : repli automatique sur la liste locale (nom, vendeur, « près de moi » par GPS). Un point de vente créé hors ligne est retrouvable avant même d'être synchronisé.
+- **Synchronisation robuste (`lib/offline/sync.ts`)** : envoi dans l'ordre de saisie, sans doublon (`uuidClient`). Erreur réseau/serveur : nouvel essai avec attente croissante (15 s à 15 min). Refus définitif (données invalides, stock insuffisant, date de plus de 60 jours…) : la visite reste visible avec son motif, boutons « Réessayer » / « Supprimer ». Session expirée : rien n'est perdu, l'envoi reprend après reconnexion. Une visite n'est envoyée que par le compte qui l'a saisie.
+- **Bandeau d'état** sur tous les écrans terrain (`components/commercial/OfflineManager.tsx`, monté dans `app/(commercial)/layout.tsx`) : hors ligne, visites en attente, visites refusées, session expirée. L'ancien bandeau du dashboard est supprimé.
+- **Déconnexion** : efface les pages et données de référence du téléphone (jamais les visites en attente). Impossible hors ligne (message explicite).
+- **Limites connues** : les chiffres du dashboard, de l'historique et du profil affichent la dernière version vue (ils ne se mettent à jour qu'en ligne) ; les photos prises hors ligne restent dans la visite (data URL) jusqu'à l'envoi, puis sont stockées côté serveur ; une première utilisation exige une ouverture avec du réseau.
+- Aucun SQL à lancer pour cette étape.
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont
