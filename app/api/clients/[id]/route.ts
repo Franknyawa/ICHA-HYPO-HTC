@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAuth, requireAdmin } from "@/lib/auth/rbac";
+import { requireAdmin } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getClientDetail } from "@/lib/queries/clients";
 
@@ -12,7 +12,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAuth();
+    await requireAdmin();
 
     const client = await getClientDetail(params.id);
     if (!client) {

@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth/session";
+import { requireAdminPage } from "@/lib/auth/rbac";
 import {
   getDashboardKpis,
   getCaParBinomeEtVendeur,
@@ -72,7 +72,7 @@ function KpiCard({
 }
 
 export default async function AdminDashboardPage() {
-  const session = await getSession();
+  const session = await requireAdminPage();
   const kpis = await getDashboardKpis();
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const [{ parBinome, parVendeur }, observations] = await Promise.all([

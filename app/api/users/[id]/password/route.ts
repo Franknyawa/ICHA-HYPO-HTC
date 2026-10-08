@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { hashPassword } from "@/lib/auth/password";
+import { revoquerSessionsUtilisateur } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,9 @@ export async function PATCH(
       where: { id: params.id },
       data: { passwordHash },
     });
+    // Un mot de passe réinitialisé (souvent après perte ou vol d'un
+    // appareil) doit couper les connexions déjà ouvertes.
+    await revoquerSessionsUtilisateur(params.id);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

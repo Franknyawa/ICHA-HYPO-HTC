@@ -177,6 +177,7 @@ model LoginAttempt {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([username, createdAt])
+  @@index([ip, createdAt])
   @@map("login_attempts")
 }
 

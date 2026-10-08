@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth/rbac";
+import { requireAdmin } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import { createProspectSchema } from "@/lib/validations/point-vente";
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    await requireAdmin();
 
     const searchParams = req.nextUrl.searchParams;
     const { page, pageSize, skip, take } = getPaginationParams(searchParams);
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAuth();
+    await requireAdmin();
 
     const json = await req.json().catch(() => null);
     const parsed = createProspectSchema.safeParse(json);

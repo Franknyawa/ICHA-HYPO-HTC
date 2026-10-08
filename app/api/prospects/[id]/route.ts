@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth/rbac";
+import { requireAdmin } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { z } from "zod";
 
@@ -15,7 +15,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAuth();
+    await requireAdmin();
 
     const json = await req.json().catch(() => null);
     const parsed = updateProspectSchema.safeParse(json);

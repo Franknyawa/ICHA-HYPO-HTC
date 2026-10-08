@@ -26,7 +26,9 @@ export async function verifySessionToken(
   token: string
 ): Promise<SessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, getSecretKey());
+    // Algorithme épinglé : on n'accepte que HS256 (celui utilisé à la
+    // signature) plutôt que de laisser le jeton choisir.
+    const { payload } = await jwtVerify(token, getSecretKey(), { algorithms: ["HS256"] });
     return payload as unknown as SessionPayload;
   } catch {
     return null;

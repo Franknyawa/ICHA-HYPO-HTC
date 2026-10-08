@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CommandeStatusActions } from "@/components/admin/CommandeStatusActions";
 import { BonLivraisonButton } from "@/components/admin/BonLivraisonButton";
+import { requireAdminPage } from "@/lib/auth/rbac";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -52,6 +53,7 @@ export default async function CommandesPage({
     dateTo?: string;
   };
 }) {
+  await requireAdminPage();
   const page = Number(searchParams.page ?? "1") || 1;
   const statut = (searchParams.statut as StatutCommandeFiltre | undefined) ?? undefined;
   const villeId = searchParams.villeId ?? "";

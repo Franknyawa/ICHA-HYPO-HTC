@@ -2,6 +2,7 @@ import { getProgressionBinomes, getProgressionCommerciaux } from "@/lib/queries/
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { StatBar } from "@/components/StatBar";
 import { Users2, User } from "lucide-react";
+import { requireAdminPage } from "@/lib/auth/rbac";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -9,6 +10,7 @@ import { Users2, User } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function ObjectifsPage() {
+  await requireAdminPage();
   const [binomes, commerciaux] = await Promise.all([
     getProgressionBinomes(),
     getProgressionCommerciaux(),

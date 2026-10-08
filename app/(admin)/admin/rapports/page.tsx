@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { requireAdminPage } from "@/lib/auth/rbac";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -67,6 +68,7 @@ export default async function RapportsPage({
     dateTo?: string;
   };
 }) {
+  await requireAdminPage();
   const vue: RapportVue = (CATEGORIES.find((c) => c.vue === searchParams.vue)?.vue ?? "commercial");
   const page = Number(searchParams.page ?? "1") || 1;
 

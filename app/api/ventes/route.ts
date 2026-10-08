@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/rbac";
+import { requireAdmin } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { listVentes } from "@/lib/queries/ventes";
 
@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    await requireAdmin();
     const sp = req.nextUrl.searchParams;
     const result = await listVentes({
       page: sp.get("page") ? Number(sp.get("page")) : undefined,

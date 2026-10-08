@@ -4,6 +4,7 @@ import { listVentes } from "@/lib/queries/ventes";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { FactureButton } from "@/components/admin/FactureButton";
+import { requireAdminPage } from "@/lib/auth/rbac";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -21,6 +22,7 @@ export default async function FacturesPage({
 }: {
   searchParams: { page?: string; commercialId?: string; villeId?: string; dateFrom?: string; dateTo?: string };
 }) {
+  await requireAdminPage();
   const page = Number(searchParams.page ?? "1") || 1;
   const commercialId = searchParams.commercialId ?? "";
   const villeId = searchParams.villeId ?? "";

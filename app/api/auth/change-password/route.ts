@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { revoquerSessionsUtilisateur } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
@@ -37,6 +38,8 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await hashPassword(parsed.data.newPassword);
     await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+    // Les autres appareils connectés sont déconnectés ; celui-ci reste.
+    await revoquerSessionsUtilisateur(user.id, session.sessionId);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

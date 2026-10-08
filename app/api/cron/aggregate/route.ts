@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { aggregateVentesDuJour, aggregerPerformanceBinome } from "@/lib/jobs/aggregate";
 import { genererToutesLesAlertes } from "@/lib/jobs/alertes";
+import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // agrégation potentiellement longue à grand volume
@@ -40,7 +41,24 @@ export async function GET(req: NextRequest) {
     // objectifs de la veille à partir des données fraîchement agrégées.
     await genererToutesLesAlertes(hier);
 
-    return NextResponse.json({ ok: true, resultatVentes, resultatBinomes, alertes: "generees" });
+    // Ménage quotidien : sans lui, ces deux tables grossissent sans limite
+    // (une ligne par tentative de connexion et par session ouverte) et
+    // ralentissent les requêtes qui les consultent à chaque connexion.
+    const ilYa30Jours = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [tentativesPurgees, sessionsPurgees] = await Promise.all([
+      prisma.loginAttempt.deleteMany({ where: { createdAt: { lt: ilYa30Jours } } }),
+      prisma.session.deleteMany({
+        where: { OR: [{ expiresAt: { lt: ilYa30Jours } }, { revoked: true, createdAt: { lt: ilYa30Jours } }] },
+      }),
+    ]);
+
+    return NextResponse.json({
+      ok: true,
+      resultatVentes,
+      resultatBinomes,
+      alertes: "generees",
+      menage: { tentativesPurgees: tentativesPurgees.count, sessionsPurgees: sessionsPurgees.count },
+    });
   } catch (error) {
     console.error("Erreur job agrégation:", error);
     return NextResponse.json({ error: "Échec de l'agrégation." }, { status: 500 });

@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+// Bornes de plausibilité : au-delà, une saisie est forcément une erreur (ou
+// une tentative d'abus) — et dépasserait la capacité des colonnes Int /
+// Decimal(12,2) en base, ce qui ferait planter l'enregistrement en erreur 500.
+const MAX_QUANTITE = 100_000;
+const MAX_MONTANT = 1_000_000_000;
+
 const gpsSchema = z.object({
   latitude: z.number().min(-90).max(90).optional().nullable(),
   longitude: z.number().min(-180).max(180).optional().nullable(),
@@ -8,9 +14,9 @@ const gpsSchema = z.object({
 
 const venteLigneSchema = z.object({
   produitCode: z.string(), // générique — ne se limite plus à HYPO/HTC
-  nbSachets: z.number().int().min(0).default(0),
-  nbFilets: z.number().int().min(0).default(0),
-  nbCartons: z.number().int().min(0).default(0),
+  nbSachets: z.number().int().min(0).max(MAX_QUANTITE).default(0),
+  nbFilets: z.number().int().min(0).max(MAX_QUANTITE).default(0),
+  nbCartons: z.number().int().min(0).max(MAX_QUANTITE).default(0),
 });
 
 // Modes de paiement réels du terrain (Victor) : le crédit fait directement
@@ -18,7 +24,7 @@ const venteLigneSchema = z.object({
 // et "combien reste-t-il dû ?" sont dérivés côté serveur à partir du mode.
 const paiementSchema = z.object({
   uuidClient: z.string().uuid(),
-  montant: z.number().min(0),
+  montant: z.number().min(0).max(MAX_MONTANT),
   modePaiement: z.enum(["ESPECES", "MOBILE_MONEY", "CREDIT_PARTIEL", "CREDIT_TOTAL"]),
 });
 
@@ -28,16 +34,16 @@ const venteSchema = z.object({
   lignes: z.array(venteLigneSchema).min(1),
   // Un seul montant global déclaré par le commercial (pas de prix par
   // produit saisi sur le terrain) — simplification volontaire du MVP.
-  montantTotal: z.number().min(0),
+  montantTotal: z.number().min(0).max(MAX_MONTANT),
   paiement: paiementSchema.optional(),
 });
 
 // Commande à livrer plus tard (distincte de la vente immédiate) — §22 CDC.
 const commandeLigneSchema = z.object({
   produitCode: z.string(), // générique — ne se limite plus à HYPO/HTC
-  nbSachets: z.number().int().min(0).default(0),
-  nbFilets: z.number().int().min(0).default(0),
-  nbCartons: z.number().int().min(0).default(0),
+  nbSachets: z.number().int().min(0).max(MAX_QUANTITE).default(0),
+  nbFilets: z.number().int().min(0).max(MAX_QUANTITE).default(0),
+  nbCartons: z.number().int().min(0).max(MAX_QUANTITE).default(0),
 });
 
 const commandeSchema = z.object({
@@ -49,7 +55,16 @@ const commandeSchema = z.object({
 
 const photoSchema = z.object({
   uuidClient: z.string().uuid(),
-  url: z.string(), // data URL acceptée en attendant le stockage cloud (voir README)
+  // Soit l'URL https d'une photo déjà uploadée, soit (repli hors ligne) un
+  // data URL png/jpeg que le serveur envoie lui-même au stockage avant
+  // d'enregistrer la visite. Toute autre forme est refusée.
+  url: z
+    .string()
+    .max(4_000_000, "Photo trop volumineuse.")
+    .refine(
+      (v) => /^https:\/\//i.test(v) || /^data:image\/(png|jpe?g);base64,/.test(v),
+      "URL de photo invalide."
+    ),
   type: z.string().default("POINT_VENTE"),
 });
 

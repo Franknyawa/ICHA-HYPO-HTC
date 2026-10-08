@@ -73,6 +73,11 @@ export function clearSessionCookie() {
  * c'est ce deuxième contrôle qui rend la révocation immédiate possible,
  * un JWT seul resterait valide jusqu'à son expiration naturelle.
  */
+// lastSeenAt n'est réécrit que si la valeur connue a plus de 5 minutes :
+// l'écrire à chaque requête ajoutait une écriture en base à chaque appel
+// d'API et chaque page.
+const INTERVALLE_LAST_SEEN_MS = 5 * 60 * 1000;
+
 export async function getSession(): Promise<SessionPayload | null> {
   const store = cookies();
   const token = store.get(COOKIE_NAME)?.value;
@@ -81,17 +86,64 @@ export async function getSession(): Promise<SessionPayload | null> {
   const payload = await verifySessionToken(token);
   if (!payload) return null;
 
-  const session = await prisma.session.findUnique({ where: { id: payload.sessionId } });
-  if (!session || session.revoked || session.expiresAt < new Date()) {
+  // Une seule requête : la session ET l'état actuel de l'utilisateur. Le
+  // rôle, l'état actif et le binôme viennent de la base, pas du JWT — sinon
+  // un compte désactivé, rétrogradé ou changé de binôme garderait ses
+  // anciens droits jusqu'à l'expiration naturelle du jeton.
+  const session = await prisma.session.findUnique({
+    where: { id: payload.sessionId },
+    include: {
+      user: {
+        select: {
+          actif: true,
+          role: true,
+          nom: true,
+          prenom: true,
+          binomeId: true,
+          binome: { select: { nom: true } },
+        },
+      },
+    },
+  });
+
+  if (
+    !session ||
+    session.revoked ||
+    session.expiresAt < new Date() ||
+    session.userId !== payload.userId ||
+    !session.user.actif
+  ) {
     return null;
   }
 
-  // Best-effort, ne bloque pas la réponse si ça échoue.
-  prisma.session
-    .update({ where: { id: session.id }, data: { lastSeenAt: new Date() } })
-    .catch(() => {});
+  if (Date.now() - session.lastSeenAt.getTime() > INTERVALLE_LAST_SEEN_MS) {
+    // Best-effort, ne bloque pas la réponse si ça échoue.
+    prisma.session
+      .update({ where: { id: session.id }, data: { lastSeenAt: new Date() } })
+      .catch(() => {});
+  }
 
-  return payload;
+  return {
+    ...payload,
+    role: session.user.role,
+    nom: session.user.nom,
+    prenom: session.user.prenom,
+    binomeId: session.user.binomeId,
+    binomeNom: session.user.binome?.nom ?? null,
+  };
+}
+
+/**
+ * Révoque les sessions actives d'un utilisateur (désactivation du compte,
+ * changement de rôle, changement ou réinitialisation de mot de passe).
+ * `sauf` permet de garder la session courante, par exemple quand
+ * l'utilisateur change lui-même son mot de passe.
+ */
+export async function revoquerSessionsUtilisateur(userId: string, sauf?: string) {
+  await prisma.session.updateMany({
+    where: { userId, revoked: false, ...(sauf ? { id: { not: sauf } } : {}) },
+    data: { revoked: true },
+  });
 }
 
 export { COOKIE_NAME };

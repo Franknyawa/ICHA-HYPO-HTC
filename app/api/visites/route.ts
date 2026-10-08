@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth/rbac";
+import { requireAuth, requireAdmin } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import { createVisiteSchema } from "@/lib/validations/visite";
 import { applyStockMovement, InsufficientStockError } from "@/lib/services/stock";
 import { convertToSachets } from "@/lib/services/produits";
+import { uploadPhoto, isTrustedPhotoUrl } from "@/lib/services/storage";
 import type { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
 
+// Une visite saisie hors ligne est synchronisée plus tard : on tolère donc
+// un passé assez long (60 jours), mais quasiment aucun futur (horloge d'un
+// téléphone légèrement en avance).
+const DATE_PASSE_MAX_MS = 60 * 24 * 60 * 60 * 1000;
+const DATE_FUTURE_TOLEREE_MS = 10 * 60 * 1000;
+
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    // Liste globale de toutes les visites : réservée à l'admin. L'app terrain
+    // n'appelle jamais cette route (elle ne fait que POST), et un commercial
+    // n'a pas à lire les visites de ses collègues.
+    await requireAdmin();
 
     const sp = req.nextUrl.searchParams;
     const { page, pageSize, skip, take } = getPaginationParams(sp);
@@ -91,6 +101,54 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(existingVisite, { status: 200 });
     }
 
+    // --- Contrôles de plausibilité (après l'idempotence, pour ne jamais
+    // refuser le rejeu d'une visite déjà enregistrée) -------------------
+    const maintenant = Date.now();
+    const dateVisiteMs = new Date(input.dateVisite).getTime();
+    if (
+      dateVisiteMs > maintenant + DATE_FUTURE_TOLEREE_MS ||
+      dateVisiteMs < maintenant - DATE_PASSE_MAX_MS
+    ) {
+      return NextResponse.json(
+        { error: "Date de visite invalide (dans le futur ou trop ancienne)." },
+        { status: 400 }
+      );
+    }
+
+    if (
+      input.vente?.paiement &&
+      input.vente.paiement.montant > input.vente.montantTotal + 0.01
+    ) {
+      return NextResponse.json(
+        { error: "Le paiement ne peut pas dépasser le montant de la vente." },
+        { status: 400 }
+      );
+    }
+
+    if (input.photos.some((p) => !p.url.startsWith("data:") && !isTrustedPhotoUrl(p.url))) {
+      return NextResponse.json({ error: "URL de photo non autorisée." }, { status: 400 });
+    }
+
+    // Photos reçues en data URL (repli hors ligne du formulaire) : envoyées
+    // au stockage ICI, avant la transaction, pour ne jamais enregistrer
+    // plusieurs centaines de Ko de base64 dans la table `photos`. Si le
+    // stockage est indisponible, on garde le data URL plutôt que de perdre
+    // la photo (comportement historique).
+    const photosTraitees = await Promise.all(
+      input.photos.map(async (p) => {
+        const m = /^data:image\/(png|jpe?g);base64,/.exec(p.url);
+        if (!m) return p;
+        try {
+          const ext = m[1] === "png" ? "png" : "jpg";
+          const url = await uploadPhoto(p.url, `photos/${session.userId}/${p.uuidClient}.${ext}`);
+          return { ...p, url };
+        } catch (e) {
+          console.error("Upload photo (repli serveur) échoué :", e);
+          return p;
+        }
+      })
+    );
+
     const result = await prisma.$transaction(
       async (tx) => {
       // 1. Point de vente — existant ou créé à la volée
@@ -150,7 +208,9 @@ export async function POST(req: NextRequest) {
         data: {
           uuidClient: input.uuidClient,
           commercialId: session.userId,
-          binomeId: input.binomeId ?? session.binomeId,
+          // Le binôme vient TOUJOURS de la session : un client ne peut pas
+          // attribuer sa visite (et donc ses chiffres d'objectifs) à un autre.
+          binomeId: session.binomeId,
           pointVenteId,
           dateVisite: new Date(input.dateVisite),
           observation: input.observation,
@@ -161,9 +221,9 @@ export async function POST(req: NextRequest) {
       });
 
       // 3. Photos
-      if (input.photos.length > 0) {
+      if (photosTraitees.length > 0) {
         await tx.photo.createMany({
-          data: input.photos.map((p) => ({
+          data: photosTraitees.map((p) => ({
             uuidClient: p.uuidClient,
             visiteId: visite.id,
             pointVenteId,

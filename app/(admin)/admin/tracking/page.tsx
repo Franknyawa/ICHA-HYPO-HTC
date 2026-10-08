@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { TrackingMapLoader } from "@/components/admin/TrackingMapLoader";
 import { MapPin, History, Radio } from "lucide-react";
+import { requireAdminPage } from "@/lib/auth/rbac";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -15,6 +16,7 @@ export default async function TrackingPage({
 }: {
   searchParams: { commercialId?: string; binomeId?: string; date?: string; mode?: string };
 }) {
+  await requireAdminPage();
   const commercialId = searchParams.commercialId ?? "";
   const binomeId = searchParams.binomeId ?? "";
   const date = searchParams.date ?? new Date().toISOString().slice(0, 10);

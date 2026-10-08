@@ -13,6 +13,7 @@ import {
 import { getPointVenteDetail } from "@/lib/queries/points-vente";
 import { formatMontant } from "@/lib/utils/format";
 import { ImprimerButton } from "@/components/admin/ImprimerButton";
+import { requireAdminPage } from "@/lib/auth/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,7 @@ const STATUT_STYLES: Record<string, string> = {
 };
 
 export default async function PointVenteDetailPage({ params }: { params: { id: string } }) {
+  await requireAdminPage();
   const pv = await getPointVenteDetail(params.id);
   if (!pv) {
     notFound();

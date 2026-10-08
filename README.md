@@ -1300,6 +1300,69 @@ depuis la mise en place initiale du schéma.
   fiche ne fait qu'ajouter une nouvelle requête de lecture sur des
   tables/relations existantes).
 
+### ✅ Durcissement sécurité (étape 1 de l'audit)
+
+Audit complet du code (auth, 56 routes API, requêtes, jobs, pages admin,
+service worker, `npm audit`). Cette étape corrige les failles qui ne
+demandent **aucun changement de modèle de données**.
+
+**Sessions et comptes**
+- `getSession()` lit désormais l'utilisateur en base avec la session
+  (même requête) : un compte **désactivé** est refusé immédiatement, et
+  le **rôle / binôme** viennent de la base, plus du jeton (un admin
+  rétrogradé perd ses droits tout de suite).
+- `lastSeenAt` n'est plus réécrit à chaque requête, seulement si la
+  valeur a plus de 5 minutes (une écriture en moins par appel d'API).
+- Les sessions sont **révoquées** à la désactivation d'un compte, au
+  changement de rôle, à la réinitialisation du mot de passe par un admin,
+  et (hors appareil courant) au changement de mot de passe par
+  l'utilisateur. Un admin ne peut plus se désactiver / se rétrograder
+  lui-même.
+- Nouvelle garde `requireAdminPage()` (`lib/auth/rbac.ts`) appelée en
+  tête de **toutes** les pages admin rendues côté serveur (8 pages) : le
+  middleware ne vérifiait que la signature du jeton, pas la révocation.
+- Algorithme JWT épinglé à HS256.
+
+**Cloisonnement des données**
+- Réservées à l'admin (le terrain ne les appelait jamais) : `GET
+  /api/ventes`, `/api/commandes`, `/api/visites`, `/api/clients` (+
+  `[id]`), `/api/prospects` (GET/POST/PATCH), `/api/stock` et les 2
+  routes de mouvements, `GET` liste et `POST` des points de vente, et
+  `PATCH /api/points-vente/[id]`.
+- `GET /api/points-vente/[id]` reste ouvert au commercial (préremplissage
+  de la visite de réassort) mais sans prospects ni clients.
+
+**Entrées**
+- `POST /api/visites` : quantités ≤ 100 000, montants ≤ 1 milliard,
+  paiement ≤ montant de la vente, date de visite entre −60 jours et +10
+  minutes, binôme **toujours** pris sur la session.
+- Photos : URL https sous le domaine de stockage configuré, ou data URL
+  png/jpeg que le **serveur envoie lui-même** au stockage avant
+  l'enregistrement (plus de base64 stocké en base ; repli sur le data URL
+  si le stockage est indisponible).
+- `avatarUrl` : https + domaine de stockage uniquement.
+- Connexion : plafond de 30 échecs / 15 min **par IP** en plus du plafond
+  par identifiant, comparaison de hash factice quand l'identifiant
+  n'existe pas (plus de devinette d'identifiants au chronomètre).
+- Cron quotidien : purge des tentatives de connexion et sessions de plus
+  de 30 jours.
+
+**SQL optionnel** (index pour le plafond par IP, à passer dans le SQL
+Editor Supabase — l'app fonctionne sans, c'est juste plus rapide) :
+
+```sql
+CREATE INDEX IF NOT EXISTS "login_attempts_ip_created_at_idx"
+  ON "login_attempts" ("ip", "created_at");
+```
+
+**Pas encore traité** (décisions ou tests nécessaires) : recalcul des
+montants côté serveur (dépend de la règle "le commercial peut-il
+négocier le prix ?"), mises à jour de dépendances signalées par `npm
+audit` (Next, jsPDF, basic-ftp — à tester avec les PDF), politique de
+mot de passe (min. 6 caractères, compte de démo `changeme123` à
+supprimer en production), journal d'audit, CSP, verrouillage d'un compte
+par un tiers (5 échecs).
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont

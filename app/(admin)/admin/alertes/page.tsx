@@ -11,6 +11,7 @@ import {
   TrendingDown,
   BellOff,
 } from "lucide-react";
+import { requireAdminPage } from "@/lib/auth/rbac";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -32,6 +33,7 @@ export default async function AlertesPage({
 }: {
   searchParams: { type?: string };
 }) {
+  await requireAdminPage();
   const alertes = await listAlertes({ type: searchParams.type });
   const toutesLesAlertes = searchParams.type ? await listAlertes({}) : alertes;
 

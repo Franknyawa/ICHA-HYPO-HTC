@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth/rbac";
+import { requireAdmin } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { listPointsVente } from "@/lib/queries/points-vente";
 import { createPointVenteSchema } from "@/lib/validations/point-vente";
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    await requireAdmin();
 
     const sp = req.nextUrl.searchParams;
     const result = await listPointsVente({
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireAuth();
+    const session = await requireAdmin();
 
     const json = await req.json().catch(() => null);
     const parsed = createPointVenteSchema.safeParse(json);
