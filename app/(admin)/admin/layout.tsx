@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { SiriMark } from "@/components/brand/SiriMark";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -11,7 +12,6 @@ import {
   Users2,
   FileBarChart,
   UserCog,
-  Droplet,
   Truck,
   Settings,
   Receipt,
@@ -42,12 +42,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [showPlus, setShowPlus] = useState(false);
   const [alertesCount, setAlertesCount] = useState(0);
 
+  // Le compteur d'alertes n'a pas besoin d'être rafraîchi à chaque clic :
+  // au plus une fois par minute, et toujours juste après un passage sur la
+  // page Alertes (où l'on vient de résoudre des alertes).
+  const dernierFetchAlertes = useRef(0);
   useEffect(() => {
+    const maintenant = Date.now();
+    const surAlertes = pathname.startsWith("/admin/alertes");
+    if (!surAlertes && maintenant - dernierFetchAlertes.current < 60_000) return;
+    dernierFetchAlertes.current = maintenant;
     fetch("/api/alertes/count")
       .then((r) => r.json())
       .then((d) => setAlertesCount(d.count ?? 0))
       .catch(() => {});
-  }, [pathname]); // re-vérifie à chaque navigation, ex: après avoir résolu une alerte
+  }, [pathname]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:flex">
@@ -57,12 +65,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           className="flex items-center gap-2 px-5 py-5"
           style={{ background: "linear-gradient(135deg, #1e3a8a, #2563eb)" }}
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 text-white">
-            <Droplet size={16} />
-          </span>
+          <SiriMark size={34} idSuffix="adm" />
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-blue-100">
-              ICHA IMPORT
+              SIRI IMPORT
             </p>
             <p className="text-sm font-semibold text-white">Admin</p>
           </div>

@@ -16,3 +16,30 @@ body {
     display: none !important;
   }
 }
+
+/* Page de connexion SIRI IMPORT — apparition douce, purement CSS (aucun JS).
+   Désactivée pour les personnes qui demandent moins d'animations. */
+@keyframes siri-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.siri-rise {
+  animation: siri-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.siri-rise-2 {
+  animation-delay: 0.12s;
+}
+.siri-rise-3 {
+  animation-delay: 0.24s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .siri-rise {
+    animation: none;
+  }
+}

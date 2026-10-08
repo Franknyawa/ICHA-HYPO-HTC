@@ -1,5 +1,6 @@
 "use client";
 
+import { SiriMark } from "@/components/brand/SiriMark";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -694,11 +695,9 @@ export default function NouvelleVisitePage() {
         <div className="relative">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
-                <Droplet size={16} />
-              </span>
+              <SiriMark size={32} idSuffix="new" />
               <p className="text-xs font-bold uppercase tracking-widest text-blue-100">
-                HYPO / HTC / ICHA IMPORT
+                SIRI IMPORT
               </p>
             </div>
             <Link

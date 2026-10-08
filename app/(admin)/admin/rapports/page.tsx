@@ -72,6 +72,10 @@ export default async function RapportsPage({
   const vue: RapportVue = (CATEGORIES.find((c) => c.vue === searchParams.vue)?.vue ?? "commercial");
   const page = Number(searchParams.page ?? "1") || 1;
 
+  // Sans date choisie, on borne à 90 jours : le rapport charge les ventes en
+  // mémoire, donc une période illimitée ralentit de plus en plus avec le
+  // temps. Les champs de dates affichent cette valeur et restent modifiables.
+  const par_defaut_depuis = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const filters = {
     commercialId: searchParams.commercialId || undefined,
     binomeId: searchParams.binomeId || undefined,
@@ -79,7 +83,7 @@ export default async function RapportsPage({
     quartierId: searchParams.quartierId || undefined,
     typeId: searchParams.typeId || undefined,
     produitCode: searchParams.produitCode || undefined,
-    dateFrom: searchParams.dateFrom || undefined,
+    dateFrom: searchParams.dateFrom || (searchParams.dateTo ? undefined : par_defaut_depuis),
     dateTo: searchParams.dateTo || undefined,
   };
 
@@ -323,7 +327,7 @@ export default async function RapportsPage({
         {/* En-tête visible seulement à l'impression (le titre de page normal
             est dans la sidebar/header, masqués à l'impression) */}
         <div className="mb-3 hidden print:block">
-          <p className="text-lg font-bold text-slate-800">HYPO / HTC — ICHA IMPORT</p>
+          <p className="text-lg font-bold text-slate-800">SIRI IMPORT</p>
           <p className="text-sm text-slate-500">{TITRE_VUE[vue]}</p>
           {filtreLabel && <p className="text-xs text-slate-400">{filtreLabel}</p>}
         </div>

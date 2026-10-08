@@ -1363,6 +1363,21 @@ mot de passe (min. 6 caractères, compte de démo `changeme123` à
 supprimer en production), journal d'audit, CSP, verrouillage d'un compte
 par un tiers (5 échecs).
 
+### ✅ Identité SIRI IMPORT, connexion repensée et gains de vitesse
+
+- **Nouvelle identité** : écu sombre cerclé d'or avec monogramme « S » (`components/brand/SiriMark.tsx`, aussi `public/brand/siri-mark.svg`), pensé pour toutes les familles de produits (céréales, hygiène, entretien, épicerie). Le logo HYPO et le motif de bouteilles/sachets sont supprimés.
+- **Page de connexion** : panneau nuit + or, wordmark en serif, icônes de familles de produits, formulaire à accents or, mode sombre conservé. 100 % CSS/SVG : aucune image à télécharger, aucun JS d'animation.
+- **Textes de marque** : tout passe à « SIRI IMPORT » (titre, manifest PWA, sidebar admin, en-têtes commerciaux et d'impression, PDF rapports/factures/bons de livraison — l'écu est dessiné en vectoriel dans les PDF, `lib/utils/pdf-marque.ts`). Constantes dans `lib/brand.ts`.
+- **Icônes PWA** (192, 512, apple-touch) régénérées ; cache du service worker passé à `siri-shell-v2`. Si l'ancienne icône « hypo » reste sur l'écran d'accueil d'un téléphone, supprimer puis réinstaller l'app.
+- **Vitesse** : compteur d'alertes de la sidebar admin rafraîchi au plus 1 fois/minute (au lieu de chaque clic) ; rapports bornés à 90 jours par défaut (dates modifiables) ; `optimizePackageImports` (lucide, recharts) ; cache 7 jours sur logo/icônes.
+- **SQL optionnel (Supabase SQL Editor)** — index manquant :
+
+```sql
+CREATE INDEX IF NOT EXISTS "alertes_entite_type_entite_id_idx" ON "alertes" ("entite_type", "entite_id");
+```
+
+- Les libellés « HYPO / HTC » restent dans rapports/dashboard/stock : ils seront remplacés par des catégories dynamiques à l'étape multi-catégories.
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont

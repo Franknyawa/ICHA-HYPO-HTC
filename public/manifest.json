@@ -1,12 +1,12 @@
 {
-  "name": "ICHA IMPORT — HYPO/HTC",
-  "short_name": "ICHA Terrain",
-  "description": "Application terrain pour la force commerciale ICHA IMPORT",
+  "name": "SIRI IMPORT — Suivi terrain",
+  "short_name": "SIRI Terrain",
+  "description": "Application terrain pour la force commerciale SIRI IMPORT",
   "start_url": "/dashboard",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#ffffff",
-  "theme_color": "#1d4ed8",
+  "background_color": "#0a1630",
+  "theme_color": "#0a1630",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }

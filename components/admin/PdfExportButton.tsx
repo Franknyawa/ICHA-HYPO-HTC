@@ -36,8 +36,8 @@ export function PdfExportButton({
       const largeur = doc.internal.pageSize.getWidth();
 
       doc.setFontSize(16);
-      doc.setTextColor(30, 64, 175); // bleu marque
-      doc.text("HYPO / HTC / ICHA IMPORT", 14, 18);
+      doc.setTextColor(10, 22, 48); // nuit marque
+      doc.text("SIRI IMPORT", 14, 18);
 
       doc.setFontSize(11);
       doc.setTextColor(100);
@@ -55,7 +55,7 @@ export function PdfExportButton({
         styles: { fontSize: 9 },
       });
 
-      doc.save(`rapport-icha-import-${new Date().toISOString().slice(0, 10)}.pdf`);
+      doc.save(`rapport-siri-import-${new Date().toISOString().slice(0, 10)}.pdf`);
     } finally {
       setGenerating(false);
     }

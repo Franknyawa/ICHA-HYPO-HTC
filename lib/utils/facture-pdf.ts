@@ -2,6 +2,7 @@
 // la visite de réassort et la liste admin des factures, pour garantir un
 // rendu identique et éviter de dupliquer la mise en page trois fois.
 
+import { dessinerEcuMarque } from "@/lib/utils/pdf-marque";
 import { formatFcfa } from "./format";
 
 export type FactureLigne = {
@@ -24,8 +25,8 @@ export type FactureData = {
   resteAPayer?: number;
 };
 
-const COULEUR_BRAND: [number, number, number] = [30, 64, 175]; // #1e40af
-const COULEUR_BRAND_CLAIR: [number, number, number] = [37, 99, 235]; // #2563eb
+const COULEUR_BRAND: [number, number, number] = [10, 22, 48]; // nuit #0a1630
+const COULEUR_BRAND_CLAIR: [number, number, number] = [201, 162, 75]; // or #c9a24b
 const COULEUR_TEAL: [number, number, number] = [15, 118, 110]; // #0f766e
 const COULEUR_ALERTE: [number, number, number] = [185, 28, 28]; // #b91c1c
 const COULEUR_GRIS_CLAIR: [number, number, number] = [248, 250, 252]; // slate-50
@@ -34,33 +35,9 @@ const COULEUR_GRIS_TEXTE: [number, number, number] = [71, 85, 105]; // slate-600
 const COULEUR_GRIS_LEGER: [number, number, number] = [148, 163, 184]; // slate-400
 const COULEUR_ENCRE: [number, number, number] = [15, 23, 42]; // slate-900
 
-// Le logo est chargé une seule fois (même origine, donc pas de souci CORS)
-// et mis en cache pour les générations suivantes dans la même session.
-let logoBase64Promise: Promise<string | null> | null = null;
-
-function chargerLogo(): Promise<string | null> {
-  if (!logoBase64Promise) {
-    logoBase64Promise = fetch("/brand/logo-hypo.png")
-      .then((res) => (res.ok ? res.blob() : null))
-      .then(
-        (blob) =>
-          new Promise<string | null>((resolve) => {
-            if (!blob) return resolve(null);
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = () => resolve(null);
-            reader.readAsDataURL(blob);
-          })
-      )
-      .catch(() => null);
-  }
-  return logoBase64Promise;
-}
-
 export async function genererFacturePdf(data: FactureData) {
   const { default: jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
-  const logo = await chargerLogo();
 
   const doc = new jsPDF();
   const largeur = doc.internal.pageSize.getWidth();
@@ -73,31 +50,15 @@ export async function genererFacturePdf(data: FactureData) {
   doc.setFillColor(...COULEUR_BRAND_CLAIR);
   doc.rect(0, hauteurEnTete - 3, largeur, 3, "F");
 
-  // Logo dans une pastille blanche, pour rester lisible quel que soit le fond du PNG
-  let xTexteMarque = 14;
-  if (logo) {
-    const logoW = 22;
-    const logoH = 12.2; // ratio proche de l'image source (821x454)
-    const pastilleW = logoW + 8;
-    const pastilleH = logoH + 8;
-    const yPastille = (hauteurEnTete - pastilleH) / 2 - 1;
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(14, yPastille, pastilleW, pastilleH, 2.5, 2.5, "F");
-    try {
-      doc.addImage(logo, "PNG", 14 + 4, yPastille + 4, logoW, logoH);
-    } catch {
-      // image illisible (format inattendu) : on ignore silencieusement, le texte suffit
-    }
-    xTexteMarque = 14 + pastilleW + 6;
-  }
+  const xTexteMarque = dessinerEcuMarque(doc, 14, hauteurEnTete);
 
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  doc.text("HYPO / HTC", xTexteMarque, hauteurEnTete / 2 - 2);
+  doc.text("SIRI IMPORT", xTexteMarque, hauteurEnTete / 2 - 2);
   doc.setFontSize(8.5);
   doc.setFont("helvetica", "normal");
-  doc.text("ICHA IMPORT — Distribution locale", xTexteMarque, hauteurEnTete / 2 + 5);
+  doc.text("Distribution alimentaire, hygiène et entretien", xTexteMarque, hauteurEnTete / 2 + 5);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(17);
@@ -252,7 +213,7 @@ export async function genererFacturePdf(data: FactureData) {
     { align: "center" }
   );
   doc.setFont("helvetica", "italic");
-  doc.text("Merci pour votre confiance — HYPO / HTC ICHA IMPORT", largeur / 2, hauteurPage - 11, {
+  doc.text("Merci pour votre confiance — SIRI IMPORT", largeur / 2, hauteurPage - 11, {
     align: "center",
   });
 

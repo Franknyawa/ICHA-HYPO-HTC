@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
+
+  // Allège le JavaScript envoyé : n'embarque que les icônes/graphiques
+  // réellement utilisés au lieu des bibliothèques entières.
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts"],
+  },
 
   // En-têtes de sécurité HTTP appliqués à toutes les routes — durcissement
   // "production readiness" : aucune CSP stricte pour l'instant (l'app
@@ -10,6 +17,12 @@ const nextConfig = {
   // activées.
   async headers() {
     return [
+      {
+        // Logo et icônes : ne changent presque jamais, inutile de les
+        // retélécharger à chaque visite.
+        source: "/:dir(brand|icons)/:file*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }],
+      },
       {
         source: "/:path*",
         headers: [

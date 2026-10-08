@@ -1,4 +1,5 @@
 import { getSession } from "@/lib/auth/session";
+import { SiriMark } from "@/components/brand/SiriMark";
 import Link from "next/link";
 import {
   getStatsPersonnelles,
@@ -21,7 +22,6 @@ import {
   Clock,
   Users2,
   User,
-  Droplet,
   AlertTriangle,
   CreditCard,
 } from "lucide-react";
@@ -54,9 +54,7 @@ export default async function CommercialDashboardPage() {
         style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 55%, #2563eb 100%)" }}
       >
         <div className="mb-3 flex items-center justify-between">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
-            <Droplet size={16} />
-          </span>
+          <SiriMark size={34} idSuffix="com" />
           <div className="flex items-center gap-2">
             <NotificationsBell
               initial={{

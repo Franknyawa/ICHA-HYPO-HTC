@@ -9,7 +9,7 @@
 //   DONNÉES est géré par IndexedDB (lib/offline/), pas par le Service
 //   Worker, qui ne fait que permettre à l'app de s'OUVRIR sans réseau.
 
-const CACHE_NAME = "icha-shell-v1";
+const CACHE_NAME = "siri-shell-v2";
 const APP_SHELL = ["/login", "/dashboard", "/visites/new", "/manifest.json"];
 
 self.addEventListener("install", (event) => {

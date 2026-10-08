@@ -87,7 +87,7 @@ export default async function PointsVentePage({
     <main>
       {/* En-tête print-only, cohérent avec /admin/rapports */}
       <div className="hidden print:block p-6 pb-2">
-        <h1 className="text-xl font-bold text-slate-900">HYPO / HTC — ICHA IMPORT</h1>
+        <h1 className="text-xl font-bold text-slate-900">SIRI IMPORT</h1>
         <p className="text-sm text-slate-500">Points de vente — {filtreLabel}</p>
         <p className="text-sm text-slate-500">Généré le {new Date().toLocaleDateString("fr-FR")}</p>
       </div>

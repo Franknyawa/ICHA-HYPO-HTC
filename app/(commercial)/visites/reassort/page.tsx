@@ -292,7 +292,7 @@ function ReassortContent() {
               <Package size={16} />
             </span>
             <p className="text-xs font-bold uppercase tracking-widest text-teal-100">
-              HYPO / HTC / ICHA IMPORT
+              SIRI IMPORT
             </p>
           </div>
           <Link href="/dashboard" className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
