@@ -1407,6 +1407,15 @@ ALTER TABLE "produits" ADD COLUMN IF NOT EXISTS "gamme" TEXT;
 UPDATE "produits" SET "gamme" = 'Entretien' WHERE "gamme" IS NULL AND "code" IN ('HYPO', 'HTC');
 ```
 
+### ✅ Tableau de bord : section « Ventes par produit »
+
+- Nouvelle section sur `/admin/dashboard` (chargée en streaming, ne bloque pas la page).
+- Bascule Cartons / Chiffre d'affaires, période (30 j, 90 j, 12 mois, depuis le début).
+- Produit le plus vendu, classement cliquable, meilleurs points de vente et quartiers.
+- Carte « Graphiques du produit » : 4 KPI, évolution sur 12 mois, 30 derniers jours.
+- Générique : fonctionne pour toutes les gammes et tous les produits (cartons équivalents).
+- Aucun SQL supplémentaire (la colonne `gamme` de l'étape Rapports suffit).
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont

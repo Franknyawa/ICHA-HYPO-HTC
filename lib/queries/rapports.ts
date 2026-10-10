@@ -88,7 +88,7 @@ export type ApercuRapport = {
   ventesTronquees: boolean;
 };
 
-const SANS_GAMME = "Sans gamme";
+export const SANS_GAMME = "Sans gamme";
 const TAILLE_PAGE_DETAIL = 30;
 const MAX_VENTES_APERCU = 150;
 
@@ -241,7 +241,7 @@ type VenteChargee = Awaited<ReturnType<typeof chargerVentes>>[number];
 // montantTotal au prorata de la valeur de chaque ligne (montant de ligne s'il
 // existe, sinon valeur au prix catalogue). Même logique pour le reste à payer.
 
-type LigneRepartie = {
+export type LigneRepartie = {
   produitId: string;
   code: string;
   nom: string;
@@ -254,9 +254,22 @@ type LigneRepartie = {
   reste: number;
 };
 
-function repartirVente(v: VenteChargee): { lignes: LigneRepartie[]; paye: number; resteVente: number } {
+/** Forme minimale d'une vente pour répartir son CA (utilisée aussi par le tableau de bord). */
+export type VenteRepartissable = {
+  montantTotal: unknown;
+  lignes: {
+    nbSachets: number;
+    nbFilets: number;
+    nbCartons: number;
+    montant: unknown;
+    produit: ProduitCalc & { id: string; code: string; nom: string; gamme: string | null };
+  }[];
+  paiements?: { montant: unknown }[];
+};
+
+export function repartirVente(v: VenteRepartissable): { lignes: LigneRepartie[]; paye: number; resteVente: number } {
   const total = Number(v.montantTotal);
-  const paye = v.paiements.reduce((s, p) => s + Number(p.montant), 0);
+  const paye = (v.paiements ?? []).reduce((s, p) => s + Number(p.montant), 0);
   const resteVente = Math.max(0, total - paye);
 
   const poids = v.lignes.map((l) => {

@@ -4,8 +4,10 @@ import {
   getCaParBinomeEtVendeur,
   getObservationsRecentes,
 } from "@/lib/queries/dashboard";
+import { Suspense } from "react";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { VentesParProduitSection, VentesParProduitSkeleton } from "@/components/admin/VentesParProduitSection";
 import { CaChart, CartonsChart, PrintButton } from "@/components/admin/DashboardCharts";
 import {
   MapPin,
@@ -172,6 +174,12 @@ export default async function AdminDashboardPage() {
         <div className="mt-3">
           <CartonsChart cartonsHypo={kpis.cartonsHypo} cartonsHtc={kpis.cartonsHtc} />
         </div>
+
+        {/* Ventes par produit : classement, meilleurs points de vente/quartiers,
+            évolution 12 mois et 30 jours — chargé en streaming */}
+        <Suspense fallback={<VentesParProduitSkeleton />}>
+          <VentesParProduitSection />
+        </Suspense>
 
         {/* Observations terrain récentes — demande de Victor */}
         <div className="mt-5 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
