@@ -1,36 +1,36 @@
 import Link from "next/link";
-import { getRapport, type RapportVue } from "@/lib/queries/rapports";
+import { getRapport, type RapportVue, type RapportFilters } from "@/lib/queries/rapports";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PdfExportButton } from "@/components/admin/PdfExportButton";
+import { ExportCsvButton } from "@/components/admin/ExportCsvButton";
 import { ImprimerButton } from "@/components/admin/ImprimerButton";
+import { RapportTableau } from "@/components/admin/rapports/RapportTableau";
 import { formatMontant } from "@/lib/utils/format";
 import {
-  Banknote,
-  ShoppingCart,
-  Droplet,
-  Sparkles,
   Users2,
   Store,
   Building2,
   MapPin,
   Receipt,
+  Package,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { requireAdminPage } from "@/lib/auth/rbac";
 
-// Données live (base de données) : jamais pré-généré statiquement au build
-// (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
-// une page admin ne doit de toute façon jamais servir de données figées).
+// Données live (base de données) : jamais pré-généré statiquement au build.
 export const dynamic = "force-dynamic";
 
-const CATEGORIES: { vue: RapportVue; label: string; icon: React.ElementType }[] = [
+const ONGLETS: { vue: RapportVue; label: string; icon: React.ElementType }[] = [
   { vue: "commercial", label: "Par commercial", icon: Users2 },
   { vue: "point_vente", label: "Par point de vente", icon: Store },
   { vue: "ville", label: "Par ville", icon: Building2 },
   { vue: "quartier", label: "Par quartier", icon: MapPin },
-  { vue: "vente", label: "Par vente", icon: Receipt },
+  { vue: "vente", label: "Détail des ventes", icon: Receipt },
+  { vue: "produit", label: "Par produit", icon: Package },
+  { vue: "historique", label: "Historique 12 mois", icon: CalendarDays },
 ];
 
 const TITRE_VUE: Record<RapportVue, string> = {
@@ -38,13 +38,12 @@ const TITRE_VUE: Record<RapportVue, string> = {
   point_vente: "Rapport par point de vente",
   ville: "Rapport par ville",
   quartier: "Rapport par quartier",
-  vente: "Rapport détaillé des ventes",
+  vente: "Détail des ventes",
+  produit: "Rapport par produit",
+  historique: "Historique sur 12 mois",
 };
 
-// Espace normal comme séparateur de milliers (pas .toLocaleString, dont
-// l'espace insécable étroit U+202F casse le rendu dans les PDF jsPDF —
-// voir lib/utils/format.ts).
-const fcfa = formatMontant;
+const fcfa = (n: number) => `${formatMontant(n)} FCFA`;
 
 function buildQuery(params: Record<string, string | undefined>) {
   const sp = new URLSearchParams();
@@ -52,42 +51,48 @@ function buildQuery(params: Record<string, string | undefined>) {
   return sp.toString();
 }
 
-export default async function RapportsPage({
-  searchParams,
-}: {
-  searchParams: {
-    vue?: string;
-    page?: string;
-    commercialId?: string;
-    binomeId?: string;
-    villeId?: string;
-    quartierId?: string;
-    typeId?: string;
-    produitCode?: string;
-    dateFrom?: string;
-    dateTo?: string;
-  };
-}) {
+const CHAMP =
+  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
+const LABEL = "mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400";
+
+type Params = {
+  vue?: string;
+  page?: string;
+  commercialId?: string;
+  binomeId?: string;
+  villeId?: string;
+  quartier?: string;
+  typeId?: string;
+  gamme?: string;
+  produitCode?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export default async function RapportsPage({ searchParams }: { searchParams: Params }) {
   await requireAdminPage();
-  const vue: RapportVue = (CATEGORIES.find((c) => c.vue === searchParams.vue)?.vue ?? "commercial");
+  const vue: RapportVue = ONGLETS.find((o) => o.vue === searchParams.vue)?.vue ?? "commercial";
   const page = Number(searchParams.page ?? "1") || 1;
 
-  // Sans date choisie, on borne à 90 jours : le rapport charge les ventes en
-  // mémoire, donc une période illimitée ralentit de plus en plus avec le
-  // temps. Les champs de dates affichent cette valeur et restent modifiables.
-  const par_defaut_depuis = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const filters = {
+  // Sans date choisie, on borne à 90 jours : le rapport calcule en mémoire,
+  // une période illimitée ralentirait avec le temps. Les champs affichent cette
+  // valeur et restent modifiables. (L'historique 12 mois a sa propre période.)
+  const datesParDefaut = !searchParams.dateFrom && !searchParams.dateTo;
+  const depuisDefaut = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const filters: RapportFilters = {
     commercialId: searchParams.commercialId || undefined,
     binomeId: searchParams.binomeId || undefined,
     villeId: searchParams.villeId || undefined,
-    quartierId: searchParams.quartierId || undefined,
+    quartier: searchParams.quartier?.trim() || undefined,
     typeId: searchParams.typeId || undefined,
+    gamme: searchParams.gamme || undefined,
     produitCode: searchParams.produitCode || undefined,
-    dateFrom: searchParams.dateFrom || (searchParams.dateTo ? undefined : par_defaut_depuis),
+    dateFrom: searchParams.dateFrom || (datesParDefaut ? depuisDefaut : undefined),
     dateTo: searchParams.dateTo || undefined,
   };
 
-  const [resultat, commerciaux, binomes, villes, quartiers, types] = await Promise.all([
+  const [rapport, commerciaux, binomes, villes, types, produits] = await Promise.all([
     getRapport(filters, vue, page),
     prisma.user.findMany({
       where: { role: "COMMERCIAL" },
@@ -96,311 +101,249 @@ export default async function RapportsPage({
     }),
     prisma.binome.findMany({ orderBy: { nom: "asc" } }),
     prisma.ville.findMany({ orderBy: { nom: "asc" } }),
-    prisma.quartier.findMany({
-      where: filters.villeId ? { villeId: filters.villeId } : undefined,
-      orderBy: { nom: "asc" },
-    }),
     prisma.typePointVente.findMany({ orderBy: { nom: "asc" } }),
+    prisma.produit.findMany({ orderBy: { code: "asc" }, select: { code: true, nom: true, gamme: true } }),
   ]);
 
-  const { totaux, lignes, pagination } = resultat;
+  const gammes = [...new Set(produits.map((p) => p.gamme).filter(Boolean) as string[])].sort();
+  const { totaux, colonnes, nbColsTexte, lignes, total, pagination } = rapport;
 
   const filtreLabel = [
-    filters.commercialId && (() => {
-      const c = commerciaux.find((x) => x.id === filters.commercialId);
-      return c ? `${c.prenom} ${c.nom}` : undefined;
-    })(),
+    filters.commercialId &&
+      (() => {
+        const c = commerciaux.find((x) => x.id === filters.commercialId);
+        return c ? `${c.prenom} ${c.nom}` : undefined;
+      })(),
     filters.binomeId && binomes.find((b) => b.id === filters.binomeId)?.nom,
     filters.villeId && villes.find((v) => v.id === filters.villeId)?.nom,
-    filters.quartierId && quartiers.find((q) => q.id === filters.quartierId)?.nom,
+    filters.quartier && `quartier « ${filters.quartier} »`,
     filters.typeId && types.find((t) => t.id === filters.typeId)?.nom,
+    filters.gamme && `gamme ${filters.gamme}`,
     filters.produitCode,
-    filters.dateFrom && `du ${filters.dateFrom}`,
-    filters.dateTo && `au ${filters.dateTo}`,
+    vue === "historique"
+      ? "12 derniers mois"
+      : [filters.dateFrom && `du ${filters.dateFrom}`, filters.dateTo && `au ${filters.dateTo}`].filter(Boolean).join(" "),
   ]
     .filter(Boolean)
     .join(" · ");
 
+  // Filtres passés à l'aperçu (sans vue ni page)
+  const queryFiltres = buildQuery({
+    commercialId: filters.commercialId,
+    binomeId: filters.binomeId,
+    villeId: filters.villeId,
+    quartier: filters.quartier,
+    typeId: filters.typeId,
+    gamme: filters.gamme,
+    produitCode: filters.produitCode,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+  });
   const baseQuery = { ...filters, vue };
 
-  // --- Colonnes / lignes texte, pour le PDF ET pour garder le tableau
-  // affiché et le tableau exporté strictement identiques -----------------
-  let colonnesPdf: string[] = [];
-  let lignesPdf: string[][] = [];
-  let ligneTotalPdf: string[] | undefined;
-
-  if (vue === "commercial") {
-    colonnesPdf = ["Commercial", "Binôme", "Ventes", "Cartons HYPO", "Cartons HTC", "CA (FCFA)"];
-    lignesPdf = (lignes as any[]).map((l) => [
-      l.commercialNom,
-      l.binomeNom ?? "—",
-      String(l.nbVentes),
-      String(l.cartonsHypo),
-      String(l.cartonsHtc),
-      fcfa(l.caTotal),
-    ]);
-    ligneTotalPdf = ["TOTAL", "", String(totaux.nbVentes), String(totaux.cartonsHypo), String(totaux.cartonsHtc), fcfa(totaux.caTotal)];
-  } else if (vue === "point_vente") {
-    colonnesPdf = ["Point de vente", "Ville", "Quartier", "Ventes", "Cartons HYPO", "Cartons HTC", "CA (FCFA)"];
-    lignesPdf = (lignes as any[]).map((l) => [
-      l.pointVenteNom,
-      l.villeNom,
-      l.quartierNom ?? "—",
-      String(l.nbVentes),
-      String(l.cartonsHypo),
-      String(l.cartonsHtc),
-      fcfa(l.caTotal),
-    ]);
-    ligneTotalPdf = ["TOTAL", "", "", String(totaux.nbVentes), String(totaux.cartonsHypo), String(totaux.cartonsHtc), fcfa(totaux.caTotal)];
-  } else if (vue === "ville") {
-    colonnesPdf = ["Ville", "Ventes", "Cartons HYPO", "Cartons HTC", "CA (FCFA)"];
-    lignesPdf = (lignes as any[]).map((l) => [
-      l.villeNom,
-      String(l.nbVentes),
-      String(l.cartonsHypo),
-      String(l.cartonsHtc),
-      fcfa(l.caTotal),
-    ]);
-    ligneTotalPdf = ["TOTAL", String(totaux.nbVentes), String(totaux.cartonsHypo), String(totaux.cartonsHtc), fcfa(totaux.caTotal)];
-  } else if (vue === "quartier") {
-    colonnesPdf = ["Quartier", "Ville", "Ventes", "Cartons HYPO", "Cartons HTC", "CA (FCFA)"];
-    lignesPdf = (lignes as any[]).map((l) => [
-      l.quartierNom,
-      l.villeNom,
-      String(l.nbVentes),
-      String(l.cartonsHypo),
-      String(l.cartonsHtc),
-      fcfa(l.caTotal),
-    ]);
-    ligneTotalPdf = ["TOTAL", "", String(totaux.nbVentes), String(totaux.cartonsHypo), String(totaux.cartonsHtc), fcfa(totaux.caTotal)];
-  } else {
-    colonnesPdf = ["Date", "Commercial", "Point de vente", "Ville", "Quartier", "Client", "Produits", "Montant (FCFA)"];
-    lignesPdf = (lignes as any[]).map((l) => [
-      new Date(l.date).toLocaleDateString("fr-FR"),
-      l.commercialNom,
-      l.pointVenteNom,
-      l.villeNom,
-      l.quartierNom ?? "—",
-      l.clientNom ?? "—",
-      l.produitsResume,
-      fcfa(l.caTotal),
-    ]);
-    ligneTotalPdf = undefined; // page partielle en vue détaillée : pas de total trompeur dans ce PDF
-  }
+  const tuiles: [string, string][] = [
+    ["Points de vente recensés", String(totaux.pointsVente)],
+    ["Visites", String(totaux.visites)],
+    ["Commandes", String(totaux.commandes)],
+    ["Chiffre d'affaires (FCFA)", formatMontant(totaux.ca)],
+  ];
 
   return (
     <main>
       <AdminPageHeader
         title="Rapports"
-        subtitle={TITRE_VUE[vue]}
-        action={
-          <div className="flex items-center gap-2 print:hidden">
-            <ImprimerButton />
-            <PdfExportButton
-              titre={TITRE_VUE[vue]}
-              filtreLabel={filtreLabel}
-              colonnes={colonnesPdf}
-              lignes={lignesPdf}
-              ligneTotal={ligneTotalPdf}
-            />
-          </div>
-        }
+        subtitle="Performance et chiffre d'affaires par commercial, produit, point de vente, ville ou quartier — historique sur 12 mois et détail des ventes."
       />
 
       <div className="p-4 md:p-6">
-        {/* Catégories de rapport */}
+        {/* Onglets */}
         <div className="mb-4 flex flex-wrap gap-2 print:hidden">
-          {CATEGORIES.map((c) => {
-            const Icon = c.icon;
+          {ONGLETS.map((o) => {
+            const Icon = o.icon;
             return (
               <Link
-                key={c.vue}
-                href={`/admin/rapports?${buildQuery({ ...filters, vue: c.vue })}`}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                  vue === c.vue
-                    ? "bg-brand text-white"
-                    : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 ring-1 ring-slate-200 dark:ring-slate-700"
+                key={o.vue}
+                href={`/admin/rapports?${buildQuery({ ...filters, vue: o.vue })}`}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold ${
+                  vue === o.vue
+                    ? "bg-brand text-white shadow-sm"
+                    : "bg-white text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-700"
                 }`}
               >
                 <Icon size={13} />
-                {c.label}
+                {o.label}
               </Link>
             );
           })}
         </div>
 
-        {/* Filtres (communs aux 5 vues) */}
-        <form
-          className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-4 print:hidden"
-          action="/admin/rapports"
-        >
-          <input type="hidden" name="vue" value={vue} />
-          <select
-            name="commercialId"
-            defaultValue={filters.commercialId ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
-          >
-            <option value="">Tous les commerciaux</option>
-            {commerciaux.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.prenom} {c.nom}
-              </option>
-            ))}
-          </select>
-          <select
-            name="binomeId"
-            defaultValue={filters.binomeId ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
-          >
-            <option value="">Tous les binômes</option>
-            {binomes.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.nom}
-              </option>
-            ))}
-          </select>
-          <select
-            name="villeId"
-            defaultValue={filters.villeId ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
-          >
-            <option value="">Toutes les villes</option>
-            {villes.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.nom}
-              </option>
-            ))}
-          </select>
-          <select
-            name="quartierId"
-            defaultValue={filters.quartierId ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
-          >
-            <option value="">Tous les quartiers</option>
-            {quartiers.map((q) => (
-              <option key={q.id} value={q.id}>
-                {q.nom}
-              </option>
-            ))}
-          </select>
-          <select
-            name="typeId"
-            defaultValue={filters.typeId ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
-          >
-            <option value="">Tous les types de boutique</option>
-            {types.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nom}
-              </option>
-            ))}
-          </select>
-          <select
-            name="produitCode"
-            defaultValue={filters.produitCode ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
-          >
-            <option value="">Tous les produits</option>
-            <option value="HYPO">HYPO</option>
-            <option value="HTC">HTC</option>
-          </select>
-          <input
-            type="date"
-            name="dateFrom"
-            defaultValue={filters.dateFrom ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
-          />
-          <input
-            type="date"
-            name="dateTo"
-            defaultValue={filters.dateTo ?? ""}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100"
-          />
-          <button
-            type="submit"
-            className="col-span-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white md:col-span-4"
-          >
-            Appliquer les filtres
-          </button>
-        </form>
+        {/* Filtres + exports */}
+        <div className="mb-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 print:hidden">
+          <form action="/admin/rapports" className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-5">
+            <input type="hidden" name="vue" value={vue} />
+            <div>
+              <label className={LABEL}>Du</label>
+              <input type="date" name="dateFrom" defaultValue={filters.dateFrom ?? ""} className={CHAMP} disabled={vue === "historique"} />
+            </div>
+            <div>
+              <label className={LABEL}>Au</label>
+              <input type="date" name="dateTo" defaultValue={filters.dateTo ?? ""} className={CHAMP} disabled={vue === "historique"} />
+            </div>
+            <div>
+              <label className={LABEL}>Commercial</label>
+              <select name="commercialId" defaultValue={filters.commercialId ?? ""} className={CHAMP}>
+                <option value="">Tous</option>
+                {commerciaux.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.prenom} {c.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={LABEL}>Binôme</label>
+              <select name="binomeId" defaultValue={filters.binomeId ?? ""} className={CHAMP}>
+                <option value="">Tous</option>
+                {binomes.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={LABEL}>Ville</label>
+              <select name="villeId" defaultValue={filters.villeId ?? ""} className={CHAMP}>
+                <option value="">Toutes</option>
+                {villes.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={LABEL}>Type de boutique</label>
+              <select name="typeId" defaultValue={filters.typeId ?? ""} className={CHAMP}>
+                <option value="">Tous</option>
+                {types.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={LABEL}>Gamme</label>
+              <select name="gamme" defaultValue={filters.gamme ?? ""} className={CHAMP}>
+                <option value="">Toutes</option>
+                {gammes.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={LABEL}>Produit</label>
+              <select name="produitCode" defaultValue={filters.produitCode ?? ""} className={CHAMP}>
+                <option value="">Tous</option>
+                {produits.map((p) => (
+                  <option key={p.code} value={p.code}>
+                    {p.code} — {p.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={LABEL}>Quartier</label>
+              <input type="text" name="quartier" defaultValue={filters.quartier ?? ""} placeholder="Contient..." className={CHAMP} />
+            </div>
+            <div className="col-span-2 flex items-end gap-2 md:col-span-4 xl:col-span-1">
+              <button type="submit" className="flex-1 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">
+                Appliquer
+              </button>
+              <Link
+                href={`/admin/rapports?vue=${vue}`}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300"
+              >
+                Réinitialiser
+              </Link>
+            </div>
+          </form>
 
-        {/* En-tête visible seulement à l'impression (le titre de page normal
-            est dans la sidebar/header, masqués à l'impression) */}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              {vue === "historique"
+                ? "Les 12 derniers mois, quels que soient les dates saisies."
+                : datesParDefaut
+                  ? "Période par défaut : 90 derniers jours — choisis des dates pour changer."
+                  : ""}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <PdfExportButton
+                titre={TITRE_VUE[vue]}
+                filtreLabel={filtreLabel}
+                colonnes={colonnes}
+                lignes={lignes.map((l) => l.cellules)}
+                ligneTotal={total?.cellules}
+              />
+              <ExportCsvButton
+                colonnes={colonnes}
+                lignes={lignes.map((l) => l.brut)}
+                total={total?.brut}
+                nomFichier={`rapport-${vue}`}
+              />
+              <ImprimerButton />
+            </div>
+          </div>
+        </div>
+
+        {/* En-tête visible seulement à l'impression de la page */}
         <div className="mb-3 hidden print:block">
           <p className="text-lg font-bold text-slate-800">SIRI IMPORT</p>
           <p className="text-sm text-slate-500">{TITRE_VUE[vue]}</p>
           {filtreLabel && <p className="text-xs text-slate-400">{filtreLabel}</p>}
         </div>
 
-        {/* Totaux */}
+        {/* Tuiles */}
         <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-            <ShoppingCart size={16} className="mb-2 text-indigo-600" />
-            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{totaux.nbVentes}</p>
-            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Ventes</p>
-          </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-            <Banknote size={16} className="mb-2 text-green-600" />
-            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{fcfa(totaux.caTotal)}</p>
-            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">CA (FCFA)</p>
-          </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-            <Droplet size={16} className="mb-2 text-blue-600" />
-            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{totaux.cartonsHypo}</p>
-            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Cartons HYPO</p>
-          </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-            <Sparkles size={16} className="mb-2 text-teal-600" />
-            <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{totaux.cartonsHtc}</p>
-            <p className="text-xs font-medium text-slate-400 dark:text-slate-500">Cartons HTC</p>
-          </div>
+          {tuiles.map(([label, valeur]) => (
+            <div
+              key={label}
+              className="rounded-2xl bg-white px-4 py-5 text-center shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800"
+            >
+              <p
+                className="text-2xl font-semibold text-slate-900 dark:text-slate-100"
+                style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+              >
+                {valeur}
+              </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{label}</p>
+            </div>
+          ))}
         </div>
 
-        {/* Tableau — colonnes selon la vue */}
-        <div className="overflow-x-auto rounded-2xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 dark:text-slate-500">
-              <tr>
-                {colonnesPdf.map((c) => (
-                  <th key={c} className="whitespace-nowrap px-4 py-3">
-                    {c}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {lignesPdf.map((row, i) => (
-                <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
-                  {row.map((cell, j) => (
-                    <td
-                      key={j}
-                      className={`whitespace-nowrap px-4 py-2.5 ${
-                        j === row.length - 1
-                          ? "font-semibold text-slate-800 dark:text-slate-100"
-                          : "text-slate-600 dark:text-slate-300"
-                      }`}
-                    >
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              {lignesPdf.length === 0 && (
-                <tr>
-                  <td colSpan={colonnesPdf.length} className="px-4 py-8 text-center text-slate-400 dark:text-slate-500">
-                    Aucune donnée pour ces filtres.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <p className="mb-2 text-xs text-slate-400 dark:text-slate-500 print:hidden">
+          Clique sur une ligne pour ouvrir son aperçu détaillé et l&apos;imprimer seule.
+        </p>
 
-        {/* Pagination — uniquement pour la vue détail par vente */}
+        <RapportTableau
+          vue={vue}
+          colonnes={colonnes}
+          nbColsTexte={nbColsTexte}
+          lignes={lignes.map((l) => ({ cle: l.cle, cellules: l.cellules }))}
+          total={total?.cellules}
+          query={queryFiltres}
+          filtreLabel={filtreLabel}
+        />
+
+        {/* Pagination — uniquement pour le détail des ventes */}
         {pagination && pagination.totalPages > 1 && (
           <div className="mt-5 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 print:hidden">
             <span>
-              Page {pagination.page} / {pagination.totalPages} · {pagination.total} ventes
+              Page {pagination.page} / {pagination.totalPages} · {pagination.total} ventes · total de la période :{" "}
+              {fcfa(totaux.ca)}
             </span>
             <div className="flex gap-2">
               <Link
@@ -408,8 +351,8 @@ export default async function RapportsPage({
                 aria-disabled={pagination.page <= 1}
                 className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 font-medium ${
                   pagination.page <= 1
-                    ? "pointer-events-none border-slate-100 dark:border-slate-800 text-slate-300"
-                    : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                    ? "pointer-events-none border-slate-100 text-slate-300 dark:border-slate-800"
+                    : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"
                 }`}
               >
                 <ChevronLeft size={15} />
@@ -420,8 +363,8 @@ export default async function RapportsPage({
                 aria-disabled={pagination.page >= pagination.totalPages}
                 className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 font-medium ${
                   pagination.page >= pagination.totalPages
-                    ? "pointer-events-none border-slate-100 dark:border-slate-800 text-slate-300"
-                    : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                    ? "pointer-events-none border-slate-100 text-slate-300 dark:border-slate-800"
+                    : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"
                 }`}
               >
                 Suivant

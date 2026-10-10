@@ -43,3 +43,30 @@ body {
     animation: none;
   }
 }
+
+/* Aperçu de rapport imprimable seul : à l'impression, on masque tout sauf la
+   fiche ouverte (#apercu-root), ses descendants et ses ancêtres (pour qu'elle
+   reste affichée). Nécessite :has(), disponible dans tous les navigateurs
+   récents. */
+@media print {
+  html.apercu-actif body *:not(#apercu-root):not(#apercu-root *):not(:has(#apercu-root)) {
+    display: none !important;
+  }
+  html.apercu-actif #apercu-root {
+    position: static !important;
+    display: block !important;
+    overflow: visible !important;
+    background: #fff !important;
+    padding: 0 !important;
+    height: auto !important;
+  }
+  html.apercu-actif #apercu-root .apercu-carte {
+    max-width: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+  .apercu-no-print {
+    display: none !important;
+  }
+}

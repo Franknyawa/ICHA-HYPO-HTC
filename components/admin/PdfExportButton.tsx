@@ -50,7 +50,7 @@ export function PdfExportButton({
         head: [colonnes],
         body: lignes,
         foot: ligneTotal ? [ligneTotal] : undefined,
-        headStyles: { fillColor: [30, 64, 175] },
+        headStyles: { fillColor: [10, 22, 48], textColor: [243, 220, 155] },
         footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: "bold" },
         styles: { fontSize: 9 },
       });

@@ -33,6 +33,7 @@ const createSchema = z.object({
     .max(20)
     .regex(/^[A-Z0-9_]+$/, "Majuscules, chiffres, underscore uniquement (ex: HYPO2)"),
   nom: z.string().min(2),
+  gamme: z.string().trim().max(40).optional().nullable(),
   volumeMl: z.number().int().min(1),
   sachetsParCarton: z.number().int().min(1),
   filetsParCarton: z.number().int().min(1).optional().nullable(),

@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 // est utilisé comme identifiant dans toute la logique métier (calcul de
 // prix, conversions, formulaires) ; le renommer casserait l'application.
 const schema = z.object({
+  gamme: z.string().trim().max(40).optional().nullable(),
   prixSachet: z.number().min(0).optional(),
   prixFilet: z.number().min(0).optional().nullable(),
   prixCarton: z.number().min(0).optional(),
@@ -26,7 +27,12 @@ export async function PATCH(
     if (!parsed.success) {
       return NextResponse.json({ error: "Données invalides." }, { status: 400 });
     }
-    const produit = await prisma.produit.update({ where: { id: params.id }, data: parsed.data });
+    const { gamme, ...reste } = parsed.data;
+    const produit = await prisma.produit.update({
+      where: { id: params.id },
+      // Gamme vide = « Sans gamme » (null), pas une chaîne vide.
+      data: { ...reste, ...(gamme !== undefined ? { gamme: gamme || null } : {}) },
+    });
     return NextResponse.json(produit);
   } catch (error) {
     return handleApiError(error);

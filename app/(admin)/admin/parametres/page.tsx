@@ -273,6 +273,7 @@ type Produit = {
   prixSachet: number;
   prixFilet: number | null;
   prixCarton: number;
+  gamme?: string | null;
   actif: boolean;
 };
 
@@ -280,13 +281,14 @@ function ProduitsManager() {
   const [produits, setProduits] = useState<Produit[]>([]);
   const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<Produit | null>(null);
-  const [form, setForm] = useState({ prixSachet: 0, prixFilet: 0, prixCarton: 0 });
+  const [form, setForm] = useState({ prixSachet: 0, prixFilet: 0, prixCarton: 0, gamme: "" });
   const [saving, setSaving] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({
     code: "",
     nom: "",
+    gamme: "",
     volumeMl: 0,
     sachetsParCarton: 0,
     aDesFilets: false,
@@ -321,6 +323,7 @@ function ProduitsManager() {
       body: JSON.stringify({
         code: createForm.code.toUpperCase().replace(/\s+/g, "_"),
         nom: createForm.nom,
+        gamme: createForm.gamme.trim() || null,
         volumeMl: createForm.volumeMl,
         sachetsParCarton: createForm.sachetsParCarton,
         filetsParCarton: createForm.aDesFilets ? createForm.filetsParCarton : null,
@@ -335,6 +338,7 @@ function ProduitsManager() {
       setCreateForm({
         code: "",
         nom: "",
+        gamme: "",
         volumeMl: 0,
         sachetsParCarton: 0,
         aDesFilets: false,
@@ -381,6 +385,7 @@ function ProduitsManager() {
       prixSachet: p.prixSachet,
       prixFilet: p.prixFilet ?? 0,
       prixCarton: p.prixCarton,
+      gamme: p.gamme ?? "",
     });
   }
 
@@ -392,6 +397,7 @@ function ProduitsManager() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        gamme: form.gamme.trim() || null,
         prixSachet: form.prixSachet,
         prixCarton: form.prixCarton,
         ...(editTarget.prixFilet !== null ? { prixFilet: form.prixFilet } : {}),
@@ -436,6 +442,11 @@ function ProduitsManager() {
               <div>
                 <p className={`text-sm font-semibold ${p.actif ? "text-slate-800 dark:text-slate-100" : "text-slate-400 dark:text-slate-500 line-through"}`}>
                   {p.code}
+                  {p.gamme && (
+                    <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                      {p.gamme}
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {p.prixSachet.toLocaleString("fr-FR")} FCFA/sachet
@@ -465,10 +476,27 @@ function ProduitsManager() {
         </div>
       ))}
 
+      <datalist id="gammes-existantes">
+        {[...new Set(produits.map((p) => p.gamme).filter(Boolean) as string[])].map((g) => (
+          <option key={g} value={g} />
+        ))}
+      </datalist>
+
       {editTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={handleSave} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
             <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Prix {editTarget.code}</h3>
+
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Gamme (rapports)</label>
+            <input
+              type="text"
+              list="gammes-existantes"
+              maxLength={40}
+              placeholder="Ex : Entretien, Céréales, Hygiène"
+              value={form.gamme}
+              onChange={(e) => setForm((f) => ({ ...f, gamme: e.target.value }))}
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+            />
 
             <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Prix par sachet (FCFA)</label>
             <input
@@ -526,6 +554,15 @@ function ProduitsManager() {
               HYPO/HTC (voir README).
             </p>
 
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Gamme (ex : Céréales, Hygiène)</label>
+            <input
+              type="text"
+              list="gammes-existantes"
+              maxLength={40}
+              value={createForm.gamme}
+              onChange={(e) => setCreateForm((f) => ({ ...f, gamme: e.target.value }))}
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+            />
             <div className="mb-3 grid grid-cols-2 gap-2">
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Code (ex: XYZ)</label>

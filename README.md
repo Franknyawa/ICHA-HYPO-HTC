@@ -1390,6 +1390,23 @@ CREATE INDEX IF NOT EXISTS "alertes_entite_type_entite_id_idx" ON "alertes" ("en
 - **Limites connues** : les chiffres du dashboard, de l'historique et du profil affichent la dernière version vue (ils ne se mettent à jour qu'en ligne) ; les photos prises hors ligne restent dans la visite (data URL) jusqu'à l'envoi, puis sont stockées côté serveur ; une première utilisation exige une ouverture avec du réseau.
 - Aucun SQL à lancer pour cette étape.
 
+### ✅ Rapports : nouveau modèle (calqué sur BELGRAVIA) et prêt pour les nouvelles gammes
+
+- **7 onglets** : par commercial, par point de vente, par ville, par quartier, détail des ventes, par produit, historique 12 mois. **Filtres** : Du / Au, commercial, binôme, ville, type de boutique, **gamme**, produit, quartier (« contient »). **Exports** : PDF, Excel (CSV avec montants en nombres bruts, ouvrable directement dans Excel français), impression.
+- **Colonnes** : points de vente recensés, visites, commandes, cartons vendus, chiffre d'affaires, % du CA, reste à payer, avec ligne Total. Tuiles du haut : points de vente recensés, visites, commandes, CA.
+- **Aperçu imprimable** : un clic sur une ligne ouvre sa fiche (indicateurs, détail par produit, liste des ventes avec payé / reste) ; « Imprimer » n'imprime que cette fiche (`ApercuRapport.tsx`, règles `apercu-actif` dans `globals.css`).
+- **Indépendant des produits** : plus aucune colonne HYPO/HTC en dur. Les produits et leur gamme viennent de la base ; une nouvelle gamme apparaît seule dans le filtre Gamme, l'onglet Produit et les aperçus. Tout le calcul propre au modèle actuel (cartons, répartition du CA) est isolé dans `lib/queries/rapports.ts` (`cartonsEquivalents`, `repartirVente`) : la refonte multi-catégories n'aura qu'à adapter ces deux fonctions.
+- **Règles de calcul** : « Cartons vendus » = cartons + filets et sachets convertis en cartons (ex. 6 sachets d'un carton de 12 = 0,5). Le CA n'étant enregistré que par vente, le CA par produit répartit le montant de la vente au prorata de la valeur de chaque ligne (total toujours exact). Reste à payer = montant de la vente − paiements enregistrés. Avec un filtre produit/gamme, seules les lignes concernées sont comptées.
+- **Période par défaut** : 90 derniers jours (modifiable) ; l'historique couvre toujours les 12 derniers mois.
+- **Correction de fond** : une vente ou commande saisie hors ligne est désormais datée du jour de la visite (et non du jour de l'envoi).
+- **Gamme** : nouveau champ sur les produits (Paramètres > Produits & prix, à la création et à la modification).
+- **SQL à lancer AVANT de déployer** (Supabase SQL Editor) :
+
+```sql
+ALTER TABLE "produits" ADD COLUMN IF NOT EXISTS "gamme" TEXT;
+UPDATE "produits" SET "gamme" = 'Entretien' WHERE "gamme" IS NULL AND "code" IN ('HYPO', 'HTC');
+```
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont

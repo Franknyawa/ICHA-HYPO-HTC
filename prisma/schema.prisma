@@ -83,6 +83,10 @@ model Produit {
   id                String   @id @default(uuid())
   code              String   @unique // "HYPO" | "HTC" — extensible, pas d'enum en dur
   nom               String
+  // Gamme commerciale (ex. « Entretien », « Céréales », « Hygiène »). Texte libre
+  // pour l'instant ; deviendra une vraie table de catégories à l'étape
+  // multi-catégories. null = « Sans gamme ».
+  gamme             String?
   volumeMl          Int      @map("volume_ml")
   sachetsParFilet   Int?     @map("sachets_par_filet")   // null pour HYPO (pas de filet)
   filetsParCarton   Int?     @map("filets_par_carton")

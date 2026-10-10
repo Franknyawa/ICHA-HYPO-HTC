@@ -249,6 +249,9 @@ export async function POST(req: NextRequest) {
             pointVenteId,
             clientId: input.vente.clientId,
             commercialId: session.userId,
+            // Date de la visite (et non de l'envoi) : une vente saisie hors ligne
+            // et synchronisée le lendemain doit compter pour le bon jour.
+            dateVente: new Date(input.dateVisite),
             montantTotal: input.vente.montantTotal,
             lignes: {
               create: input.vente.lignes.map((l) => {
@@ -305,6 +308,7 @@ export async function POST(req: NextRequest) {
             pointVenteId,
             clientId: input.commande.clientId,
             commercialId: session.userId,
+            dateCommande: new Date(input.dateVisite),
             dateLivraisonPrevue: input.commande.dateLivraisonPrevue
               ? new Date(input.commande.dateLivraisonPrevue)
               : undefined,
