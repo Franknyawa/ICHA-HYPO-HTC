@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 232 176" width="696" height="528">
+<rect width="232" height="176" fill="#fff"/>
+<g fill="#ff3408" stroke="none">
+  <!-- bouteille (le I) -->
+  <rect x="14" y="30" width="10" height="6" rx="1.5"/>
+  <path d="M15 38h8v22c0 5 9 9 9 18v34c0 4-3 7-7 7H13c-4 0-7-3-7-7V78c0-9 9-13 9-18Z"/>
+</g>
+<rect x="9" y="84" width="20" height="26" rx="3" fill="#fff" opacity=".0"/>
+<g fill="none" stroke="#ff3408" stroke-width="14">
+  <!-- C -->
+  <path d="M100 68A29 29 0 1 0 100 108"/>
+  <!-- H -->
+  <path d="M123 58v60M154 58v60M123 88h31" stroke-linecap="butt"/>
+  <!-- A -->
+  <path d="M170 118 188 58 206 118M176 100h24" stroke-linejoin="miter" stroke-miterlimit="10"/>
+</g>
+<!-- sillage orange -->
+<path d="M52 36c9-12 22-14 34-8" fill="none" stroke="#ff3408" stroke-width="5" stroke-linecap="round"/>
+<!-- avion -->
+<g fill="#359980" transform="translate(146 4) scale(.8) rotate(-14 40 20)">
+  <path d="M0 22 62 14c9-1 16 2 17 7s-6 9-15 10L36 34 22 44h-7l5-12-14 2-6 8H-3l3-12Z"/>
+  <path d="M30 18 20 2h7l24 14Z"/>
+</g>
+<text x="48" y="152" text-anchor="start" font-family="Poppins,Montserrat,Arial,Helvetica,sans-serif" font-weight="900" font-size="31" fill="#359980" textLength="152" lengthAdjust="spacing">IMPORT</text>
+</svg>

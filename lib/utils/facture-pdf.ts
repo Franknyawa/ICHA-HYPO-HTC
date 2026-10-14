@@ -25,8 +25,8 @@ export type FactureData = {
   resteAPayer?: number;
 };
 
-const COULEUR_BRAND: [number, number, number] = [10, 22, 48]; // nuit #0a1630
-const COULEUR_BRAND_CLAIR: [number, number, number] = [201, 162, 75]; // or #c9a24b
+const COULEUR_BRAND: [number, number, number] = [30, 58, 138]; // bleu #1e3a8a
+const COULEUR_BRAND_CLAIR: [number, number, number] = [53, 153, 128]; // vert #359980
 const COULEUR_TEAL: [number, number, number] = [15, 118, 110]; // #0f766e
 const COULEUR_ALERTE: [number, number, number] = [185, 28, 28]; // #b91c1c
 const COULEUR_GRIS_CLAIR: [number, number, number] = [248, 250, 252]; // slate-50
@@ -55,7 +55,7 @@ export async function genererFacturePdf(data: FactureData) {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  doc.text("SIRI IMPORT", xTexteMarque, hauteurEnTete / 2 - 2);
+  doc.text("ICHA IMPORT", xTexteMarque, hauteurEnTete / 2 - 2);
   doc.setFontSize(8.5);
   doc.setFont("helvetica", "normal");
   doc.text("Distribution alimentaire, hygiène et entretien", xTexteMarque, hauteurEnTete / 2 + 5);
@@ -213,7 +213,7 @@ export async function genererFacturePdf(data: FactureData) {
     { align: "center" }
   );
   doc.setFont("helvetica", "italic");
-  doc.text("Merci pour votre confiance — SIRI IMPORT", largeur / 2, hauteurPage - 11, {
+  doc.text("Merci pour votre confiance — ICHA IMPORT", largeur / 2, hauteurPage - 11, {
     align: "center",
   });
 

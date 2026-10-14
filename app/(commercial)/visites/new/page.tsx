@@ -700,7 +700,7 @@ export default function NouvelleVisitePage() {
             <div className="flex items-center gap-2">
               <SiriMark size={32} idSuffix="new" />
               <p className="text-xs font-bold uppercase tracking-widest text-blue-100">
-                SIRI IMPORT
+                ICHA IMPORT
               </p>
             </div>
             <Link

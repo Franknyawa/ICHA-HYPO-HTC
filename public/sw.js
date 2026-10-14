@@ -1,4 +1,4 @@
-// Service Worker SIRI IMPORT — permet d'OUVRIR l'application sans réseau.
+// Service Worker ICHA IMPORT — permet d'OUVRIR l'application sans réseau.
 // (Les DONNÉES hors ligne — référentiels, points de vente, visites en attente —
 // sont gérées par IndexedDB, voir lib/offline/.)
 //
@@ -10,7 +10,7 @@
 // - Une réponse redirigée (ex. session expirée -> /login) n'est JAMAIS mise
 //   en cache : le navigateur refuse de servir une redirection à une navigation.
 
-const VERSION = "v3";
+const VERSION = "v4";
 const STATIC_CACHE = `siri-static-${VERSION}`;
 const PAGES_CACHE = `siri-pages-${VERSION}`;
 const PAGES_TERRAIN = ["/dashboard", "/visites/new", "/visites/rotation", "/visites/reassort", "/historique", "/profil"];

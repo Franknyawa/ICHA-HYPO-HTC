@@ -46,7 +46,7 @@ export function PwaSetup() {
         if (choice.outcome === "accepted") setInstalled(true);
         setInstallEvent(null);
       }}
-      className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[#c9a24b]/60 bg-[#0a1630] px-5 py-2.5 text-sm font-medium text-[#f3dc9b] shadow-lg"
+      className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/30 bg-[#1e3a8a] px-5 py-2.5 text-sm font-medium text-white shadow-lg"
     >
       <Download size={16} />
       Installer l'application

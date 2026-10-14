@@ -1,38 +1,30 @@
 import type { jsPDF } from "jspdf";
 
 /**
- * Dessine l'écu SIRI IMPORT en vectoriel dans l'en-tête d'un PDF (aucune
- * image à charger : plus léger et net à toute taille). Retourne l'abscisse
- * à partir de laquelle écrire le nom de l'entreprise.
+ * Dessine l'emblème ICHA IMPORT (tuile blanche, bouteille rouge-orangé et
+ * avion vert) en vectoriel dans l'en-tête d'un PDF — aucune image à charger.
+ * Retourne l'abscisse à partir de laquelle écrire le nom de l'entreprise.
  */
 export function dessinerEcuMarque(doc: jsPDF, x: number, hauteurEnTete: number): number {
-  const w = 20;
-  const h = 24;
-  const y = (hauteurEnTete - h) / 2 - 1;
-  const cx = x + w / 2;
+  const t = 22; // côté de la tuile
+  const y = (hauteurEnTete - t) / 2 - 1;
 
-  // Écu : polygone approximant la forme du logo, fond nuit, liseré or
-  const pts: [number, number][] = [
-    [cx, y],
-    [x + w, y + 4.5],
-    [x + w, y + 13],
-    [x + w * 0.88, y + 18.5],
-    [cx, y + h],
-    [x + w * 0.12, y + 18.5],
-    [x, y + 13],
-    [x, y + 4.5],
-  ];
-  const segments = pts.slice(1).map((p, i) => [p[0] - pts[i][0], p[1] - pts[i][1]]);
-  segments.push([pts[0][0] - pts[pts.length - 1][0], pts[0][1] - pts[pts.length - 1][1]]);
-  doc.setFillColor(8, 17, 36);
-  doc.setDrawColor(201, 162, 75);
-  doc.setLineWidth(0.7);
-  doc.lines(segments, pts[0][0], pts[0][1], [1, 1], "FD", true);
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(x, y, t, t, 4, 4, "F");
 
-  doc.setTextColor(224, 194, 107);
-  doc.setFont("times", "bold");
-  doc.setFontSize(19);
-  doc.text("S", cx, y + 15.5, { align: "center" });
+  // Bouteille (rouge-orangé #ff3408)
+  doc.setFillColor(255, 52, 8);
+  const bx = x + 5.2;
+  doc.roundedRect(bx + 1.6, y + 3.2, 2.6, 1.6, 0.4, 0.4, "F"); // bouchon
+  doc.rect(bx + 1.7, y + 5, 2.4, 4.2, "F"); // goulot
+  doc.roundedRect(bx - 0.6, y + 8.4, 6.4, 10.4, 1.6, 1.6, "F"); // corps
 
-  return x + w + 6;
+  // Avion (vert #359980)
+  doc.setFillColor(53, 153, 128);
+  const ax = x + 11.6;
+  const ay = y + 6.4;
+  doc.triangle(ax, ay + 4.6, ax + 8.4, ay + 1.2, ax + 6.2, ay + 5.2, "F"); // fuselage
+  doc.triangle(ax + 3, ay + 3.4, ax + 4.4, ay + 7.6, ax + 6.2, ay + 4.6, "F"); // aile
+
+  return x + t + 6;
 }

@@ -1,66 +1,9 @@
-// Identité visuelle SIRI IMPORT — dessinée en SVG pur (aucun fichier image à
-// télécharger, donc rien à attendre au chargement de la page de connexion).
-// Emblème : écu sombre cerclé d'or avec un monogramme "S" à double courbe.
+// Identité visuelle ICHA IMPORT. `SiriMark` est conservé comme alias de
+// l'emblème (voir IchaLogo.tsx) pour ne pas toucher aux imports existants.
+import { IchaEmblem } from "./IchaLogo";
 
-export function SiriMark({
-  size = 40,
-  className,
-  idSuffix = "a",
-}: {
-  size?: number;
-  className?: string;
-  /** Suffixe d'id des dégradés — à varier si plusieurs marques sur la même page */
-  idSuffix?: string;
-}) {
-  const or = `siri-or-${idSuffix}`;
-  const nuit = `siri-nuit-${idSuffix}`;
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 48 48"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      role="img"
-      aria-label="SIRI IMPORT"
-    >
-      <defs>
-        <linearGradient id={or} x1="6" y1="2" x2="42" y2="46" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#f3dc9b" />
-          <stop offset="0.5" stopColor="#c9a24b" />
-          <stop offset="1" stopColor="#8f6b1f" />
-        </linearGradient>
-        <linearGradient id={nuit} x1="24" y1="2" x2="24" y2="47" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#14264d" />
-          <stop offset="1" stopColor="#081124" />
-        </linearGradient>
-      </defs>
-      {/* Écu */}
-      <path
-        d="M24 2.5 42.5 12v17.5c0 8-7.6 13.6-18.5 16.5C13.1 43.1 5.5 37.5 5.5 29.5V12Z"
-        fill={`url(#${nuit})`}
-        stroke={`url(#${or})`}
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      {/* Filet intérieur */}
-      <path
-        d="M24 6.4 39 14v15.2c0 6.3-6.1 10.9-15 13.5-8.9-2.6-15-7.2-15-13.5V14Z"
-        stroke={`url(#${or})`}
-        strokeWidth="0.7"
-        opacity="0.55"
-        strokeLinejoin="round"
-      />
-      {/* Monogramme S */}
-      <path
-        d="M31 17.2c-1.3-2.6-4.1-3.9-7.3-3.9-4.2 0-7 2.2-7 5.4 0 3.2 2.6 4.4 7.3 5.5 4.9 1.1 7.5 2.5 7.5 6 0 3.4-3.2 5.7-7.6 5.7-3.6 0-6.5-1.5-7.9-4.4"
-        stroke={`url(#${or})`}
-        strokeWidth="3.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+export function SiriMark({ size = 40, className }: { size?: number; className?: string; idSuffix?: string }) {
+  return <IchaEmblem size={size} className={className} />;
 }
 
 // Icônes de familles de produits — tracés linéaires, une couleur (currentColor).

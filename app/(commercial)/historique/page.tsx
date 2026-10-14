@@ -42,7 +42,7 @@ export default async function HistoriquePage({
       >
         <div className="mb-3 flex items-center justify-between">
           <p className="text-xs font-bold uppercase tracking-widest text-blue-100">
-            SIRI IMPORT
+            ICHA IMPORT
           </p>
           <Link href="/dashboard" className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
             <ArrowLeft size={16} />

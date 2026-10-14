@@ -23,8 +23,8 @@ export type BonLivraisonData = {
   lignes: BonLivraisonLigne[];
 };
 
-const COULEUR_BRAND: [number, number, number] = [10, 22, 48]; // nuit #0a1630
-const COULEUR_BRAND_CLAIR: [number, number, number] = [201, 162, 75]; // or #c9a24b
+const COULEUR_BRAND: [number, number, number] = [30, 58, 138]; // bleu #1e3a8a
+const COULEUR_BRAND_CLAIR: [number, number, number] = [53, 153, 128]; // vert #359980
 const COULEUR_TEAL: [number, number, number] = [15, 118, 110]; // #0f766e
 const COULEUR_GRIS_CLAIR: [number, number, number] = [248, 250, 252]; // slate-50
 const COULEUR_GRIS_BORDURE: [number, number, number] = [226, 232, 240]; // slate-200
@@ -51,7 +51,7 @@ export async function genererBonLivraisonPdf(data: BonLivraisonData) {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  doc.text("SIRI IMPORT", xTexteMarque, hauteurEnTete / 2 - 2);
+  doc.text("ICHA IMPORT", xTexteMarque, hauteurEnTete / 2 - 2);
   doc.setFontSize(8.5);
   doc.setFont("helvetica", "normal");
   doc.text("Distribution alimentaire, hygiène et entretien", xTexteMarque, hauteurEnTete / 2 + 5);
@@ -161,7 +161,7 @@ export async function genererBonLivraisonPdf(data: BonLivraisonData) {
     { align: "center" }
   );
   doc.setFont("helvetica", "italic");
-  doc.text("Document de livraison — sans valeur fiscale — SIRI IMPORT", largeur / 2, hauteurPage - 11, {
+  doc.text("Document de livraison — sans valeur fiscale — ICHA IMPORT", largeur / 2, hauteurPage - 11, {
     align: "center",
   });
 

@@ -14,8 +14,8 @@ const PERIODES: { id: PeriodeId; label: string }[] = [
   { id: "tout", label: "Depuis le début" },
 ];
 
-const OR = "#b8923a";
-const OR_CLAIR = "#e3cf9f";
+const OR = "#359980";
+const OR_CLAIR = "#bfe3d9";
 
 const fmtQte = (n: number) => (Number.isInteger(n) ? String(n) : String(n).replace(".", ","));
 const fmtCa = (n: number) => `${formatMontant(n)} FCFA`;
@@ -179,7 +179,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
   return (
     <section className="mt-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-[#9a7a2e] dark:text-[#e0c26b]">Ventes par produit</h2>
+        <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-[#2a8670] dark:text-[#7fd6bf]">Ventes par produit</h2>
         <div className="flex items-center gap-2">
           <div className="flex rounded-full border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900" role="group" aria-label="Indicateur">
             {(["cartons", "ca"] as const).map((i) => (
@@ -187,7 +187,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
                 key={i}
                 onClick={() => setIndicateur(i)}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-                  indicateur === i ? "bg-[#9a7a2e] text-white" : "text-slate-500 dark:text-slate-400"
+                  indicateur === i ? "bg-[#2a8670] text-white" : "text-slate-500 dark:text-slate-400"
                 }`}
               >
                 {i === "cartons" ? "Cartons" : "Chiffre d'affaires"}
@@ -213,7 +213,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
           {/* Produit le plus vendu */}
           <div className="mb-3 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
             <div className="flex items-center gap-4">
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#f4ecd8] text-[#9a7a2e] dark:bg-slate-800">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#f4ecd8] text-[#2a8670] dark:bg-slate-800">
                 <Package size={22} />
               </span>
               <div>
@@ -223,7 +223,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
                 <p className="text-xl font-semibold text-slate-900 dark:text-slate-100" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
                   {meilleur.nom}
                 </p>
-                <span className="mt-1 inline-block rounded-full bg-[#f4ecd8] px-2.5 py-0.5 text-[11px] font-semibold text-[#8a6a1f] dark:bg-slate-800 dark:text-[#e0c26b]">
+                <span className="mt-1 inline-block rounded-full bg-[#f4ecd8] px-2.5 py-0.5 text-[11px] font-semibold text-[#8a6a1f] dark:bg-slate-800 dark:text-[#7fd6bf]">
                   {meilleur.gamme}
                 </span>
               </div>

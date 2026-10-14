@@ -89,7 +89,7 @@ export function ApercuRapport({
           <button
             onClick={() => window.print()}
             disabled={!data}
-            className="flex items-center gap-1.5 rounded-xl bg-[#0a1630] px-3.5 py-2 text-sm font-semibold text-[#f3dc9b] disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             <Printer size={15} />
             Imprimer
@@ -108,7 +108,7 @@ export function ApercuRapport({
           <div className="flex items-center gap-3">
             <SiriMark size={40} idSuffix="apercu" />
             <div>
-              <p className="text-base font-bold tracking-widest text-[#0a1630]">SIRI IMPORT</p>
+              <p className="text-base font-bold tracking-widest text-[#1e3a8a]">ICHA IMPORT</p>
               <p className="text-xs text-slate-500">Rapport commercial</p>
             </div>
           </div>

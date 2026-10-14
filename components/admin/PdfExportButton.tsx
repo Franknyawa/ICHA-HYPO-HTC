@@ -36,8 +36,8 @@ export function PdfExportButton({
       const largeur = doc.internal.pageSize.getWidth();
 
       doc.setFontSize(16);
-      doc.setTextColor(10, 22, 48); // nuit marque
-      doc.text("SIRI IMPORT", 14, 18);
+      doc.setTextColor(30, 58, 138); // bleu marque
+      doc.text("ICHA IMPORT", 14, 18);
 
       doc.setFontSize(11);
       doc.setTextColor(100);
@@ -50,12 +50,12 @@ export function PdfExportButton({
         head: [colonnes],
         body: lignes,
         foot: ligneTotal ? [ligneTotal] : undefined,
-        headStyles: { fillColor: [10, 22, 48], textColor: [243, 220, 155] },
+        headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255] },
         footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: "bold" },
         styles: { fontSize: 9 },
       });
 
-      doc.save(`rapport-siri-import-${new Date().toISOString().slice(0, 10)}.pdf`);
+      doc.save(`rapport-icha-import-${new Date().toISOString().slice(0, 10)}.pdf`);
     } finally {
       setGenerating(false);
     }

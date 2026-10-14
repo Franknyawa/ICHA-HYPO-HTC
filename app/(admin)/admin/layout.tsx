@@ -68,7 +68,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <SiriMark size={34} idSuffix="adm" />
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-blue-100">
-              SIRI IMPORT
+              ICHA IMPORT
             </p>
             <p className="text-sm font-semibold text-white">Admin</p>
           </div>

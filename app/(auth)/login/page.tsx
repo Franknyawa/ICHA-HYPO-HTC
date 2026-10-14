@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff, User, Lock, ShieldCheck } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { SiriMark, IconCereales, IconHygiene, IconEntretien, IconEpicerie } from "@/components/brand/SiriMark";
+import { IchaLogo } from "@/components/brand/IchaLogo";
+import { IconCereales, IconHygiene, IconEntretien, IconEpicerie } from "@/components/brand/SiriMark";
 
 const FAMILLES = [
   { Icon: IconCereales, label: "Céréales" },
@@ -52,58 +53,38 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen flex-col md:flex-row">
-      {/* Panneau de marque — nuit profonde et or, pur CSS/SVG (aucune image) */}
+      {/* Panneau de marque — bleu profond, vert et rouge-orangé du logo */}
       <div
         className="relative flex shrink-0 items-center justify-center overflow-hidden px-6 py-10 md:w-[48%] md:py-0"
         style={{
           background:
-            "radial-gradient(120% 80% at 20% 0%, rgba(201,162,75,0.16) 0%, rgba(201,162,75,0) 55%), linear-gradient(160deg, #0a1630 0%, #0d1f42 55%, #081124 100%)",
+            "radial-gradient(90% 70% at 90% 100%, rgba(53,153,128,0.45) 0%, rgba(53,153,128,0) 60%), radial-gradient(70% 50% at 0% 0%, rgba(255,52,8,0.20) 0%, rgba(255,52,8,0) 60%), linear-gradient(155deg, #1e3a8a 0%, #1d4ed8 60%, #1e40af 100%)",
         }}
       >
-        {/* Fines diagonales, très discrètes */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(135deg, #f3dc9b 0, #f3dc9b 1px, transparent 1px, transparent 22px)",
-          }}
-        />
-        {/* Cadre or intérieur (grand écran) */}
-        <div className="pointer-events-none absolute inset-6 hidden rounded-3xl border border-[#c9a24b]/25 md:block" />
+        {/* Grand cercle décoratif */}
+        <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full border border-white/10" />
+        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-white/10" />
 
         <div className="relative z-10 flex max-w-sm flex-col items-center text-center">
-          <div className="siri-rise">
-            <SiriMark size={92} idSuffix="login" />
+          <div className="siri-rise rounded-3xl bg-white px-8 py-6 shadow-2xl shadow-blue-950/40">
+            <IchaLogo height={128} />
           </div>
-          <h2
-            className="siri-rise siri-rise-2 mt-6 text-3xl font-semibold uppercase text-[#f3dc9b] md:text-4xl"
-            style={{ fontFamily: "Georgia, 'Times New Roman', serif", letterSpacing: "0.32em", paddingLeft: "0.32em" }}
-          >
-            Siri
-          </h2>
-          <p
-            className="siri-rise siri-rise-2 -mt-0.5 text-sm font-medium uppercase text-[#c9a24b]"
-            style={{ letterSpacing: "0.62em", paddingLeft: "0.62em" }}
-          >
-            Import
-          </p>
-          <div className="siri-rise siri-rise-2 my-5 flex w-40 items-center gap-2">
-            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#c9a24b]/70" />
-            <span className="h-1.5 w-1.5 rotate-45 bg-[#c9a24b]" />
-            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[#c9a24b]/70" />
+          <div className="siri-rise siri-rise-2 my-6 flex w-40 items-center gap-2">
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-white/60" />
+            <span className="h-1.5 w-1.5 rotate-45 bg-[#ff3408]" />
+            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-white/60" />
           </div>
-          <p className="siri-rise siri-rise-3 text-sm leading-relaxed text-slate-300">
+          <p className="siri-rise siri-rise-3 text-sm leading-relaxed text-blue-50/90">
             Suivi commercial terrain — recensement, réassort et performance de
             la force de vente, partout et en temps réel.
           </p>
-
           <ul className="siri-rise siri-rise-3 mt-8 hidden grid-cols-4 gap-4 md:grid">
             {FAMILLES.map(({ Icon, label }) => (
               <li key={label} className="flex flex-col items-center gap-2">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[#c9a24b]/40 bg-white/[0.03] text-[#e8cd85]">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/10 text-[#7fd6bf]">
                   <Icon width={22} height={22} />
                 </span>
-                <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
+                <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-blue-100/80">
                   {label}
                 </span>
               </li>
@@ -118,13 +99,13 @@ export default function LoginPage() {
           <ThemeToggle className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" />
         </div>
         <form onSubmit={handleSubmit} className="w-full max-w-sm">
-          <div className="mb-2 flex items-center gap-2 text-[#9a7a2e] dark:text-[#e0c26b]">
+          <div className="mb-2 flex items-center gap-2 text-[#359980]">
             <ShieldCheck size={18} />
             <p className="text-xs font-bold uppercase tracking-widest">Espace sécurisé</p>
           </div>
           <h1
             className="mb-1 text-3xl font-semibold text-slate-900 dark:text-slate-100"
-            style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+            
           >
             Connexion
           </h1>
@@ -146,7 +127,7 @@ export default function LoginPage() {
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
               placeholder="Ton identifiant"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-base text-slate-800 placeholder:text-slate-400 transition-colors focus:border-[#c9a24b] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c9a24b]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:bg-slate-900 dark:focus:ring-[#c9a24b]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-base text-slate-800 placeholder:text-slate-400 transition-colors focus:border-[#359980] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#359980]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:bg-slate-900 dark:focus:ring-[#359980]/25"
               required
             />
           </div>
@@ -165,7 +146,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
               placeholder="••••••••"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-base text-slate-800 placeholder:text-slate-400 transition-colors focus:border-[#c9a24b] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#c9a24b]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:bg-slate-900 dark:focus:ring-[#c9a24b]/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-base text-slate-800 placeholder:text-slate-400 transition-colors focus:border-[#359980] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#359980]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:bg-slate-900 dark:focus:ring-[#359980]/25"
               required
             />
             <button
@@ -188,8 +169,8 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#c9a24b]/60 py-3.5 text-base font-semibold tracking-wide text-[#f3dc9b] shadow-md transition-all hover:shadow-lg hover:brightness-110 disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg, #0a1630, #14264d)" }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-base font-semibold tracking-wide text-white shadow-md transition-all hover:shadow-lg hover:brightness-110 disabled:opacity-60"
+            style={{ background: "linear-gradient(135deg, #2a8670, #359980)" }}
           >
             {loading ? (
               <>
@@ -201,7 +182,7 @@ export default function LoginPage() {
             )}
           </button>
         <p className="mt-8 text-center text-xs text-slate-400 dark:text-slate-500">
-            &copy; {new Date().getFullYear()} SIRI IMPORT
+            &copy; {new Date().getFullYear()} ICHA IMPORT
           </p>
         </form>
       </div>

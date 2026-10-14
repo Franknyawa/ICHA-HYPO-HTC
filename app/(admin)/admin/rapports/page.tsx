@@ -301,7 +301,7 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
 
         {/* En-tête visible seulement à l'impression de la page */}
         <div className="mb-3 hidden print:block">
-          <p className="text-lg font-bold text-slate-800">SIRI IMPORT</p>
+          <p className="text-lg font-bold text-slate-800">ICHA IMPORT</p>
           <p className="text-sm text-slate-500">{TITRE_VUE[vue]}</p>
           {filtreLabel && <p className="text-xs text-slate-400">{filtreLabel}</p>}
         </div>

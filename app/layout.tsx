@@ -4,8 +4,8 @@ import { PwaSetup } from "@/components/PwaSetup";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "SIRI IMPORT — Suivi commercial terrain",
-  description: "Plateforme de suivi commercial terrain SIRI IMPORT",
+  title: "ICHA IMPORT — Suivi commercial terrain",
+  description: "Plateforme de suivi commercial terrain ICHA IMPORT",
   manifest: "/manifest.json",
   icons: {
     icon: "/icons/icon-192.png",
@@ -14,12 +14,12 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "SIRI IMPORT",
+    title: "ICHA IMPORT",
   },
 };
 
 export const viewport = {
-  themeColor: "#0a1630",
+  themeColor: "#1e3a8a",
   width: "device-width",
   initialScale: 1,
 };

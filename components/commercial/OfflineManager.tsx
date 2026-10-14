@@ -128,7 +128,7 @@ export function OfflineManager() {
     <div className="print:hidden">
       {!enLigne && (
         <div className="flex items-center gap-2 bg-slate-800 px-4 py-2 text-sm text-slate-100">
-          <WifiOff size={16} className="shrink-0 text-[#e8cd85]" />
+          <WifiOff size={16} className="shrink-0 text-[#fbbf24]" />
           <span>
             Hors ligne — tes visites sont gardées sur le téléphone et partiront dès que le réseau revient.
           </span>

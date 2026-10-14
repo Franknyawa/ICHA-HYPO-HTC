@@ -17,7 +17,7 @@ body {
   }
 }
 
-/* Page de connexion SIRI IMPORT — apparition douce, purement CSS (aucun JS).
+/* Page de connexion ICHA IMPORT — apparition douce, purement CSS (aucun JS).
    Désactivée pour les personnes qui demandent moins d'animations. */
 @keyframes siri-rise {
   from {

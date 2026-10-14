@@ -1416,6 +1416,22 @@ UPDATE "produits" SET "gamme" = 'Entretien' WHERE "gamme" IS NULL AND "code" IN 
 - Générique : fonctionne pour toutes les gammes et tous les produits (cartons équivalents).
 - Aucun SQL supplémentaire (la colonne `gamme` de l'étape Rapports suffit).
 
+### ✅ Retour au nom ICHA IMPORT
+
+- Le nom redevient « ICHA IMPORT » partout : titre et manifest PWA (« ICHA Terrain »), connexion, sidebar admin, en-têtes commerciaux et d'impression, PDF (rapports, factures, bons de livraison), pied de page. Constantes dans `lib/brand.ts`.
+- Le monogramme de l'écu passe de « S » à « I » (écran, PDF, `public/brand/siri-mark.svg`) ; icônes PWA 192/512 régénérées.
+- Cache du service worker passé en `v4` pour forcer le rafraîchissement des icônes. Sur un téléphone, si l'ancienne icône reste, supprimer puis réinstaller l'app.
+- Aucun SQL. Les noms internes (`SiriMark`, classes CSS `siri-*`) sont inchangés : invisibles, sans risque.
+
+### ✅ Charte ICHA : logo vectoriel, accueil et couleurs d'origine
+
+- **Logo ICHA IMPORT redessiné en vectoriel** (`components/brand/IchaLogo.tsx`, `public/brand/icha-logo.svg`) : net à toute taille, couleurs du logo (rouge-orangé `#ff3408`, vert `#359980`). Emblème compact bouteille + avion pour les en-têtes et icônes (`SiriMark` en est maintenant un alias).
+- **Page de connexion** : fond bleu profond (`#1e3a8a` → `#1d4ed8`) avec halo vert et rouge-orangé, logo sur carte blanche, bouton vert. Plus aucune trace de l'or / bleu nuit.
+- **Couleurs d'origine réintégrées** : bleu (en-têtes admin et commercial, thème PWA), vert (boutons, accents, section Ventes par produit), rouge-orangé en accent ponctuel.
+- **PDF** (factures, bons de livraison, rapports) : en-têtes bleus avec liseré vert et emblème vectoriel dessiné dans le PDF.
+- Icônes PWA 192/512 et apple-touch régénérées. Si l'ancienne icône reste sur un téléphone : supprimer puis réinstaller l'app.
+- Aucun SQL.
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont
