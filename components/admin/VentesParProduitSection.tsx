@@ -11,7 +11,7 @@ export async function VentesParProduitSection() {
 
 export function VentesParProduitSkeleton() {
   return (
-    <div className="mt-6 animate-pulse">
+    <div className="animate-pulse">
       <div className="mb-3 h-4 w-40 rounded bg-slate-200 dark:bg-slate-800" />
       <div className="mb-3 h-24 rounded-2xl bg-slate-100 dark:bg-slate-900" />
       <div className="grid gap-3 lg:grid-cols-[5fr_6fr]">

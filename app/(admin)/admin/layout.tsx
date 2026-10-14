@@ -1,6 +1,6 @@
 "use client";
 
-import { SiriMark } from "@/components/brand/SiriMark";
+import { IchaLogo } from "@/components/brand/IchaLogo";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -60,21 +60,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:flex">
       {/* Sidebar — desktop uniquement */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 dark:border-slate-800 dark:bg-slate-900 md:flex print:hidden">
-        <div
-          className="flex items-center gap-2 px-5 py-5"
-          style={{ background: "linear-gradient(135deg, #1e3a8a, #2563eb)" }}
-        >
-          <SiriMark size={34} idSuffix="adm" />
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-blue-100">
-              ICHA IMPORT
-            </p>
-            <p className="text-sm font-semibold text-white">Admin</p>
-          </div>
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 md:flex print:hidden">
+        <div className="px-5 pb-4 pt-6">
+          <IchaLogo height={54} />
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Administration
+          </p>
         </div>
 
-        <nav className="flex-1 space-y-1 p-3">
+        <nav className="flex-1 space-y-0.5 px-3 py-2">
           {NAV_ITEMS.map((item) => {
             const active = pathname.startsWith(item.href);
             const Icon = item.icon;
@@ -82,13 +76,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                   active
-                    ? "bg-blue-50 text-brand dark:bg-blue-950/50 dark:text-blue-400"
-                    : "text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/60 dark:bg-slate-950 dark:text-slate-400 dark:text-slate-500 dark:hover:bg-slate-800/60"
+                    ? "bg-slate-100 font-semibold text-[#1e3a8a] dark:bg-slate-800 dark:text-blue-300"
+                    : "font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200"
                 }`}
               >
-                <Icon size={18} strokeWidth={active ? 2.4 : 2} />
+                {active && <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-[#359980]" />}
+                <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
                 {item.label}
                 {item.href === "/admin/alertes" && alertesCount > 0 && (
                   <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-alert px-1 text-[10px] font-bold text-white">

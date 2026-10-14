@@ -120,7 +120,7 @@ function GrapheCourbe({ points, indicateur }: { points: PointSerie[]; indicateur
 function ListeClassement({ titre, sousTitre, items, indicateur }: { titre: string; sousTitre: string; items: { nom: string; lieu: string; cartons: number; ca: number }[]; indicateur: Indicateur }) {
   const max = Math.max(...items.map((x) => x[indicateur]), 0);
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+    <div className="rounded-xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
       <h3 className="font-semibold text-slate-900 dark:text-slate-100">{titre}</h3>
       <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">{sousTitre}</p>
       {items.length === 0 && <p className="text-sm text-slate-400 dark:text-slate-500">Aucune vente.</p>}
@@ -177,9 +177,9 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
     "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
 
   return (
-    <section className="mt-6">
+    <section>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-[#2a8670] dark:text-[#7fd6bf]">Ventes par produit</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">Ventes par produit</h2>
         <div className="flex items-center gap-2">
           <div className="flex rounded-full border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900" role="group" aria-label="Indicateur">
             {(["cartons", "ca"] as const).map((i) => (
@@ -205,13 +205,13 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
       </div>
 
       {!meilleur ? (
-        <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-400 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+        <div className="rounded-xl border border-slate-200/80 bg-white p-8 text-center text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900">
           Aucune vente sur cette période.
         </div>
       ) : (
         <>
           {/* Produit le plus vendu */}
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center gap-4">
               <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#f4ecd8] text-[#2a8670] dark:bg-slate-800">
                 <Package size={22} />
@@ -247,7 +247,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
           <div className="grid gap-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
             {/* Colonne gauche */}
             <div className="space-y-3">
-              <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+              <div className="rounded-xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                 <h3 className="font-semibold text-slate-900 dark:text-slate-100">Classement des produits</h3>
                 <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">Clique sur un produit pour voir ses graphiques.</p>
                 <ul className="space-y-2.5">
@@ -285,7 +285,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
 
             {/* Colonne droite */}
             {courant && (
-              <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+              <div className="rounded-xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Graphiques du produit</p>

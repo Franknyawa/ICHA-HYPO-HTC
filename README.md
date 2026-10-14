@@ -1432,6 +1432,13 @@ UPDATE "produits" SET "gamme" = 'Entretien' WHERE "gamme" IS NULL AND "code" IN 
 - Icônes PWA 192/512 et apple-touch régénérées. Si l'ancienne icône reste sur un téléphone : supprimer puis réinstaller l'app.
 - Aucun SQL.
 
+### ✅ Logo d'origine fidèle et tableau de bord admin épuré
+
+- **Logo ICHA IMPORT : forme d'origine, rien de redessiné.** Le fichier fourni est vectorisé par tracé automatique (`components/brand/IchaLogo.tsx`, `public/brand/icha-logo.svg`, version PNG haute résolution `public/brand/icha-logo.png`). Il remplace mon précédent redessin. Utilisé sur la connexion, la barre latérale admin, les en-têtes (pastille blanche), les icônes PWA et les PDF (`lib/brand-logo-data.ts`).
+- **Tableau de bord admin refait, plus sobre** : chiffres clés du jour (CA, encaissements, ventes, visites) dans un seul bandeau ; deux listes compactes « Réseau et suivi » et « Cartons et stock » ; graphiques CA par binôme / vendeur en une seule couleur ; section Ventes par produit ; observations en liste. Fini les 12 cartes colorées et les gros liens du bas.
+- **Barre latérale** : fond blanc, logo en haut, élément actif marqué d'un trait vert. **En-tête de page** (commun à toutes les pages admin) plus léger. Bouton Imprimer masqué sur mobile (il chevauchait les boutons flottants).
+- Aucun SQL. Fichier à supprimer : `public/brand/siri-mark.svg`. Cache du service worker passé en `v5`.
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont

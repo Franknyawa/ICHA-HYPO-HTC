@@ -8,20 +8,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { VentesParProduitSection, VentesParProduitSkeleton } from "@/components/admin/VentesParProduitSection";
-import { CaChart, CartonsChart, PrintButton } from "@/components/admin/DashboardCharts";
-import {
-  MapPin,
-  Users,
-  UserCheck,
-  ShoppingCart,
-  Clock,
-  Banknote,
-  Wallet,
-  CreditCard,
-  Droplet,
-  Sparkles,
-  NotebookPen,
-} from "lucide-react";
+import { CaChart, PrintButton } from "@/components/admin/DashboardCharts";
+import { ArrowUpRight } from "lucide-react";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -32,45 +20,73 @@ function formatFcfa(n: number) {
   return new Intl.NumberFormat("fr-FR").format(n) + " FCFA";
 }
 
-function KpiCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-  href,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  color: string;
-  href?: string;
-}) {
+const CARTE = "rounded-xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900";
+
+function Titre({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+      {children}
+    </h2>
+  );
+}
+
+/** Chiffre clé du jour : libellé discret, valeur en grand, aucun fond coloré. */
+function Chiffre({ label, value, href }: { label: string; value: string | number; href?: string }) {
   const contenu = (
     <>
-      <div
-        className="mb-2.5 flex h-9 w-9 items-center justify-center rounded-lg text-white"
-        style={{ backgroundColor: color }}
-      >
-        <Icon size={17} strokeWidth={2.25} />
-      </div>
-      <p className="text-xl font-bold text-slate-800 dark:text-slate-100">{value}</p>
-      <p className="text-xs font-medium text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">{label}</p>
+      <p className="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
+        {label}
+        {href && <ArrowUpRight size={13} className="text-slate-300 transition-colors group-hover:text-[#359980]" />}
+      </p>
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">{value}</p>
     </>
   );
+  const classe = "group block p-5";
+  return href ? (
+    <Link href={href} className={`${classe} transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40`}>
+      {contenu}
+    </Link>
+  ) : (
+    <div className={classe}>{contenu}</div>
+  );
+}
 
-  const classe =
-    "rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800" +
-    (href ? " transition-transform hover:-translate-y-0.5 hover:shadow-md" : "");
+type Ligne = { label: string; value: string | number; href?: string; ton?: "alerte" | "attention" };
 
-  if (href) {
-    return (
-      <Link href={href} className={classe}>
-        {contenu}
-      </Link>
-    );
-  }
-
-  return <div className={classe}>{contenu}</div>;
+/** Liste compacte libellé / valeur, séparée par de fines lignes. */
+function ListeLignes({ titre, lignes }: { titre: string; lignes: Ligne[] }) {
+  return (
+    <div className={`${CARTE} p-5`}>
+      <p className="mb-1 text-sm font-semibold text-slate-800 dark:text-slate-200">{titre}</p>
+      <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+        {lignes.map((l) => {
+          const couleur =
+            l.ton === "alerte"
+              ? "text-red-700 dark:text-red-400"
+              : l.ton === "attention"
+                ? "text-amber-700 dark:text-amber-400"
+                : "text-slate-900 dark:text-slate-100";
+          const contenu = (
+            <>
+              <span className="text-sm text-slate-500 dark:text-slate-400">{l.label}</span>
+              <span className={`text-sm font-semibold tabular-nums ${couleur}`}>{l.value}</span>
+            </>
+          );
+          return (
+            <li key={l.label}>
+              {l.href ? (
+                <Link href={l.href} className="flex items-center justify-between py-3 transition-colors hover:opacity-80">
+                  {contenu}
+                </Link>
+              ) : (
+                <div className="flex items-center justify-between py-3">{contenu}</div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 export default async function AdminDashboardPage() {
@@ -81,150 +97,127 @@ export default async function AdminDashboardPage() {
     getCaParBinomeEtVendeur(),
     getObservationsRecentes(),
   ]);
+  const dateLongue = new Date().toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
 
   return (
-    <main className="pb-10">
+    <main className="pb-12">
       <AdminPageHeader
-        title={`Bonjour ${session?.prenom ?? ""} ${session?.nom ?? ""}`}
-        subtitle="Vue d'ensemble de l'activité du jour"
+        title={`Bonjour ${session?.prenom ?? ""}`.trim()}
+        subtitle={`${dateLongue.charAt(0).toUpperCase()}${dateLongue.slice(1)} — activité du jour`}
         action={<PrintButton />}
       />
 
-      <div className="px-4 pt-4">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <KpiCard
-            icon={MapPin}
-            label="Visites aujourd'hui"
-            value={kpis.visitesAujourdhui}
-            color="#4338ca"
-            href={`/admin/tracking?mode=visites&date=${aujourdhui}`}
-          />
-          <KpiCard icon={Users} label="Prospects (total)" value={kpis.prospectsTotal} color="#4338ca" />
-          <KpiCard
-            icon={UserCheck}
-            label="Clients (total)"
-            value={kpis.clientsTotal}
-            color="#1e40af"
-            href="/admin/clients"
-          />
-          <KpiCard
-            icon={ShoppingCart}
-            label="Ventes aujourd'hui"
-            value={kpis.ventesAujourdhui}
-            color="#1e40af"
-            href={`/admin/factures?dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
-          />
-          <KpiCard
-            icon={Clock}
-            label="Commandes en attente"
-            value={kpis.commandesEnAttente}
-            color="#b45309"
-            href="/admin/commandes?statut=EN_ATTENTE"
-          />
-          <KpiCard
-            icon={Droplet}
-            label="Cartons HYPO vendus"
-            value={kpis.cartonsHypo}
-            color="#1e40af"
-            href={`/admin/rapports?produitCode=HYPO&dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
-          />
-          <KpiCard
-            icon={Sparkles}
-            label="Cartons HTC vendus"
-            value={kpis.cartonsHtc}
-            color="#0f766e"
-            href={`/admin/rapports?produitCode=HTC&dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
-          />
-          <KpiCard
-            icon={Banknote}
-            label="CA du jour"
-            value={formatFcfa(kpis.caAujourdhui)}
-            color="#15803d"
-            href={`/admin/rapports?dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
-          />
-          <KpiCard
-            icon={Wallet}
-            label="Encaissements"
-            value={formatFcfa(kpis.encaissements)}
-            color="#15803d"
-            href={`/admin/factures?dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
-          />
-          <KpiCard icon={CreditCard} label="Crédits en cours" value={formatFcfa(kpis.credits)} color="#b91c1c" />
-          <KpiCard
-            icon={Droplet}
-            label="Stock HYPO"
-            value={`${kpis.stockHypoCartons} cartons`}
-            color="#1e40af"
-            href="/admin/stock"
-          />
-          <KpiCard
-            icon={Sparkles}
-            label="Stock HTC"
-            value={`${kpis.stockHtcCartons} cartons`}
-            color="#0f766e"
-            href="/admin/stock"
-          />
-        </div>
+      <div className="mx-auto max-w-6xl space-y-8 px-4 pt-6 md:px-8">
+        {/* Chiffres clés du jour */}
+        <section>
+          <Titre>Aujourd&apos;hui</Titre>
+          <div
+            className={`${CARTE} grid grid-cols-2 divide-x divide-y divide-slate-100 overflow-hidden dark:divide-slate-800 md:grid-cols-4 md:divide-y-0`}
+          >
+            <Chiffre
+              label="Chiffre d'affaires"
+              value={formatFcfa(kpis.caAujourdhui)}
+              href={`/admin/rapports?dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
+            />
+            <Chiffre
+              label="Encaissements"
+              value={formatFcfa(kpis.encaissements)}
+              href={`/admin/factures?dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
+            />
+            <Chiffre
+              label="Ventes"
+              value={kpis.ventesAujourdhui}
+              href={`/admin/factures?dateFrom=${aujourdhui}&dateTo=${aujourdhui}`}
+            />
+            <Chiffre
+              label="Visites"
+              value={kpis.visitesAujourdhui}
+              href={`/admin/tracking?mode=visites&date=${aujourdhui}`}
+            />
+          </div>
+        </section>
 
-        {/* Graphiques — CA par binôme/vendeur et cartons HYPO/HTC, imprimables */}
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
-          <CaChart title="CA du jour par binôme" items={parBinome} />
-          <CaChart title="CA du jour par vendeur" items={parVendeur} />
-        </div>
-        <div className="mt-3">
-          <CartonsChart cartonsHypo={kpis.cartonsHypo} cartonsHtc={kpis.cartonsHtc} />
-        </div>
+        {/* Réseau, cartons et stock */}
+        <section className="grid gap-4 md:grid-cols-2">
+          <ListeLignes
+            titre="Réseau et suivi"
+            lignes={[
+              { label: "Clients", value: kpis.clientsTotal, href: "/admin/clients" },
+              { label: "Prospects", value: kpis.prospectsTotal },
+              {
+                label: "Commandes en attente",
+                value: kpis.commandesEnAttente,
+                href: "/admin/commandes?statut=EN_ATTENTE",
+                ton: kpis.commandesEnAttente > 0 ? "attention" : undefined,
+              },
+              {
+                label: "Crédits en cours",
+                value: formatFcfa(kpis.credits),
+                ton: kpis.credits > 0 ? "alerte" : undefined,
+              },
+            ]}
+          />
+          <ListeLignes
+            titre="Cartons et stock"
+            lignes={[
+              {
+                label: "Cartons HYPO vendus",
+                value: kpis.cartonsHypo,
+                href: `/admin/rapports?produitCode=HYPO&dateFrom=${aujourdhui}&dateTo=${aujourdhui}`,
+              },
+              {
+                label: "Cartons HTC vendus",
+                value: kpis.cartonsHtc,
+                href: `/admin/rapports?produitCode=HTC&dateFrom=${aujourdhui}&dateTo=${aujourdhui}`,
+              },
+              { label: "Stock HYPO", value: `${kpis.stockHypoCartons} cartons`, href: "/admin/stock" },
+              { label: "Stock HTC", value: `${kpis.stockHtcCartons} cartons`, href: "/admin/stock" },
+            ]}
+          />
+        </section>
+
+        {/* CA du jour par binôme et par vendeur (imprimables) */}
+        <section>
+          <Titre>Performance du jour</Titre>
+          <div className="grid gap-4 md:grid-cols-2">
+            <CaChart title="CA par binôme" items={parBinome} color="#1e3a8a" />
+            <CaChart title="CA par vendeur" items={parVendeur} color="#359980" />
+          </div>
+        </section>
 
         {/* Ventes par produit : classement, meilleurs points de vente/quartiers,
             évolution 12 mois et 30 jours — chargé en streaming */}
-        <Suspense fallback={<VentesParProduitSkeleton />}>
-          <VentesParProduitSection />
-        </Suspense>
+        <section>
+          <Suspense fallback={<VentesParProduitSkeleton />}>
+            <VentesParProduitSection />
+          </Suspense>
+        </section>
 
-        {/* Observations terrain récentes — demande de Victor */}
-        <div className="mt-5 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-600 text-white">
-              <NotebookPen size={15} />
-            </span>
-            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">
-              Observations récentes
-            </h2>
-          </div>
-          <div className="space-y-3">
-            {observations.map((o) => (
-              <div key={o.id} className="border-b border-slate-100 dark:border-slate-800 pb-3 last:border-0 last:pb-0">
-                <p className="text-sm text-slate-700 dark:text-slate-300">{o.observation}</p>
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">
-                  {o.commercial.prenom} {o.commercial.nom} · {o.pointVente.nom} ·{" "}
-                  {new Date(o.dateVisite).toLocaleDateString("fr-FR")}
-                </p>
-              </div>
-            ))}
-            {observations.length === 0 && (
-              <p className="text-sm text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">Aucune observation pour le moment.</p>
+        {/* Observations terrain récentes */}
+        <section>
+          <Titre>Observations terrain</Titre>
+          <div className={`${CARTE} px-5`}>
+            {observations.length === 0 ? (
+              <p className="py-5 text-sm text-slate-400 dark:text-slate-500">Aucune observation pour le moment.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                {observations.map((o) => (
+                  <li key={o.id} className="py-4">
+                    <p className="text-sm text-slate-700 dark:text-slate-300">{o.observation}</p>
+                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                      {o.commercial.prenom} {o.commercial.nom} · {o.pointVente.nom} ·{" "}
+                      {new Date(o.dateVisite).toLocaleDateString("fr-FR")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
-          <Link
-            href="/admin/points-vente"
-            className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800"
-          >
-            <p className="font-semibold text-slate-800 dark:text-slate-100">Points de vente</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">Consulter et rechercher</p>
-          </Link>
-          <Link
-            href="/admin/utilisateurs"
-            className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800"
-          >
-            <p className="font-semibold text-slate-800 dark:text-slate-100">Utilisateurs</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 dark:text-slate-400 dark:text-slate-500">
-              Comptes commerciaux et admin, réinitialisation de mot de passe
-            </p>
-          </Link>
-        </div>
+        </section>
       </div>
     </main>
   );

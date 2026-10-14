@@ -10,7 +10,7 @@
 // - Une réponse redirigée (ex. session expirée -> /login) n'est JAMAIS mise
 //   en cache : le navigateur refuse de servir une redirection à une navigation.
 
-const VERSION = "v4";
+const VERSION = "v5";
 const STATIC_CACHE = `siri-static-${VERSION}`;
 const PAGES_CACHE = `siri-pages-${VERSION}`;
 const PAGES_TERRAIN = ["/dashboard", "/visites/new", "/visites/rotation", "/visites/reassort", "/historique", "/profil"];
@@ -21,7 +21,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(STATIC_CACHE)
-      .then((c) => c.addAll(["/manifest.json", "/icons/icon-192.png", "/brand/siri-mark.svg"]))
+      .then((c) => c.addAll(["/manifest.json", "/icons/icon-192.png", "/brand/icha-logo.svg"]))
       .catch(() => {})
   );
   self.skipWaiting();
