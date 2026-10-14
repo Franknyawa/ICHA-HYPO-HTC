@@ -1,0 +1,16 @@
+{
+  "id": "/dashboard",
+  "name": "ICHA IMPORT — Terrain",
+  "short_name": "ICHA Terrain",
+  "description": "Application terrain pour la force commerciale ICHA IMPORT",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1e3a8a",
+  "theme_color": "#1e3a8a",
+  "icons": [
+    { "src": "/icons/icon-commercial-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-commercial-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

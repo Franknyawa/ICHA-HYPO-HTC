@@ -1445,6 +1445,13 @@ UPDATE "produits" SET "gamme" = 'Entretien' WHERE "gamme" IS NULL AND "code" IN 
 - Texte plus grand (15 px), messages entièrement visibles, non lues repérées par un trait vert, bouton de fermeture, « Tout marquer lu » toujours visible.
 - Aucun SQL.
 
+### ✅ Icône dédiée à l'application commerciale (mobile)
+
+- Nouvelle icône pour la partie commerciale : logo ICHA IMPORT d'origine sur carte blanche, fond bleu, mention « TERRAIN » (`public/icons/icon-commercial-192.png`, `-512.png`, `public/apple-touch-icon-commercial.png`).
+- Manifest dédié `public/manifest-commercial.json`, branché dans `app/(commercial)/layout.tsx` : installer l'app depuis l'espace terrain donne cette icône ; l'admin et la connexion gardent l'icône générale (logo sur fond blanc).
+- Service worker passé en `v6`. **Sur les téléphones déjà installés, supprimer l'app de l'écran d'accueil puis la réinstaller** pour voir la nouvelle icône (Android et iOS ne rafraîchissent pas l'icône d'une app installée).
+- Aucun SQL.
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont

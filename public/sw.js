@@ -10,7 +10,7 @@
 // - Une réponse redirigée (ex. session expirée -> /login) n'est JAMAIS mise
 //   en cache : le navigateur refuse de servir une redirection à une navigation.
 
-const VERSION = "v5";
+const VERSION = "v6";
 const STATIC_CACHE = `siri-static-${VERSION}`;
 const PAGES_CACHE = `siri-pages-${VERSION}`;
 const PAGES_TERRAIN = ["/dashboard", "/visites/new", "/visites/rotation", "/visites/reassort", "/historique", "/profil"];
@@ -21,7 +21,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(STATIC_CACHE)
-      .then((c) => c.addAll(["/manifest.json", "/icons/icon-192.png", "/brand/icha-logo.svg"]))
+      .then((c) => c.addAll(["/manifest.json", "/manifest-commercial.json", "/icons/icon-192.png", "/icons/icon-commercial-192.png", "/brand/icha-logo.svg"]))
       .catch(() => {})
   );
   self.skipWaiting();
@@ -119,7 +119,9 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/icons/") ||
     url.pathname.startsWith("/brand/") ||
     url.pathname === "/manifest.json" ||
-    url.pathname === "/apple-touch-icon.png"
+    url.pathname === "/manifest-commercial.json" ||
+    url.pathname === "/apple-touch-icon.png" ||
+    url.pathname === "/apple-touch-icon-commercial.png"
   ) {
     event.respondWith(
       caches.match(request).then((cached) => {
