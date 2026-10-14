@@ -1439,6 +1439,12 @@ UPDATE "produits" SET "gamme" = 'Entretien' WHERE "gamme" IS NULL AND "code" IN 
 - **Barre latérale** : fond blanc, logo en haut, élément actif marqué d'un trait vert. **En-tête de page** (commun à toutes les pages admin) plus léger. Bouton Imprimer masqué sur mobile (il chevauchait les boutons flottants).
 - Aucun SQL. Fichier à supprimer : `public/brand/siri-mark.svg`. Cache du service worker passé en `v5`.
 
+### ✅ Notifications commerciales lisibles sur mobile
+
+- Le panneau de notifications ne déborde plus à gauche de l'écran : sur téléphone il s'ouvre en pleine largeur sous l'en-tête (fond assombri derrière), sur ordinateur il reste sous la cloche (`components/commercial/NotificationsBell.tsx`).
+- Texte plus grand (15 px), messages entièrement visibles, non lues repérées par un trait vert, bouton de fermeture, « Tout marquer lu » toujours visible.
+- Aucun SQL.
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont

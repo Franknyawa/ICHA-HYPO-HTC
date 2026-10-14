@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import { apiFetch } from "@/lib/client/apiFetch";
 
 type NotificationItem = {
@@ -97,23 +97,32 @@ export function NotificationsBell({ initial }: { initial: NotificationsResponse 
       {ouvert && (
         <>
           {/* Zone de fermeture au clic extérieur */}
-          <div className="fixed inset-0 z-30" onClick={() => setOuvert(false)} />
-          <div className="absolute right-0 z-40 mt-2 w-80 max-w-[85vw] rounded-2xl bg-white dark:bg-slate-900 text-left shadow-xl ring-1 ring-slate-100 dark:ring-slate-800">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3">
-              <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Notifications</p>
+          <div className="fixed inset-0 z-30 bg-slate-900/30 md:bg-transparent" onClick={() => setOuvert(false)} />
+          {/* Mobile : panneau pleine largeur sous l'en-tête (jamais coupé par le bord
+              de l'écran) ; ordinateur : sous la cloche, aligné à droite. */}
+          <div className="fixed inset-x-3 top-16 z-40 overflow-hidden rounded-2xl bg-white text-left shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:absolute md:inset-x-auto md:right-0 md:top-auto md:mt-2 md:w-96">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3.5 dark:border-slate-800">
+              <p className="text-base font-bold text-slate-900 dark:text-slate-50">Notifications</p>
               {data.nonLues > 0 && (
                 <button
                   onClick={marquerTout}
                   disabled={chargement}
-                  className="text-xs font-semibold text-brand disabled:opacity-50"
+                  className="ml-auto whitespace-nowrap text-[13px] font-semibold text-[#1e3a8a] disabled:opacity-50 dark:text-blue-300"
                 >
-                  Tout marquer comme lu
+                  Tout marquer lu
                 </button>
               )}
+              <button
+                onClick={() => setOuvert(false)}
+                aria-label="Fermer"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+              >
+                <X size={18} />
+              </button>
             </div>
-            <div className="max-h-80 overflow-y-auto">
+            <div className="max-h-[65vh] overflow-y-auto md:max-h-96">
               {data.items.length === 0 && (
-                <p className="px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+                <p className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                   Aucune notification pour l'instant.
                 </p>
               )}
@@ -121,12 +130,12 @@ export function NotificationsBell({ initial }: { initial: NotificationsResponse 
                 <button
                   key={n.id}
                   onClick={() => !n.lu && marquerLue(n.id)}
-                  className={`block w-full border-b border-slate-50 dark:border-slate-800 px-4 py-3 text-left last:border-0 ${
-                    n.lu ? "" : "bg-blue-50/60 dark:bg-blue-950/20"
+                  className={`block w-full border-b border-slate-100 px-4 py-3.5 text-left last:border-0 dark:border-slate-800 ${
+                    n.lu ? "" : "border-l-4 border-l-[#359980] bg-teal-50/70 dark:bg-teal-950/20"
                   }`}
                 >
-                  <p className="text-sm text-slate-700 dark:text-slate-200">{n.message}</p>
-                  <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                  <p className={`text-[15px] leading-snug text-slate-800 dark:text-slate-100 ${n.lu ? "" : "font-medium"}`}>{n.message}</p>
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                     {formatRelatif(n.createdAt)}
                   </p>
                 </button>
