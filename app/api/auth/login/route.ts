@@ -1,3 +1,4 @@
+import { pageAccueil } from "@/lib/auth/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -122,6 +123,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     role: user.role,
-    redirectTo: user.role === "COMMERCIAL" ? "/dashboard" : "/admin/dashboard",
+    redirectTo: pageAccueil(user.role),
   });
 }

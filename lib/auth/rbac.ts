@@ -1,7 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { getSession, type SessionPayload } from "./session";
-import { estPersonnel, peutAcceder, type Module } from "./permissions";
+import { estPersonnel, pageAccueil, peutAcceder, type Module } from "./permissions";
 
 export class UnauthorizedError extends Error {
   constructor(message = "Non authentifié") {
@@ -65,7 +65,7 @@ export async function requireAdminPage(module?: Module): Promise<SessionPayload>
   const session = await getSession();
   if (!session) redirect("/login");
   if (!estPersonnel(session.role)) redirect("/dashboard");
-  if (module && !peutAcceder(session.role, module)) redirect("/admin/dashboard");
+  if (module && !peutAcceder(session.role, module)) redirect(pageAccueil(session.role));
   return session;
 }
 

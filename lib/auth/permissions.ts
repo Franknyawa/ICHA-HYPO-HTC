@@ -24,7 +24,7 @@ export type Module =
 
 /** Qui a le droit d'ouvrir chaque rubrique de l'administration. */
 export const ACCES: Record<Module, RoleId[]> = {
-  dashboard: ["SUPER_ADMIN", "ADMIN", "SUPERVISEUR"],
+  dashboard: ["SUPER_ADMIN", "ADMIN"],
   alertes: ["SUPER_ADMIN", "ADMIN", "SUPERVISEUR"],
   "points-vente": ["SUPER_ADMIN", "ADMIN", "SUPERVISEUR"],
   commandes: ["SUPER_ADMIN", "ADMIN", "SUPERVISEUR"],
@@ -43,7 +43,7 @@ export const ACCES: Record<Module, RoleId[]> = {
 export const LIBELLES_ROLES: Record<RoleId, { nom: string; description: string }> = {
   SUPER_ADMIN: { nom: "Super Admin", description: "Gère tout, y compris les utilisateurs et les paramètres." },
   ADMIN: { nom: "Administrateur", description: "Accès à tout sauf les paramètres et les utilisateurs." },
-  SUPERVISEUR: { nom: "Superviseur", description: "Alertes, points de vente, commandes, stock et rapports." },
+  SUPERVISEUR: { nom: "Superviseur", description: "Alertes, points de vente, commandes, stock et rapports (consultation seule)." },
   COMMERCIAL: { nom: "Commercial", description: "Application mobile terrain uniquement." },
 };
 
@@ -102,4 +102,11 @@ export function moduleDePath(pathname: string): Module | null {
 /** Seuls le Super Admin et l'Admin peuvent modifier ; le Superviseur consulte seulement. */
 export function peutModifier(role: string | undefined | null): boolean {
   return role === "SUPER_ADMIN" || role === "ADMIN";
+}
+
+/** Première page d'un rôle : le tableau de bord, ou la première rubrique autorisée. */
+export function pageAccueil(role: string | undefined | null): string {
+  if (role === "COMMERCIAL") return "/dashboard";
+  const premier = modulesAutorises(role)[0];
+  return premier ? `/admin/${premier}` : "/login";
 }

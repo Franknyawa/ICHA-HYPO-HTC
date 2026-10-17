@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken } from "@/lib/auth/edge";
-import { estPersonnel, moduleDePath, peutAcceder, peutModifier } from "@/lib/auth/permissions";
+import { estPersonnel, moduleDePath, pageAccueil, peutAcceder, peutModifier } from "@/lib/auth/permissions";
 
 const COOKIE_NAME = "icha_session";
 
@@ -47,16 +47,16 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  // Rubrique non autorisée pour ce rôle : retour au tableau de bord.
+  // Rubrique non autorisée pour ce rôle : retour à la page d'accueil du rôle.
   if (isAdminRoute) {
     const module = moduleDePath(pathname);
     if (module && !peutAcceder(session.role, module)) {
-      return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+      return NextResponse.redirect(new URL(pageAccueil(session.role), req.url));
     }
   }
 
   if (isCommercialRoute && session.role !== "COMMERCIAL") {
-    return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+    return NextResponse.redirect(new URL(pageAccueil(session.role), req.url));
   }
 
   return NextResponse.next();
