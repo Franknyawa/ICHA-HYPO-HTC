@@ -11,6 +11,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { getPointVenteDetail } from "@/lib/queries/points-vente";
+import { libelleRepondant } from "@/lib/utils/repondant";
 import { formatMontant } from "@/lib/utils/format";
 import { ImprimerButton } from "@/components/admin/ImprimerButton";
 import { requireAdminPage } from "@/lib/auth/rbac";
@@ -80,7 +81,7 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
             <div>
               <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{pv.nom}</h1>
               <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                {pv.type?.nom ?? "—"} · {pv.ville?.nom ?? "—"}
+                {pv.type?.nom ?? pv.typeAutre ?? "—"} · {pv.ville?.nom ?? "—"}
                 {pv.quartier ? ` · ${pv.quartier.nom}` : ""}
               </p>
             </div>
@@ -110,7 +111,14 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
                 <User size={13} />
                 Interlocuteur
               </p>
-              <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{pv.vendeur ?? "—"}</p>
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                {pv.vendeur ?? "—"}
+                {libelleRepondant(pv.repondantRole, pv.repondantFonction) && (
+                  <span className="ml-1.5 text-xs font-normal text-slate-500 dark:text-slate-400">
+                    ({libelleRepondant(pv.repondantRole, pv.repondantFonction)})
+                  </span>
+                )}
+              </p>
               <div className="mt-1 flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300">
                 {pv.telephoneVendeur && (
                   <a
@@ -120,17 +128,28 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
                     className="flex items-center gap-1.5 text-green-600"
                   >
                     <Phone size={13} />
-                    {pv.telephoneVendeur} (vendeur)
+                    {pv.telephoneVendeur}
                   </a>
                 )}
-                {pv.telephonePatron && (
-                  <span className="flex items-center gap-1.5">
-                    <Phone size={13} />
-                    {pv.telephonePatron} (patron)
-                  </span>
-                )}
-                {!pv.telephoneVendeur && !pv.telephonePatron && <span className="text-slate-400">—</span>}
+                {!pv.telephoneVendeur && <span className="text-slate-400">—</span>}
               </div>
+              {pv.repondantRole !== "PATRON" && (pv.patronNom || pv.telephonePatron) && (
+                <div className="mt-3 border-t border-slate-200 pt-2.5 dark:border-slate-800">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Patron</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{pv.patronNom ?? "—"}</p>
+                  {pv.telephonePatron && (
+                    <a
+                      href={waUrl(pv.telephonePatron) ?? undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 flex items-center gap-1.5 text-sm text-green-600"
+                    >
+                      <Phone size={13} />
+                      {pv.telephonePatron}
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
             <div className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3.5">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">

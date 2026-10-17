@@ -245,7 +245,13 @@ model PointVente {
   nom           String
   vendeur       String?
   telephoneVendeur String? @map("telephone_vendeur")
-  telephonePatron  String? @map("telephone_patron") // "si différent" — optionnel
+  telephonePatron  String? @map("telephone_patron") // téléphone du patron (optionnel)
+  // « Qui nous répond ? » : PATRON | GERANT | EMPLOYE | AUTRE (+ précision si AUTRE).
+  // Le répondant est l'interlocuteur : ses nom/téléphone sont dans vendeur / telephoneVendeur.
+  repondantRole      String? @map("repondant_role")
+  repondantFonction  String? @map("repondant_fonction")
+  patronNom          String? @map("patron_nom")
+  typeAutre          String? @map("type_autre") // type de boutique saisi librement (option « Autre »)
   villeId       String    @map("ville_id")
   ville         Ville     @relation(fields: [villeId], references: [id])
   quartierId    String?   @map("quartier_id")

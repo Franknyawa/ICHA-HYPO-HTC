@@ -1,3 +1,4 @@
+import { libelleRepondant } from "@/lib/utils/repondant";
 import Link from "next/link";
 import { MapPin, ImageOff, Phone, ChevronLeft, ChevronRight } from "lucide-react";
 import { listPointsVente } from "@/lib/queries/points-vente";
@@ -79,7 +80,7 @@ export default async function PointsVentePage({
     pv.vendeur ?? "—",
     pv.ville?.nom ?? "—",
     pv.quartier?.nom ?? "—",
-    pv.type?.nom ?? "—",
+    pv.type?.nom ?? pv.typeAutre ?? "—",
     String(pv._count.commandes),
   ]);
 
@@ -213,6 +214,11 @@ export default async function PointsVentePage({
                     </td>
                     <td className="px-4 py-2.5">
                       <p className="text-slate-700 dark:text-slate-300">{pv.vendeur ?? "—"}</p>
+                      {libelleRepondant(pv.repondantRole, pv.repondantFonction) && (
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
+                          {libelleRepondant(pv.repondantRole, pv.repondantFonction)}
+                        </p>
+                      )}
                       {wa && (
                         <a
                           href={wa}
@@ -229,7 +235,7 @@ export default async function PointsVentePage({
                       {pv.ville?.nom ?? "—"}
                       {pv.quartier ? ` · ${pv.quartier.nom}` : ""}
                     </td>
-                    <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{pv.type?.nom ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{pv.type?.nom ?? pv.typeAutre ?? "—"}</td>
                     <td className="px-4 py-2.5">
                       <span className="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700">
                         {pv._count.commandes}

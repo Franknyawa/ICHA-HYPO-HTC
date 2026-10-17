@@ -92,7 +92,7 @@ export function PointVenteSearch({
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="Nom de la boutique ou du vendeur..."
-          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-3 pl-10 pr-3 text-base text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 dark:text-slate-500"
+          className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3.5 text-base text-slate-900 placeholder:text-slate-400 transition-colors focus:border-[#359980] focus:outline-none focus:ring-2 focus:ring-[#359980]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
         />
       </div>
 
@@ -100,7 +100,7 @@ export function PointVenteSearch({
         type="button"
         onClick={rechercherPresDeMoi}
         disabled={gpsLoading}
-        className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-50/70 py-3 text-sm font-semibold text-brand disabled:opacity-60"
+        className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-sm font-medium text-slate-700 hover:border-slate-400 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
       >
         <MapPin size={17} />
         {gpsLoading ? "Localisation..." : "Rechercher près de moi"}
@@ -120,7 +120,7 @@ export function PointVenteSearch({
             key={r.id}
             type="button"
             onClick={() => onSelect(r)}
-            className="flex w-full items-center gap-3 rounded-xl bg-white dark:bg-slate-900 p-3 text-left shadow-sm ring-1 ring-slate-100 dark:ring-slate-800"
+            className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
           >
             {r.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element

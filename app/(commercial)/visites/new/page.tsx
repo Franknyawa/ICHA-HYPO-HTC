@@ -1,31 +1,27 @@
 "use client";
 
-import { SiriMark } from "@/components/brand/SiriMark";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import {
-  Users,
-  Store,
-  MapPin,
-  Camera,
-  Package,
-  Truck,
-  Wallet,
-  CheckCircle2,
-  Clock,
-  Droplet,
-  Sparkles,
-  ChevronDown,
-  NotebookPen,
-  ArrowLeft,
-  Download,
-} from "lucide-react";
+import { MapPin, Camera, CheckCircle2, Clock, Download } from "lucide-react";
 import { queuePendingVisite } from "@/lib/offline/db";
 import { chargerReferentiels, chargerMe } from "@/lib/offline/referentiels";
 import { syncPendingVisites } from "@/lib/offline/sync";
 import { compressImage } from "@/lib/utils/image";
 import { genererFacturePdf } from "@/lib/utils/facture-pdf";
+import {
+  EnTeteFormulaire,
+  Carte,
+  Champ,
+  Saisie,
+  ZoneTexte,
+  Liste,
+  Choix,
+  OuiNon,
+  QuantitesProduit,
+  Encart,
+  BarreAction,
+  BoutonPrincipal,
+} from "@/components/commercial/form-ui";
 
 type Ville = { id: string; nom: string };
 type TypePV = { id: string; nom: string };
@@ -45,21 +41,6 @@ type PrixParType = {
   prixFilet: number | null;
   prixCarton: number;
 };
-
-// Palette pour les cartes produit — HYPO/HTC gardent leurs couleurs
-// habituelles, tout produit supplémentaire pioche dans la suite plutôt
-// que d'hériter systématiquement du style HTC (teal).
-const PALETTE_PRODUITS: { couleur: string; fond: string; icone: typeof Droplet }[] = [
-  { couleur: "#3b82f6", fond: "#eff6ff", icone: Droplet },
-  { couleur: "#0d9488", fond: "#f0fdfa", icone: Sparkles },
-  { couleur: "#7c3aed", fond: "#f5f3ff", icone: Package },
-  { couleur: "#b45309", fond: "#fffbeb", icone: Package },
-  { couleur: "#be123c", fond: "#fff1f2", icone: Package },
-];
-
-function styleProduit(index: number) {
-  return PALETTE_PRODUITS[index % PALETTE_PRODUITS.length];
-}
 
 function uuid() {
   return crypto.randomUUID();
@@ -126,114 +107,14 @@ function nearestVille(
   return best;
 }
 
-// --- Composants de mise en forme -------------------------------------------
-// Chaque section a sa propre couleur d'accent (icône + liseré) pour qu'on
-// s'y repère d'un coup d'œil sur un long formulaire, plutôt que trois blocs
-// visuellement identiques.
-
-function SectionHeader({
-  icon: Icon,
-  title,
-  color,
-}: {
-  icon: React.ElementType;
-  title: string;
-  color: string;
-}) {
-  return (
-    <div className="mb-4 flex items-center gap-3">
-      <span
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white"
-        style={{ backgroundColor: color }}
-      >
-        <Icon size={19} strokeWidth={2.25} />
-      </span>
-      <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">{title}</h2>
-    </div>
-  );
-}
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-      {children}
-    </span>
-  );
-}
-
-function Select({
-  value,
-  onChange,
-  children,
-  required,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  children: React.ReactNode;
-  required?: boolean;
-}) {
-  return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-        className="w-full appearance-none rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 pr-9 text-base text-slate-800 dark:text-slate-100"
-      >
-        {children}
-      </select>
-      <ChevronDown
-        size={18}
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-      />
-    </div>
-  );
-}
-
-function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      // Bug classique des <input type="number"> : un défilement à la
-      // molette pendant que le champ est focus incrémente/décrémente sa
-      // valeur silencieusement. On désactive ce comportement en retirant
-      // le focus dès qu'un scroll est détecté sur le champ.
-      onWheel={(e) => {
-        (e.target as HTMLInputElement).blur();
-        props.onWheel?.(e);
-      }}
-      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 text-base text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 dark:text-slate-500"
-    />
-  );
-}
-
-function ToggleOuiNon({
-  value,
-  onChange,
-}: {
-  value: boolean | null;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1">
-      {[
-        ["Non", false],
-        ["Oui", true],
-      ].map(([label, v]) => (
-        <button
-          type="button"
-          key={label as string}
-          onClick={() => onChange(v as boolean)}
-          className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
-            value === v ? "bg-brand text-white" : "text-slate-500 dark:text-slate-400 dark:text-slate-500"
-          }`}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
+type RoleRepondant = "PATRON" | "GERANT" | "EMPLOYE" | "AUTRE";
+const ROLES: { value: RoleRepondant; label: string }[] = [
+  { value: "PATRON", label: "Patron" },
+  { value: "GERANT", label: "Gérant" },
+  { value: "EMPLOYE", label: "Employé" },
+  { value: "AUTRE", label: "Autre" },
+];
+const TYPE_AUTRE = "__autre__";
 
 export default function NouvelleVisitePage() {
   const router = useRouter();
@@ -253,13 +134,21 @@ export default function NouvelleVisitePage() {
   const [now] = useState(() => new Date());
 
   const [nom, setNom] = useState("");
-  const [vendeur, setVendeur] = useState("");
-  const [telephoneVendeur, setTelephoneVendeur] = useState("");
-  const [telephonePatron, setTelephonePatron] = useState("");
+  // « Qui nous répond ? » : rôle, nom et téléphone du répondant ; si ce n'est
+  // pas le patron, on demande aussi le nom et le téléphone du patron.
+  const [role, setRole] = useState<RoleRepondant | "">("");
+  const [fonctionAutre, setFonctionAutre] = useState("");
+  const [repondantNom, setRepondantNom] = useState("");
+  const [repondantTel, setRepondantTel] = useState("");
+  const [patronNom, setPatronNom] = useState("");
+  const [patronTel, setPatronTel] = useState("");
   const [villeId, setVilleId] = useState("");
   const [quartierNom, setQuartierNom] = useState("");
   const [repere, setRepere] = useState("");
-  const [typeId, setTypeId] = useState("");
+  // Type de boutique : un identifiant connu, ou « Autre » avec une saisie libre.
+  const [typeChoisi, setTypeChoisi] = useState("");
+  const [typeAutre, setTypeAutre] = useState("");
+  const typeId = typeChoisi === TYPE_AUTRE ? "" : typeChoisi;
   const [presentoir, setPresentoir] = useState<boolean | null>(null);
   const [presentoirAuto, setPresentoirAuto] = useState(false);
   // Deux photos de devanture (demande de Victor) — tableaux de taille 2,
@@ -280,7 +169,10 @@ export default function NouvelleVisitePage() {
     Record<string, { sachets: number; filets: number; cartons: number }>
   >({});
 
-  const [inclureCommande, setInclureCommande] = useState(false);
+  // « Le client veut commander » (achat du jour) et « commander plus tard »
+  // (commande à livrer) : deux questions Oui/Non indépendantes.
+  const [veutCommander, setVeutCommander] = useState<boolean | null>(null);
+  const [commanderPlusTard, setCommanderPlusTard] = useState<boolean | null>(null);
   const [quantitesCommande, setQuantitesCommande] = useState<
     Record<string, { sachets: number; filets: number; cartons: number }>
   >({});
@@ -393,7 +285,9 @@ export default function NouvelleVisitePage() {
 
   // Une ligne par produit ayant une quantité saisie — généralisé à
   // n'importe quel nombre de produits actifs (plus limité à HYPO/HTC).
-  const lignesVente = produits
+  const achatActif = veutCommander === true;
+  const commandeActive = commanderPlusTard === true;
+  const lignesVente = (!achatActif ? [] : produits)
     .map((p) => {
       const q = quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
       if (q.sachets === 0 && q.filets === 0 && q.cartons === 0) return null;
@@ -426,7 +320,7 @@ export default function NouvelleVisitePage() {
   const sousTotauxParProduit = new Map(
     produits.map((p) => [p.code, sousTotalProduit(p, quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 })])
   );
-  const montantCalcule = [...sousTotauxParProduit.values()].reduce((s, v) => s + v, 0);
+  const montantCalcule = achatActif ? [...sousTotauxParProduit.values()].reduce((s, v) => s + v, 0) : 0;
 
   // Sous-totaux de la commande à livrer plus tard (mêmes prix, calcul
   // identique à la vente immédiate) — §2 demande de Victor.
@@ -438,7 +332,7 @@ export default function NouvelleVisitePage() {
   );
   const montantCommandeCalcule = [...sousTotauxCommandeParProduit.values()].reduce((s, v) => s + v, 0);
 
-  const commandeLignes = produits
+  const commandeLignes = (!commandeActive ? [] : produits)
     .map((p) => {
       const q = quantitesCommande[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
       if (q.sachets === 0 && q.filets === 0 && q.cartons === 0) return null;
@@ -480,7 +374,7 @@ export default function NouvelleVisitePage() {
   // (plus limité à HYPO/HTC), on marque "Oui" automatiquement. Reste
   // modifiable ensuite — c'est une suggestion, pas un verrou.
   useEffect(() => {
-    const unProduitQualifie = Object.values(quantites).some(
+    const unProduitQualifie = achatActif && Object.values(quantites).some(
       (q) => q.sachets > 30 && q.cartons > 1
     );
     if (unProduitQualifie && presentoir !== true) {
@@ -488,7 +382,7 @@ export default function NouvelleVisitePage() {
       setPresentoirAuto(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quantites]);
+  }, [quantites, achatActif]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -517,12 +411,18 @@ export default function NouvelleVisitePage() {
       nouveauPointVente: {
         uuidClient: uuid(),
         nom,
-        vendeur: vendeur || undefined,
-        telephoneVendeur: telephoneVendeur || undefined,
-        telephonePatron: telephonePatron || undefined,
+        // Le répondant reste l'interlocuteur du point de vente (champs
+        // historiques vendeur / téléphone) ; le patron est renseigné à part.
+        vendeur: repondantNom.trim() || undefined,
+        telephoneVendeur: repondantTel.trim() || undefined,
+        repondantRole: role || undefined,
+        repondantFonction: role === "AUTRE" ? fonctionAutre.trim() || undefined : undefined,
+        patronNom: (role === "PATRON" ? repondantNom : patronNom).trim() || undefined,
+        telephonePatron: (role === "PATRON" ? repondantTel : patronTel).trim() || undefined,
         villeId,
         quartierNom: quartierNom || undefined,
         typeId: typeId || undefined,
+        typeAutre: typeChoisi === TYPE_AUTRE ? typeAutre.trim() || undefined : undefined,
         repere: repere || undefined,
         presentoir: presentoir ?? false,
       },
@@ -543,7 +443,7 @@ export default function NouvelleVisitePage() {
             },
           }
         : {}),
-      ...(inclureCommande && commandeLignes.length > 0
+      ...(commandeActive && commandeLignes.length > 0
         ? {
             commande: {
               uuidClient: uuid(),
@@ -622,27 +522,25 @@ export default function NouvelleVisitePage() {
 
   if (success) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
-        <div className="max-w-sm rounded-2xl bg-white dark:bg-slate-900 px-8 py-10 text-center shadow-sm">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-600">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4 dark:bg-slate-950">
+        <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white px-8 py-10 text-center dark:border-slate-800 dark:bg-slate-900">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
             <CheckCircle2 size={30} />
           </div>
-          <p className="mb-4 font-semibold text-slate-800 dark:text-slate-100">Visite enregistrée avec succès</p>
+          <p className="mb-5 font-semibold text-slate-900 dark:text-slate-100">Visite enregistrée avec succès</p>
           {lignesVente.length > 0 && (
             <div className="space-y-2">
-              <button
-                onClick={telechargerFacture}
-                disabled={facturePdfLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                <Download size={16} />
-                {facturePdfLoading ? "Génération..." : "Télécharger la facture"}
-              </button>
+              <BoutonPrincipal type="button" onClick={telechargerFacture} disabled={facturePdfLoading}>
+                <span className="flex items-center justify-center gap-2">
+                  <Download size={16} />
+                  {facturePdfLoading ? "Génération..." : "Télécharger la facture"}
+                </span>
+              </BoutonPrincipal>
               <button
                 onClick={() => router.push("/dashboard")}
-                className="w-full rounded-xl bg-slate-100 dark:bg-slate-800 py-3 text-sm font-medium text-slate-600 dark:text-slate-300"
+                className="w-full rounded-xl border border-slate-300 py-3 text-sm font-medium text-slate-700 dark:border-slate-700 dark:text-slate-300"
               >
-                Retour à l'accueil
+                Retour à l&apos;accueil
               </button>
             </div>
           )}
@@ -653,609 +551,424 @@ export default function NouvelleVisitePage() {
 
   if (queuedOffline) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
-        <div className="max-w-sm rounded-2xl bg-white dark:bg-slate-900 px-8 py-10 text-center shadow-sm">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4 dark:bg-slate-950">
+        <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white px-8 py-10 text-center dark:border-slate-800 dark:bg-slate-900">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 text-amber-600">
             <Clock size={28} />
           </div>
-          <p className="mb-2 font-semibold text-amber-800">
-            Données en attente de synchronisation
+          <p className="mb-2 font-semibold text-slate-900 dark:text-slate-100">Données en attente de synchronisation</p>
+          <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
+            La visite a été enregistrée sur ton téléphone et sera envoyée automatiquement dès que la connexion
+            reviendra.
           </p>
-          <p className="mb-5 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
-            La visite a été enregistrée sur ton téléphone et sera envoyée
-            automatiquement dès que la connexion reviendra.
-          </p>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-medium text-white"
-          >
-            Retour au dashboard
-          </button>
+          <BoutonPrincipal type="button" onClick={() => router.push("/dashboard")}>
+            Retour à l&apos;accueil
+          </BoutonPrincipal>
         </div>
       </main>
     );
   }
 
-  const step2Done = Boolean(nom && villeId);
-  const step3Started = lignesVente.length > 0 || inclureCommande;
+  const roleChoisi = role !== "";
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-28">
-      {/* En-tête — dégradé + motif de points, identité visuelle marquée
-          plutôt qu'un simple bandeau plat. */}
-      <div
-        className="relative overflow-hidden px-4 pb-7 pt-6 text-white"
-        style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 55%, #2563eb 100%)" }}
-      >
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.15]"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle, white 1px, transparent 1px)",
-            backgroundSize: "16px 16px",
-          }}
-        />
-        <div className="relative">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <SiriMark size={32} idSuffix="new" />
-              <p className="text-xs font-bold uppercase tracking-widest text-blue-100">
-                ICHA IMPORT
-              </p>
-            </div>
-            <Link
-              href="/dashboard"
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15"
-              aria-label="Retour à l'accueil"
-            >
-              <ArrowLeft size={16} />
-            </Link>
-          </div>
-          <h1 className="text-2xl font-extrabold">Nouveau recensement</h1>
-          <p className="mt-1 text-sm text-blue-100">Recensement terrain du jour</p>
+    <main className="min-h-screen bg-slate-50 pb-28 dark:bg-slate-950">
+      <EnTeteFormulaire titre="Nouveau recensement" sousTitre="Recensement terrain du jour" />
 
-          <div className="mt-5 flex gap-2">
-            <div className="h-1.5 flex-1 rounded-full bg-white dark:bg-slate-900" />
-            <div className={`h-1.5 flex-1 rounded-full ${step2Done ? "bg-white dark:bg-slate-900" : "bg-white/30"}`} />
-            <div className={`h-1.5 flex-1 rounded-full ${step3Started ? "bg-white dark:bg-slate-900" : "bg-white/30"}`} />
+      <form onSubmit={handleSubmit} id="visite-form" className="mx-auto max-w-xl space-y-4 px-4 pt-4">
+        {/* Équipe : simple rappel, rien à saisir */}
+        <section className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-slate-200/80 bg-white p-5 text-sm dark:border-slate-800 dark:bg-slate-900">
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Date</p>
+            <p suppressHydrationWarning className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
+              {now.toLocaleDateString("fr-FR")}
+            </p>
           </div>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} id="visite-form" className="-mt-3 space-y-4 px-4 pt-1">
-        {/* 1. Informations sur l'équipe */}
-        <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-          <SectionHeader icon={Users} title="Informations équipe" color="#4338ca" />
-          <div className="mb-4 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-indigo-50/70 px-3 py-2.5">
-              <FieldLabel>Date</FieldLabel>
-              <p suppressHydrationWarning className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                {now.toLocaleDateString("fr-FR")}
-              </p>
-            </div>
-            <div className="rounded-xl bg-indigo-50/70 px-3 py-2.5">
-              <FieldLabel>Heure</FieldLabel>
-              <p suppressHydrationWarning className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                {now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-              </p>
-            </div>
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Heure</p>
+            <p suppressHydrationWarning className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
+              {now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+            </p>
           </div>
-
-          <div className="mb-4 rounded-xl bg-indigo-50/70 px-3 py-2.5">
-            <FieldLabel>Agent commercial</FieldLabel>
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Agent commercial</p>
+            <p className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
               {session ? `${session.prenom} ${session.nom}` : "..."}
             </p>
           </div>
-
-          <div className="rounded-xl bg-indigo-50/70 px-3 py-2.5">
-            <FieldLabel>Binôme</FieldLabel>
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              {session?.binomeNom ?? "Non assigné — contacte ton administrateur"}
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Binôme</p>
+            <p className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
+              {session?.binomeNom ?? "Non assigné"}
             </p>
           </div>
         </section>
 
-        {/* 2. Point de vente */}
-        <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-          <SectionHeader icon={Store} title="Point de vente" color="#1e40af" />
-          <div className="space-y-3">
-            <div>
-              <FieldLabel>Position GPS</FieldLabel>
-              <button
-                type="button"
-                onClick={captureGps}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-50/70 py-3 text-sm font-semibold text-brand"
-              >
-                <MapPin size={18} />
-                {gps ? "Position mise à jour" : "Récupérer la position (détecte la ville)"}
-              </button>
-              {gps && (
-                <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
-                  {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)} (± {Math.round(gps.precision)}m)
-                </p>
-              )}
-              {gpsError && <p className="mt-1.5 text-xs text-alert">{gpsError}</p>}
-            </div>
+        {/* Point de vente — on commence par « Qui nous répond ? » */}
+        <Carte titre="Point de vente">
+          <Champ label="Qui nous répond ?">
+            <Choix<RoleRepondant> options={ROLES} value={role} onChange={setRole} colonnes={4} />
+          </Champ>
 
-            <div>
-              <FieldLabel>Nom du point de vente</FieldLabel>
-              <TextInput
-                placeholder="Ex : Boutique Grâce"
-                value={nom}
-                onChange={(e) => setNom(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <FieldLabel>Nom du vendeur (optionnel)</FieldLabel>
-              <TextInput
-                placeholder="Laisser vide si non communiqué"
-                value={vendeur}
-                onChange={(e) => setVendeur(e.target.value)}
-              />
-            </div>
-            <div>
-              <FieldLabel>Téléphone du vendeur (WhatsApp)</FieldLabel>
-              <TextInput
-                type="tel"
-                placeholder="Ex : 6XX XX XX XX"
-                value={telephoneVendeur}
-                onChange={(e) => setTelephoneVendeur(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <FieldLabel>Numéro WhatsApp du patron (si différent)</FieldLabel>
-              <TextInput
-                type="tel"
-                placeholder="Ex : 6XX XX XX XX"
-                value={telephonePatron}
-                onChange={(e) => setTelephonePatron(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <FieldLabel>Ville</FieldLabel>
-                  {villeAuto && villeId && (
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
-                      Détectée par GPS
-                    </span>
-                  )}
-                </div>
-                <Select
-                  value={villeId}
-                  onChange={(v) => {
-                    setVilleId(v);
-                    setVilleAuto(false);
-                    setQuartierNom("");
-                    setQuartierModeLibre(false);
-                  }}
-                  required
-                >
-                  <option value="">Choisir...</option>
-                  {villes.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.nom}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <FieldLabel>Quartier</FieldLabel>
-                {quartierModeLibre || quartiers.length === 0 ? (
-                  <TextInput
-                    placeholder="Ex : Akwa"
-                    value={quartierNom}
-                    onChange={(e) => setQuartierNom(e.target.value)}
+          {roleChoisi && (
+            <div className="space-y-4 rounded-xl bg-slate-50 p-4 dark:bg-slate-950">
+              {role === "AUTRE" && (
+                <Champ label="Sa fonction">
+                  <Saisie
+                    placeholder="Ex : fils du patron, caissière..."
+                    value={fonctionAutre}
+                    onChange={(e) => setFonctionAutre(e.target.value)}
                   />
-                ) : (
-                  <Select
-                    value={quartierNom}
-                    onChange={(v) => {
-                      if (v === "__autre__") {
-                        setQuartierModeLibre(true);
-                        setQuartierNom("");
-                      } else {
-                        setQuartierNom(v);
-                      }
-                    }}
-                  >
-                    <option value="">Choisir...</option>
-                    {quartiers.map((q) => (
-                      <option key={q.id} value={q.nom}>
-                        {q.nom}
-                      </option>
-                    ))}
-                    <option value="__autre__">+ Autre / nouveau quartier</option>
-                  </Select>
-                )}
-              </div>
-            </div>
+                </Champ>
+              )}
+              <Champ label="Nom du répondant">
+                <Saisie
+                  placeholder="Nom et prénom"
+                  value={repondantNom}
+                  onChange={(e) => setRepondantNom(e.target.value)}
+                />
+              </Champ>
+              <Champ label="Téléphone du répondant (WhatsApp)">
+                <Saisie
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="6XX XX XX XX"
+                  value={repondantTel}
+                  onChange={(e) => setRepondantTel(e.target.value)}
+                />
+              </Champ>
 
-            <div>
-              <FieldLabel>Repère exact</FieldLabel>
-              <TextInput
-                placeholder="Ex : PK8 entrée Lycée"
-                value={repere}
-                onChange={(e) => setRepere(e.target.value)}
-              />
+              {role !== "PATRON" && (
+                <>
+                  <div className="border-t border-slate-200 pt-4 dark:border-slate-800" />
+                  <Champ label="Nom du patron">
+                    <Saisie
+                      placeholder="Nom et prénom"
+                      value={patronNom}
+                      onChange={(e) => setPatronNom(e.target.value)}
+                    />
+                  </Champ>
+                  <Champ label="Téléphone du patron (WhatsApp)">
+                    <Saisie
+                      type="tel"
+                      inputMode="tel"
+                      placeholder="6XX XX XX XX"
+                      value={patronTel}
+                      onChange={(e) => setPatronTel(e.target.value)}
+                    />
+                  </Champ>
+                </>
+              )}
             </div>
+          )}
 
-            <div>
-              <FieldLabel>Type de boutique</FieldLabel>
-              <Select value={typeId} onChange={setTypeId}>
+          <Champ label="Nom du point de vente">
+            <Saisie placeholder="Ex : Boutique Grâce" value={nom} onChange={(e) => setNom(e.target.value)} required />
+          </Champ>
+
+          <Champ
+            label="Position GPS"
+            aide={
+              gps
+                ? `${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)} (± ${Math.round(gps.precision)} m)`
+                : "Détecte aussi la ville automatiquement."
+            }
+          >
+            <button
+              type="button"
+              onClick={captureGps}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-sm font-medium text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            >
+              <MapPin size={18} />
+              {gps ? "Position mise à jour" : "Récupérer la position"}
+            </button>
+            {gpsError && <p className="mt-1.5 text-xs text-alert">{gpsError}</p>}
+          </Champ>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Champ label={villeAuto && villeId ? "Ville (détectée)" : "Ville"}>
+              <Liste
+                value={villeId}
+                onChange={(v) => {
+                  setVilleId(v);
+                  setVilleAuto(false);
+                  setQuartierNom("");
+                  setQuartierModeLibre(false);
+                }}
+                required
+              >
                 <option value="">Choisir...</option>
-                {types.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nom}
+                {villes.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.nom}
                   </option>
                 ))}
-              </Select>
-            </div>
+              </Liste>
+            </Champ>
+            <Champ label="Quartier">
+              {quartierModeLibre || quartiers.length === 0 ? (
+                <Saisie placeholder="Ex : Akwa" value={quartierNom} onChange={(e) => setQuartierNom(e.target.value)} />
+              ) : (
+                <Liste
+                  value={quartierNom}
+                  onChange={(v) => {
+                    if (v === "__autre__") {
+                      setQuartierModeLibre(true);
+                      setQuartierNom("");
+                    } else {
+                      setQuartierNom(v);
+                    }
+                  }}
+                >
+                  <option value="">Choisir...</option>
+                  {quartiers.map((q) => (
+                    <option key={q.id} value={q.nom}>
+                      {q.nom}
+                    </option>
+                  ))}
+                  <option value="__autre__">+ Autre quartier</option>
+                </Liste>
+              )}
+            </Champ>
+          </div>
 
-            <div>
-              <FieldLabel>Photos de la devanture (2)</FieldLabel>
-              <div className="grid grid-cols-2 gap-2.5">
-                {[0, 1].map((index) => (
-                  <div key={index}>
-                    <input
-                      ref={fileInputRefs[index]}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={(e) => handlePhotoChange(index, e)}
-                      className="hidden"
-                    />
-                    {photoPreviews[index] ? (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRefs[index].current?.click()}
-                        className="relative block w-full overflow-hidden rounded-xl"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={photoPreviews[index]!}
-                          alt={`Devanture ${index + 1}`}
-                          className="h-32 w-full object-cover"
-                        />
-                        <span className="absolute bottom-1.5 right-1.5 rounded-lg bg-black/60 px-2 py-1 text-[10px] font-medium text-white">
-                          Reprendre
+          <Champ label="Repère exact">
+            <Saisie placeholder="Ex : PK8 entrée Lycée" value={repere} onChange={(e) => setRepere(e.target.value)} />
+          </Champ>
+
+          <Champ label="Type de boutique">
+            <Choix<string>
+              options={[...types.map((t) => ({ value: t.id, label: t.nom })), { value: TYPE_AUTRE, label: "Autre" }]}
+              value={typeChoisi}
+              onChange={setTypeChoisi}
+            />
+            {typeChoisi === TYPE_AUTRE && (
+              <div className="mt-3">
+                <Saisie
+                  placeholder="Précisez le type de boutique"
+                  value={typeAutre}
+                  onChange={(e) => setTypeAutre(e.target.value)}
+                />
+              </div>
+            )}
+          </Champ>
+
+          <Champ label="Photos de la devanture">
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1].map((index) => (
+                <div key={index}>
+                  <input
+                    ref={fileInputRefs[index]}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => handlePhotoChange(index, e)}
+                    className="hidden"
+                  />
+                  {photoPreviews[index] ? (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRefs[index].current?.click()}
+                      className="relative block w-full overflow-hidden rounded-xl"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={photoPreviews[index]!} alt={`Devanture ${index + 1}`} className="h-32 w-full object-cover" />
+                      <span className="absolute bottom-1.5 right-1.5 rounded-lg bg-black/60 px-2 py-1 text-[10px] font-medium text-white">
+                        Reprendre
+                      </span>
+                      {photoUploading[index] && (
+                        <span className="absolute left-1.5 top-1.5 rounded-lg bg-black/60 px-2 py-1 text-[10px] font-medium text-white">
+                          Envoi...
                         </span>
-                        {photoUploading[index] && (
-                          <span className="absolute left-1.5 top-1.5 rounded-lg bg-black/60 px-2 py-1 text-[10px] font-medium text-white">
-                            Envoi...
-                          </span>
-                        )}
-                        {photoUrls[index] && !photoUploading[index] && (
-                          <span className="absolute left-1.5 top-1.5 rounded-lg bg-green-600/90 px-2 py-1 text-[10px] font-medium text-white">
-                            ✓ Envoyée
-                          </span>
-                        )}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRefs[index].current?.click()}
-                        className="flex h-32 w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/40 text-xs font-semibold text-brand"
-                      >
-                        <Camera size={20} />
-                        Photo {index + 1}
-                      </button>
-                    )}
-                  </div>
+                      )}
+                      {photoUrls[index] && !photoUploading[index] && (
+                        <span className="absolute left-1.5 top-1.5 rounded-lg bg-emerald-600/90 px-2 py-1 text-[10px] font-medium text-white">
+                          Envoyée
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRefs[index].current?.click()}
+                      className="flex h-32 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 text-xs font-medium text-slate-500 hover:border-slate-400 dark:border-slate-700 dark:text-slate-400"
+                    >
+                      <Camera size={20} />
+                      Photo {index + 1}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Champ>
+        </Carte>
+
+        {/* Achat et commande */}
+        <Carte titre="Achat et commande du jour">
+          <Champ label="Le client veut commander ?">
+            <OuiNon value={veutCommander} onChange={setVeutCommander} />
+          </Champ>
+
+          {achatActif && (
+            <>
+              <div className="space-y-3">
+                {produits.map((p) => (
+                  <QuantitesProduit
+                    key={p.id}
+                    nom={p.nom || p.code}
+                    avecFilets={p.prixFilet !== null}
+                    valeur={quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }}
+                    onChange={(champ, v) => updateQuantite(setQuantites, p.code, champ, v)}
+                    sousTotal={sousTotauxParProduit.get(p.code) ?? 0}
+                  />
                 ))}
               </div>
-            </div>
-          </div>
-        </section>
 
-        {/* 3. Achat / commande du jour */}
-        <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-          <SectionHeader icon={Package} title="Achat / commande du jour" color="#0f766e" />
+              <Champ label="Mode de paiement">
+                <Choix<typeof modePaiement>
+                  colonnes={2}
+                  value={modePaiement}
+                  onChange={setModePaiement}
+                  options={[
+                    { value: "ESPECES", label: "Espèces" },
+                    { value: "MOBILE_MONEY", label: "Mobile Money" },
+                    { value: "CREDIT_PARTIEL", label: "Crédit partiel" },
+                    { value: "CREDIT_TOTAL", label: "Crédit total" },
+                  ]}
+                />
+              </Champ>
 
-          {produits.map((p, index) => {
-            const q = quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
-            const sousTotal = sousTotauxParProduit.get(p.code) ?? 0;
-            const { couleur, fond, icone: Icone } = styleProduit(index);
-            return (
-              <div
-                key={p.id}
-                className="mb-3 rounded-xl border-l-4 p-3"
-                style={{ borderColor: couleur, backgroundColor: fond }}
-              >
-                <div className="mb-1 flex items-center gap-2">
-                  <Icone size={16} style={{ color: couleur }} />
-                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{p.nom || p.code}</p>
-                </div>
-                <div className={`grid gap-2.5 ${p.prixFilet !== null ? "grid-cols-3" : "grid-cols-2"}`}>
-                  <div>
-                    <FieldLabel>Sachets</FieldLabel>
-                    <TextInput
-                      type="number"
-                      min={0}
-                      value={q.sachets || ""}
-                      onChange={(e) =>
-                        updateQuantite(setQuantites, p.code, "sachets", Number(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                  {p.prixFilet !== null && (
-                    <div>
-                      <FieldLabel>Filets</FieldLabel>
-                      <TextInput
-                        type="number"
-                        min={0}
-                        value={q.filets || ""}
-                        onChange={(e) =>
-                          updateQuantite(setQuantites, p.code, "filets", Number(e.target.value) || 0)
-                        }
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <FieldLabel>Cartons</FieldLabel>
-                    <TextInput
-                      type="number"
-                      min={0}
-                      value={q.cartons || ""}
-                      onChange={(e) =>
-                        updateQuantite(setQuantites, p.code, "cartons", Number(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                </div>
-                {sousTotal > 0 && (
-                  <p className="mt-2.5 text-right text-sm font-bold" style={{ color: couleur }}>
-                    Sous-total : {sousTotal.toLocaleString("fr-FR")} FCFA
-                  </p>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Présentoir — positionné après l'achat du jour et pré-rempli
-              automatiquement selon les quantités saisies (§ demande de
-              Victor), mais reste modifiable. */}
-          <div className="mb-4 flex items-center justify-between rounded-xl bg-blue-50/70 px-3 py-2.5">
-            <div>
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Installation du présentoir
-              </span>
-              {presentoirAuto && presentoir === true && (
-                <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
-                  Suggéré automatiquement
-                </span>
+              {modePaiement === "ESPECES" && (
+                <Encart>
+                  Montant à percevoir :{" "}
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                    {montantCalcule.toLocaleString("fr-FR")} FCFA
+                  </span>
+                </Encart>
               )}
-            </div>
-            <ToggleOuiNon
+
+              {modePaiement === "MOBILE_MONEY" && (
+                <Encart>
+                  <p className="mb-3">
+                    Montant à percevoir :{" "}
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">
+                      {montantCalcule.toLocaleString("fr-FR")} FCFA
+                    </span>
+                  </p>
+                  <label className="flex items-center gap-3 font-medium">
+                    <input
+                      type="checkbox"
+                      checked={mobileMoneyConfirme}
+                      onChange={(e) => setMobileMoneyConfirme(e.target.checked)}
+                      className="h-5 w-5 accent-[#1e3a8a]"
+                    />
+                    Paiement reçu par Mobile Money
+                  </label>
+                </Encart>
+              )}
+
+              {modePaiement === "CREDIT_PARTIEL" && (
+                <div className="space-y-3">
+                  <Encart>
+                    Total dû :{" "}
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">
+                      {montantCalcule.toLocaleString("fr-FR")} FCFA
+                    </span>
+                  </Encart>
+                  <Champ label="Montant reçu du client (FCFA)">
+                    <Saisie
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      placeholder="0"
+                      value={montantRecu || ""}
+                      onChange={(e) => setMontantRecu(Number(e.target.value) || 0)}
+                    />
+                  </Champ>
+                  {resteAPayer > 0 && (
+                    <Encart ton="attention">
+                      Reste à payer : {resteAPayer.toLocaleString("fr-FR")} FCFA — suivi sur ton profil
+                    </Encart>
+                  )}
+                </div>
+              )}
+
+              {modePaiement === "CREDIT_TOTAL" && (
+                <Encart ton="attention">
+                  Montant intégralement à crédit : {montantCalcule.toLocaleString("fr-FR")} FCFA — suivi sur ton profil
+                </Encart>
+              )}
+            </>
+          )}
+
+          <Champ label="Veut-il commander plus tard ?">
+            <OuiNon value={commanderPlusTard} onChange={setCommanderPlusTard} />
+          </Champ>
+
+          {commandeActive && (
+            <>
+              <div className="space-y-3">
+                {produits.map((p) => (
+                  <QuantitesProduit
+                    key={p.id}
+                    nom={p.nom || p.code}
+                    avecFilets={p.prixFilet !== null}
+                    valeur={quantitesCommande[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }}
+                    onChange={(champ, v) => updateQuantite(setQuantitesCommande, p.code, champ, v)}
+                    sousTotal={sousTotauxCommandeParProduit.get(p.code) ?? 0}
+                  />
+                ))}
+              </div>
+              <Champ label="Date de livraison prévue">
+                <Saisie type="date" value={commandeDateLivraison} onChange={(e) => setCommandeDateLivraison(e.target.value)} />
+              </Champ>
+              {montantCommandeCalcule > 0 && (
+                <Encart>
+                  À percevoir à la livraison :{" "}
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                    {montantCommandeCalcule.toLocaleString("fr-FR")} FCFA
+                  </span>
+                </Encart>
+              )}
+            </>
+          )}
+
+          {/* Présentoir : suggéré automatiquement d'après les quantités
+              achetées, reste modifiable. */}
+          <Champ
+            label="Installation du présentoir"
+            aide={presentoirAuto && presentoir === true ? "Suggéré d'après les quantités achetées." : undefined}
+          >
+            <OuiNon
               value={presentoir}
               onChange={(v) => {
                 setPresentoir(v);
                 setPresentoirAuto(false);
               }}
             />
-          </div>
+          </Champ>
+        </Carte>
 
-          {/* Mode de paiement — chaque mode a son propre comportement
-              (§1 demande de Victor). La validation du formulaire n'est
-              jamais bloquée par ces champs. */}
-          <div className="mb-3">
-            <FieldLabel>Mode de paiement</FieldLabel>
-            <Select value={modePaiement} onChange={(v) => setModePaiement(v as typeof modePaiement)}>
-              <option value="ESPECES">Espèces</option>
-              <option value="MOBILE_MONEY">Mobile Money</option>
-              <option value="CREDIT_PARTIEL">Crédit partiel</option>
-              <option value="CREDIT_TOTAL">Crédit total</option>
-            </Select>
-          </div>
-
-          {modePaiement === "ESPECES" && (
-            <div className="mb-4 rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2.5">
-              <div className="mb-1 flex items-center justify-between">
-                <FieldLabel>Montant à percevoir (FCFA)</FieldLabel>
-                <span className="text-[10px] font-semibold text-teal-700">
-                  Calculé automatiquement
-                </span>
-              </div>
-              <p className="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-slate-100">
-                <Wallet size={18} className="text-slate-400 dark:text-slate-500" />
-                {montantCalcule.toLocaleString("fr-FR")} FCFA
-              </p>
-            </div>
-          )}
-
-          {modePaiement === "MOBILE_MONEY" && (
-            <div className="mb-4 rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2.5">
-              <p className="mb-2 text-sm text-slate-600 dark:text-slate-300">
-                Montant à percevoir :{" "}
-                <span className="font-bold text-slate-800 dark:text-slate-100">
-                  {montantCalcule.toLocaleString("fr-FR")} FCFA
-                </span>
-              </p>
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={mobileMoneyConfirme}
-                  onChange={(e) => setMobileMoneyConfirme(e.target.checked)}
-                  className="h-5 w-5 accent-brand"
-                />
-                Le paiement de {montantCalcule.toLocaleString("fr-FR")} FCFA a
-                été reçu par Mobile Money
-              </label>
-            </div>
-          )}
-
-          {modePaiement === "CREDIT_PARTIEL" && (
-            <div className="mb-4 space-y-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2.5">
-              <p className="text-sm text-slate-600 dark:text-slate-300">
-                Total dû :{" "}
-                <span className="font-bold text-slate-800 dark:text-slate-100">
-                  {montantCalcule.toLocaleString("fr-FR")} FCFA
-                </span>
-              </p>
-              <div>
-                <FieldLabel>Montant reçu du client (FCFA)</FieldLabel>
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="0"
-                  value={montantRecu || ""}
-                  onChange={(e) => setMontantRecu(Number(e.target.value) || 0)}
-                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 text-base text-slate-800 dark:text-slate-100"
-                />
-              </div>
-              {resteAPayer > 0 && (
-                <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700">
-                  Reste à payer : {resteAPayer.toLocaleString("fr-FR")} FCFA — sera
-                  suivi sur ton profil
-                </p>
-              )}
-            </div>
-          )}
-
-          {modePaiement === "CREDIT_TOTAL" && (
-            <div className="mb-4 rounded-xl bg-amber-50 px-3 py-2.5">
-              <p className="text-sm font-semibold text-amber-700">
-                Montant intégralement à crédit :{" "}
-                {montantCalcule.toLocaleString("fr-FR")} FCFA — sera suivi sur
-                ton profil après enregistrement
-              </p>
-            </div>
-          )}
-
-          {/* Commande à livrer plus tard — placée en dernier (§2 demande
-              de Victor), mêmes champs détaillés que l'achat du jour. */}
-          <label className="mb-3 flex items-center justify-between rounded-xl bg-teal-50/60 px-3 py-2.5">
-            <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-              <Truck size={17} className="text-teal-700" />
-              Le client passe une commande
-            </span>
-            <input
-              type="checkbox"
-              checked={inclureCommande}
-              onChange={(e) => setInclureCommande(e.target.checked)}
-              className="h-5 w-5 accent-teal-700"
+        {/* Observations */}
+        <Carte titre="Observations">
+          <Champ label="Points importants à signaler (optionnel)">
+            <ZoneTexte
+              value={observation}
+              onChange={(e) => setObservation(e.target.value)}
+              placeholder="Ex : manque de présentoir, délai de paiement demandé, concurrent présent sur la zone..."
+              rows={4}
             />
-          </label>
+          </Champ>
+        </Carte>
 
-          {inclureCommande && (
-            <div className="space-y-3 rounded-xl border border-teal-100 bg-teal-50/30 p-3">
-              {produits.map((p, index) => {
-                const q = quantitesCommande[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
-                const sousTotal = sousTotauxCommandeParProduit.get(p.code) ?? 0;
-                const { couleur, fond, icone: Icone } = styleProduit(index);
-                return (
-                  <div
-                    key={p.id}
-                    className="rounded-xl border-l-4 p-3"
-                    style={{ borderColor: couleur, backgroundColor: fond }}
-                  >
-                    <div className="mb-1 flex items-center gap-2">
-                      <Icone size={16} style={{ color: couleur }} />
-                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{p.nom || p.code}</p>
-                    </div>
-                    <div className={`grid gap-2.5 ${p.prixFilet !== null ? "grid-cols-3" : "grid-cols-2"}`}>
-                      <div>
-                        <FieldLabel>Sachets</FieldLabel>
-                        <TextInput
-                          type="number"
-                          min={0}
-                          value={q.sachets || ""}
-                          onChange={(e) =>
-                            updateQuantite(setQuantitesCommande, p.code, "sachets", Number(e.target.value) || 0)
-                          }
-                        />
-                      </div>
-                      {p.prixFilet !== null && (
-                        <div>
-                          <FieldLabel>Filets</FieldLabel>
-                          <TextInput
-                            type="number"
-                            min={0}
-                            value={q.filets || ""}
-                            onChange={(e) =>
-                              updateQuantite(setQuantitesCommande, p.code, "filets", Number(e.target.value) || 0)
-                            }
-                          />
-                        </div>
-                      )}
-                      <div>
-                        <FieldLabel>Cartons</FieldLabel>
-                        <TextInput
-                          type="number"
-                          min={0}
-                          value={q.cartons || ""}
-                          onChange={(e) =>
-                            updateQuantite(setQuantitesCommande, p.code, "cartons", Number(e.target.value) || 0)
-                          }
-                        />
-                      </div>
-                    </div>
-                    {sousTotal > 0 && (
-                      <p className="mt-2 text-right text-sm font-bold" style={{ color: couleur }}>
-                        Sous-total : {sousTotal.toLocaleString("fr-FR")} FCFA
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-
-              <div>
-                <FieldLabel>Date de livraison prévue</FieldLabel>
-                <TextInput
-                  type="date"
-                  value={commandeDateLivraison}
-                  onChange={(e) => setCommandeDateLivraison(e.target.value)}
-                />
-              </div>
-
-              {montantCommandeCalcule > 0 && (
-                <p className="rounded-lg bg-white dark:bg-slate-900 px-3 py-2 text-right text-sm font-bold text-slate-800 dark:text-slate-100">
-                  À percevoir à la livraison :{" "}
-                  {montantCommandeCalcule.toLocaleString("fr-FR")} FCFA
-                </p>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* 4. Observations */}
-        <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-          <SectionHeader icon={NotebookPen} title="Observations" color="#7c3aed" />
-          <FieldLabel>
-            Points importants à signaler (optionnel)
-          </FieldLabel>
-          <textarea
-            value={observation}
-            onChange={(e) => setObservation(e.target.value)}
-            placeholder="Ex : le point de vente manque de présentoir, le client a demandé un délai de paiement, concurrent présent sur la zone..."
-            rows={4}
-            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 text-base text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 dark:text-slate-500"
-          />
-        </section>
-
-        {error && (
-          <p className="rounded-xl bg-red-50 px-3 py-2.5 text-sm text-alert">{error}</p>
-        )}
+        {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-alert">{error}</p>}
       </form>
 
-      {/* Barre d'action fixe — toujours accessible sur mobile, même en
-          bas d'un long formulaire (§26 CDC : ergonomie tactile). */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 dark:border-slate-700 bg-white/95 p-3 backdrop-blur">
-        <button
-          type="submit"
-          form="visite-form"
-          disabled={submitting || !nom || !villeId}
-          className="w-full rounded-xl py-3.5 text-base font-bold text-white shadow-md disabled:opacity-50"
-          style={{ background: "linear-gradient(135deg, #1e40af, #2563eb)" }}
-        >
+      <BarreAction>
+        <BoutonPrincipal form="visite-form" disabled={submitting || !nom || !villeId}>
           {submitting ? "Enregistrement..." : "Valider la visite"}
-        </button>
-      </div>
+        </BoutonPrincipal>
+      </BarreAction>
     </main>
   );
 }

@@ -2,21 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import {
-  ArrowLeft,
-  RefreshCw,
-  Store,
-  Camera,
-  NotebookPen,
-  CheckCircle2,
-  Clock,
-  ShoppingCart,
-} from "lucide-react";
+import { Camera, CheckCircle2, Clock, ShoppingCart } from "lucide-react";
 import { PointVenteSearch, type ResultatRecherche } from "@/components/commercial/PointVenteSearch";
 import { compressImage } from "@/lib/utils/image";
 import { queuePendingVisite } from "@/lib/offline/db";
 import { syncPendingVisites } from "@/lib/offline/sync";
+import {
+  EnTeteFormulaire,
+  Carte,
+  Champ,
+  ZoneTexte,
+  BarreAction,
+  BoutonPrincipal,
+} from "@/components/commercial/form-ui";
 
 function uuid() {
   return crypto.randomUUID();
@@ -120,69 +118,42 @@ export default function RotationPage() {
 
   if (success || queuedOffline) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
-        <div className="max-w-sm rounded-2xl bg-white dark:bg-slate-900 px-8 py-10 text-center shadow-sm">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4 dark:bg-slate-950">
+        <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white px-8 py-10 text-center dark:border-slate-800 dark:bg-slate-900">
           <div
             className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${
-              queuedOffline ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"
+              queuedOffline ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"
             }`}
           >
             {queuedOffline ? <Clock size={28} /> : <CheckCircle2 size={30} />}
           </div>
-          <p className="mb-5 font-semibold text-slate-800 dark:text-slate-100">
+          <p className="mb-6 font-semibold text-slate-900 dark:text-slate-100">
             {queuedOffline ? "Données en attente de synchronisation" : "Visite enregistrée"}
           </p>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="w-full rounded-xl bg-slate-100 dark:bg-slate-800 py-3 text-sm font-medium text-slate-600 dark:text-slate-300"
-          >
-            Retour à l'accueil
-          </button>
+          <BoutonPrincipal type="button" onClick={() => router.push("/dashboard")}>
+            Retour à l&apos;accueil
+          </BoutonPrincipal>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-28">
-      <div
-        className="px-4 pb-6 pt-6 text-white"
-        style={{ background: "linear-gradient(135deg, #4338ca 0%, #4f46e5 60%, #6366f1 100%)" }}
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
-              <RefreshCw size={16} />
-            </span>
-            <p className="text-xs font-bold uppercase tracking-widest text-indigo-100">
-              ICHA IMPORT
-            </p>
-          </div>
-          <Link href="/dashboard" className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
-            <ArrowLeft size={16} />
-          </Link>
-        </div>
-        <h1 className="text-2xl font-extrabold">Rotation et achalandage</h1>
-      </div>
+    <main className="min-h-screen bg-slate-50 pb-28 dark:bg-slate-950">
+      <EnTeteFormulaire titre="Rotation et achalandage" sousTitre="Visite de suivi" />
 
-      <div className="-mt-3 space-y-4 px-4 pt-1">
+      <div className="mx-auto max-w-xl space-y-4 px-4 pt-4">
         {!pointVente ? (
-          <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-            <h2 className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-300">Rechercher le point de vente</h2>
+          <Carte titre="Rechercher le point de vente">
             <PointVenteSearch onSelect={setPointVente} />
-          </section>
+          </Carte>
         ) : (
           <>
-            <section className="flex items-center gap-3 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700">
-                <Store size={18} />
-              </span>
-              <div>
-                <p className="font-bold text-slate-800 dark:text-slate-100">{pointVente.nom}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">
-                  {pointVente.vendeur ?? "—"} · {pointVente.villeNom ?? "—"}
-                </p>
-              </div>
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+              <p className="font-semibold text-slate-900 dark:text-slate-100">{pointVente.nom}</p>
+              <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                {pointVente.vendeur ?? "—"} · {pointVente.villeNom ?? "—"}
+              </p>
             </section>
 
             {/* Le client peut passer une commande à tout moment, avant même
@@ -190,20 +161,14 @@ export default function RotationPage() {
                 formulaire de réassort avec ce point de vente déjà connu. */}
             <button
               onClick={() => router.push(`/visites/reassort?pointVenteId=${pointVente.id}`)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-700 py-3.5 text-sm font-bold text-white shadow-sm"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#1e3a8a] bg-white py-3.5 text-sm font-semibold text-[#1e3a8a] dark:bg-slate-900 dark:text-blue-300"
             >
               <ShoppingCart size={18} />
               {pointVente.nom} passe une nouvelle commande
             </button>
 
             <form onSubmit={handleSubmit} id="rotation-form" className="space-y-4">
-              <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-                <div className="mb-3 flex items-center justify-between">
-                  <FieldLabel>Photo avec le boutiquier</FieldLabel>
-                  <span className="text-xs text-slate-400 dark:text-slate-500">
-                    {now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </div>
+              <Carte titre="Photo avec le boutiquier">
                 <input
                   type="file"
                   accept="image/*"
@@ -228,63 +193,49 @@ export default function RotationPage() {
                       </span>
                     )}
                     {photoUrl && !photoUploading && (
-                      <span className="absolute left-2 top-2 rounded-lg bg-green-600/90 px-2.5 py-1 text-xs font-medium text-white">
-                        ✓ Envoyée
+                      <span className="absolute left-2 top-2 rounded-lg bg-emerald-600/90 px-2.5 py-1 text-xs font-medium text-white">
+                        Envoyée
                       </span>
                     )}
                   </label>
                 ) : (
                   <label
                     htmlFor="photo-rotation-input"
-                    className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 py-8 text-sm font-semibold text-indigo-700"
+                    className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-9 text-sm font-medium text-slate-500 hover:border-slate-400 dark:border-slate-700 dark:text-slate-400"
                   >
                     <Camera size={22} />
                     Prendre la photo
                   </label>
                 )}
-              </section>
+                <p suppressHydrationWarning className="text-xs text-slate-500 dark:text-slate-400">
+                  Heure : {now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </Carte>
 
-              <section className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-                <div className="mb-2 flex items-center gap-2">
-                  <NotebookPen size={16} className="text-indigo-700" />
-                  <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300">Rapport de visite</h2>
-                </div>
-                <textarea
-                  value={observation}
-                  onChange={(e) => setObservation(e.target.value)}
-                  rows={5}
-                  placeholder="État du rayon, achalandage, remarques..."
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 text-base"
-                />
-              </section>
+              <Carte titre="Rapport de visite">
+                <Champ label="Observations">
+                  <ZoneTexte
+                    value={observation}
+                    onChange={(e) => setObservation(e.target.value)}
+                    rows={5}
+                    placeholder="État du rayon, achalandage, remarques..."
+                  />
+                </Champ>
+              </Carte>
 
-              {error && <p className="rounded-xl bg-red-50 px-3 py-2.5 text-sm text-alert">{error}</p>}
+              {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-alert">{error}</p>}
             </form>
           </>
         )}
       </div>
 
       {pointVente && (
-        <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 dark:border-slate-700 bg-white/95 p-3 backdrop-blur">
-          <button
-            type="submit"
-            form="rotation-form"
-            disabled={submitting}
-            className="w-full rounded-xl py-3.5 text-base font-bold text-white shadow-md disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg, #4338ca, #6366f1)" }}
-          >
+        <BarreAction>
+          <BoutonPrincipal form="rotation-form" disabled={submitting}>
             {submitting ? "Enregistrement..." : "Valider la visite"}
-          </button>
-        </div>
+          </BoutonPrincipal>
+        </BarreAction>
       )}
     </main>
-  );
-}
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-      {children}
-    </span>
   );
 }

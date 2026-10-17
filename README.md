@@ -1452,6 +1452,24 @@ UPDATE "produits" SET "gamme" = 'Entretien' WHERE "gamme" IS NULL AND "code" IN 
 - Service worker passé en `v6`. **Sur les téléphones déjà installés, supprimer l'app de l'écran d'accueil puis la réinstaller** pour voir la nouvelle icône (Android et iOS ne rafraîchissent pas l'icône d'une app installée).
 - Aucun SQL.
 
+### ✅ Formulaires commerciaux épurés + nouveau recensement
+
+- **Tous les formulaires terrain restylés** (recensement, réassort, rotation, recherche de point de vente) avec un kit commun `components/commercial/form-ui.tsx` : en-tête sobre, blocs blancs à fin contour, libellés discrets, boutons de choix, plus de couleurs décoratives.
+- **Recensement, section Point de vente** : le formulaire commence par **« Qui nous répond ? »** (Patron, Gérant, Employé, Autre). Au choix, apparaissent le nom et le téléphone (WhatsApp) du répondant ; si ce n'est pas le patron, on ajoute le nom et le téléphone du patron. Pour « Autre », un champ « Sa fonction ».
+- **Supprimés** : nom du vendeur, téléphone du vendeur, numéro WhatsApp du patron (remplacés par le bloc ci-dessus). Le répondant reste l'interlocuteur du point de vente (colonnes `vendeur` / `telephone_vendeur`), donc listes, recherche et WhatsApp admin continuent de fonctionner.
+- **Type de boutique** en boutons, avec l'option **« Autre »** + champ libre (colonne `type_autre`).
+- **Achat et commande du jour** : « Le client veut commander ? » Oui/Non (si Oui : quantités, mode de paiement, montant) ; « Veut-il commander plus tard ? » Oui/Non (si Oui : quantités, date de livraison prévue). Les prix viennent toujours du catalogue. L'installation du présentoir reste dans ce bloc.
+- **Admin** : la fiche point de vente affiche la fonction du répondant, le patron (nom + WhatsApp) et le type « Autre » ; la liste admin affiche aussi le type « Autre » et la fonction.
+- **SQL à lancer AVANT le déploiement** (Supabase, SQL Editor) :
+
+```sql
+ALTER TABLE "points_vente"
+  ADD COLUMN IF NOT EXISTS "repondant_role" TEXT,
+  ADD COLUMN IF NOT EXISTS "repondant_fonction" TEXT,
+  ADD COLUMN IF NOT EXISTS "patron_nom" TEXT,
+  ADD COLUMN IF NOT EXISTS "type_autre" TEXT;
+```
+
 ### 📋 Limitations restantes
 - **Boutons placeholder du dashboard commercial sans page dédiée propre**
   — "Visite de rotation et d'achalandage" et "Visite de réassort" ont
