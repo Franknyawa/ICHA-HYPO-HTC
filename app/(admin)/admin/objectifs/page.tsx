@@ -10,7 +10,7 @@ import { requireAdminPage } from "@/lib/auth/rbac";
 export const dynamic = "force-dynamic";
 
 export default async function ObjectifsPage() {
-  await requireAdminPage();
+  await requireAdminPage("objectifs");
   const [binomes, commerciaux] = await Promise.all([
     getProgressionBinomes(),
     getProgressionCommerciaux(),

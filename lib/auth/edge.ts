@@ -3,7 +3,7 @@ import { jwtVerify } from "jose";
 export type SessionPayload = {
   userId: string;
   username: string;
-  role: "ADMIN" | "COMMERCIAL";
+  role: "SUPER_ADMIN" | "ADMIN" | "SUPERVISEUR" | "COMMERCIAL";
   binomeId: string | null;
   binomeNom: string | null;
   nom: string;

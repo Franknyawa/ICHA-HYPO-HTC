@@ -70,7 +70,7 @@ type Params = {
 };
 
 export default async function RapportsPage({ searchParams }: { searchParams: Params }) {
-  await requireAdminPage();
+  await requireAdminPage("rapports");
   const vue: RapportVue = ONGLETS.find((o) => o.vue === searchParams.vue)?.vue ?? "commercial";
   const page = Number(searchParams.page ?? "1") || 1;
 

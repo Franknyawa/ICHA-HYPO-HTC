@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken } from "@/lib/auth/edge";
+import { estPersonnel, moduleDePath, peutAcceder } from "@/lib/auth/permissions";
 
 const COOKIE_NAME = "icha_session";
 
@@ -26,8 +27,16 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAdminRoute && session.role !== "ADMIN") {
+  if (isAdminRoute && !estPersonnel(session.role)) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
+  // Rubrique non autorisée pour ce rôle : retour au tableau de bord.
+  if (isAdminRoute) {
+    const module = moduleDePath(pathname);
+    if (module && !peutAcceder(session.role, module)) {
+      return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+    }
   }
 
   if (isCommercialRoute && session.role !== "COMMERCIAL") {

@@ -16,7 +16,7 @@ export default async function TrackingPage({
 }: {
   searchParams: { commercialId?: string; binomeId?: string; date?: string; mode?: string };
 }) {
-  await requireAdminPage();
+  await requireAdminPage("tracking");
   const commercialId = searchParams.commercialId ?? "";
   const binomeId = searchParams.binomeId ?? "";
   const date = searchParams.date ?? new Date().toISOString().slice(0, 10);

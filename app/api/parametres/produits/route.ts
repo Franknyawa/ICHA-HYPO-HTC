@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireModule("parametres");
     const produits = await prisma.produit.findMany({ orderBy: { code: "asc" } });
     // Prisma sérialise les champs Decimal en texte (ex: "75.00"), pas en
     // nombre JS — sans cette conversion, un champ jamais retapé par
@@ -51,7 +51,7 @@ const createSchema = z.object({
 // disponible côté données mais pas encore affiché là, voir README.
 export async function POST(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireModule("parametres");
     const parsed = createSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json(

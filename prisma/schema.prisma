@@ -119,6 +119,8 @@ model Produit {
 
 enum Role {
   ADMIN
+  SUPER_ADMIN
+  SUPERVISEUR
   COMMERCIAL
 }
 
@@ -266,6 +268,7 @@ model PointVente {
   typeId        String?   @map("type_id")
   type          TypePointVente? @relation(fields: [typeId], references: [id])
   presentoir    Boolean   @default(false)
+  archivedAt    DateTime? @map("archived_at")
   latitude      Decimal?  @db.Decimal(10, 7)
   longitude     Decimal?  @db.Decimal(10, 7)
   precisionGps  Decimal?  @map("precision_gps") @db.Decimal(6, 2)
@@ -431,6 +434,7 @@ model Commande {
   statut              StatutCommande @default(EN_ATTENTE)
   dateCommande         DateTime      @default(now()) @map("date_commande")
   dateLivraisonPrevue DateTime?      @map("date_livraison_prevue")
+  archivedAt          DateTime?      @map("archived_at")
   createdAt           DateTime       @default(now()) @map("created_at")
 
   lignes    CommandeLigne[]

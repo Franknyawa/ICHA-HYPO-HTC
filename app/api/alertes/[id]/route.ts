@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
@@ -21,7 +21,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const admin = await requireAdmin();
+    const admin = await requireModule("alertes");
 
     const json = await req.json().catch(() => ({}));
     const parsed = schema.safeParse(json);

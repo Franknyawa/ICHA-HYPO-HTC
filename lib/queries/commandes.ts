@@ -21,6 +21,7 @@ export async function listCommandes(params: ListCommandesParams) {
   const { page, pageSize, skip, take } = getPaginationParams(sp);
 
   const where: Prisma.CommandeWhereInput = {
+    archivedAt: null,
     ...(params.statut ? { statut: params.statut } : {}),
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),
     ...(params.commercialId ? { commercialId: params.commercialId } : {}),
@@ -70,6 +71,7 @@ export async function countCommandesParStatut(
   params: Omit<ListCommandesParams, "page" | "pageSize" | "statut">
 ) {
   const where: Prisma.CommandeWhereInput = {
+    archivedAt: null,
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),
     ...(params.commercialId ? { commercialId: params.commercialId } : {}),
     ...(params.dateFrom || params.dateTo

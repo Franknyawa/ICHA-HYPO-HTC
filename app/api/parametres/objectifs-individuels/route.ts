@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
@@ -16,7 +16,7 @@ const DEFAUTS: Record<string, number> = {
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireModule("parametres");
     const rows = await prisma.objectifIndividuel.findMany();
     const parPeriode = new Map(rows.map((r) => [r.periode, r.valeurCartons]));
     const data = (["JOURNALIER", "HEBDOMADAIRE", "MENSUEL"] as const).map((periode) => ({
@@ -36,7 +36,7 @@ const schema = z.object({
 
 export async function PATCH(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireModule("parametres");
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ error: "Données invalides." }, { status: 400 });

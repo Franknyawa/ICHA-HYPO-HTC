@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
@@ -17,7 +17,7 @@ const schema = z.object({
 /** Enregistre une dépense ou une autre recette dans la caisse. */
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireAdmin();
+    const session = await requireModule("caisse");
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Données invalides." }, { status: 400 });
 

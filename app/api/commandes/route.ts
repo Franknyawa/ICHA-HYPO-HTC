@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { listCommandes } from "@/lib/queries/commandes";
 
@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireModule("commandes");
 
     const sp = req.nextUrl.searchParams;
     const result = await listCommandes({

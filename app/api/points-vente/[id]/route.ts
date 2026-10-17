@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth, requireAdmin } from "@/lib/auth/rbac";
+import { requireAuth, requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { updatePointVenteSchema } from "@/lib/validations/point-vente";
 
@@ -12,7 +12,7 @@ export async function GET(
 ) {
   try {
     const session = await requireAuth();
-    const estAdmin = session.role === "ADMIN";
+    const estAdmin = session.role !== "COMMERCIAL";
 
     const pointVente = await prisma.pointVente.findUnique({
       where: { id: params.id },
@@ -50,7 +50,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdmin();
+    await requireModule("points-vente");
 
     const json = await req.json().catch(() => null);
     const parsed = updatePointVenteSchema.safeParse(json);

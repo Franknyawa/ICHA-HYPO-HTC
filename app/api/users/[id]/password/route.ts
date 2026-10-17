@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { hashPassword } from "@/lib/auth/password";
 import { revoquerSessionsUtilisateur } from "@/lib/auth/session";
@@ -17,7 +17,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdmin();
+    await requireModule("utilisateurs");
 
     const json = await req.json().catch(() => null);
     const parsed = schema.safeParse(json);

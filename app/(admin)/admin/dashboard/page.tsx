@@ -8,6 +8,7 @@ import {
 import { getCaisseResume } from "@/lib/queries/caisse";
 import { debutJour, finJour, jourDouala } from "@/lib/utils/periode";
 import { Suspense } from "react";
+import { peutAcceder } from "@/lib/auth/permissions";
 import { DashboardView } from "@/components/admin/DashboardView";
 import { VentesParProduitSection, VentesParProduitSkeleton } from "@/components/admin/VentesParProduitSection";
 
@@ -17,7 +18,7 @@ import { VentesParProduitSection, VentesParProduitSkeleton } from "@/components/
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  const session = await requireAdminPage();
+  const session = await requireAdminPage("dashboard");
   const jour = jourDouala();
   // Deux lots de requêtes en parallèle plutôt qu'un seul gros : reste sous le
   // nombre de connexions du pool Prisma.
@@ -38,6 +39,8 @@ export default async function AdminDashboardPage() {
   return (
     <DashboardView
       prenom={session?.prenom ?? ""}
+      peutCaisse={peutAcceder(session.role, "caisse")}
+      peutStock={peutAcceder(session.role, "stock")}
       dateLongue={dateLongue}
       jour={jour}
       kpis={kpis}

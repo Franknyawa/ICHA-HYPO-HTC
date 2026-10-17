@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getDureeSessionMinutes } from "@/lib/auth/session";
 
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireModule("parametres");
     const minutes = await getDureeSessionMinutes();
     return NextResponse.json({ minutes });
   } catch (error) {
@@ -23,7 +23,7 @@ const schema = z.object({ minutes: z.number().int().min(5).max(43200) });
 
 export async function PATCH(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireModule("parametres");
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ error: "Valeur invalide." }, { status: 400 });

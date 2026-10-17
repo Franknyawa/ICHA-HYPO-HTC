@@ -1526,3 +1526,22 @@ CREATE INDEX IF NOT EXISTS "operations_caisse_type_idx" ON "operations_caisse"("
 -- Anciens points de vente : reprendre leur type unique
 UPDATE "points_vente" SET "types_ids" = ARRAY["type_id"] WHERE "type_id" IS NOT NULL AND cardinality("types_ids") = 0;
 ```
+
+
+## ✅ Rôles, archivage, suppression d'utilisateur, nettoyage
+
+- 4 rôles : Super Admin (tout), Administrateur (tout sauf Paramètres et Utilisateurs), Superviseur (alertes, points de vente, commandes, stock, rapports), Commercial (app mobile) — droits : `lib/auth/permissions.ts`.
+- Archivage des points de vente et des commandes (page Admin → Archives), comptes désactivés restaurables.
+- Bouton « Supprimer » (compte sans activité uniquement) ; sinon désactiver.
+- Script de nettoyage des données de test : `docs/nettoyage-donnees-test.sql`.
+
+SQL à lancer dans Supabase AVANT le déploiement (chaque ligne `ALTER TYPE` SEULE, une requête à la fois) :
+
+```sql
+ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'SUPER_ADMIN';
+ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'SUPERVISEUR';
+-- puis, dans une requête séparée (après les deux ci-dessus) :
+-- UPDATE "users" SET "role" = 'SUPER_ADMIN' WHERE "role" = 'ADMIN';
+ALTER TABLE "points_vente" ADD COLUMN IF NOT EXISTS "archived_at" TIMESTAMP(3);
+ALTER TABLE "commandes" ADD COLUMN IF NOT EXISTS "archived_at" TIMESTAMP(3);
+```

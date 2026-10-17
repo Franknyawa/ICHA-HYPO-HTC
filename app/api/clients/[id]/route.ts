@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getClientDetail } from "@/lib/queries/clients";
 
@@ -12,7 +12,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdmin();
+    await requireModule("clients");
 
     const client = await getClientDetail(params.id);
     if (!client) {
@@ -36,7 +36,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdmin();
+    await requireModule("clients");
 
     const json = await req.json().catch(() => null);
     const parsed = updateClientSchema.safeParse(json);

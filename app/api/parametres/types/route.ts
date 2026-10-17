@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireModule("parametres");
     const types = await prisma.typePointVente.findMany({ orderBy: { ordre: "asc" } });
     return NextResponse.json({ data: types });
   } catch (error) {
@@ -20,7 +20,7 @@ const schema = z.object({ nom: z.string().min(2) });
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireModule("parametres");
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ error: "Nom invalide." }, { status: 400 });

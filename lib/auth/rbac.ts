@@ -1,6 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { getSession, type SessionPayload } from "./session";
+import { estPersonnel, peutAcceder, type Module } from "./permissions";
 
 export class UnauthorizedError extends Error {
   constructor(message = "Non authentifié") {
@@ -25,15 +26,28 @@ export async function requireSession(): Promise<SessionPayload> {
 
 /** Récupère la session et vérifie que le rôle correspond. */
 export async function requireRole(
-  role: "ADMIN" | "COMMERCIAL"
+  role: SessionPayload["role"]
 ): Promise<SessionPayload> {
   const session = await requireSession();
   if (session.role !== role) throw new ForbiddenError();
   return session;
 }
 
+/**
+ * Membre du personnel (super admin, administrateur ou
+ * superviseur). Pour une rubrique précise, préférer requireModule().
+ */
 export async function requireAdmin(): Promise<SessionPayload> {
-  return requireRole("ADMIN");
+  const session = await requireSession();
+  if (!estPersonnel(session.role)) throw new ForbiddenError();
+  return session;
+}
+
+/** Personnel autorisé à utiliser cette rubrique (voir lib/auth/permissions.ts). */
+export async function requireModule(module: Module): Promise<SessionPayload> {
+  const session = await requireSession();
+  if (!peutAcceder(session.role, module)) throw new ForbiddenError();
+  return session;
 }
 
 export async function requireCommercial(): Promise<SessionPayload> {
@@ -47,10 +61,11 @@ export async function requireCommercial(): Promise<SessionPayload> {
  * appeler en tête de chaque page admin, fait la vérification complète
  * (session en base + rôle actuel) avant de lire la moindre donnée.
  */
-export async function requireAdminPage(): Promise<SessionPayload> {
+export async function requireAdminPage(module?: Module): Promise<SessionPayload> {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.role !== "ADMIN") redirect("/dashboard");
+  if (!estPersonnel(session.role)) redirect("/dashboard");
+  if (module && !peutAcceder(session.role, module)) redirect("/admin/dashboard");
   return session;
 }
 

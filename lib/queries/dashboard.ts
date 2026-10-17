@@ -26,7 +26,7 @@ export async function getDashboardKpis() {
 
   const [ventesAujourdhui, commandesEnAttente, lignesVenteAujourdhui] = await Promise.all([
     prisma.vente.count({ where: { createdAt: today } }),
-    prisma.commande.count({ where: { statut: "EN_ATTENTE" } }),
+    prisma.commande.count({ where: { statut: "EN_ATTENTE", archivedAt: null } }),
     prisma.venteLigne.findMany({
       where: { vente: { createdAt: today } },
       select: { nbCartons: true, produit: { select: { code: true } } },

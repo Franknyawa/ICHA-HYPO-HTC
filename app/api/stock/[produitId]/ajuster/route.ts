@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { applyStockMovement, InsufficientStockError } from "@/lib/services/stock";
 
@@ -25,7 +25,7 @@ export async function POST(
   { params }: { params: { produitId: string } }
 ) {
   try {
-    const session = await requireAdmin();
+    const session = await requireModule("stock");
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ error: "Données invalides." }, { status: 400 });

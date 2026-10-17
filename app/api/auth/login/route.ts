@@ -122,6 +122,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     role: user.role,
-    redirectTo: user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard",
+    redirectTo: user.role === "COMMERCIAL" ? "/dashboard" : "/admin/dashboard",
   });
 }

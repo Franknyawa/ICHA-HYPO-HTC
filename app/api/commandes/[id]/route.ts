@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
@@ -17,7 +17,7 @@ export async function PATCH(
   try {
     // Seul un admin change le statut d'une commande — décision de gestion,
     // pas une action terrain du commercial.
-    await requireAdmin();
+    await requireModule("commandes");
 
     const json = await req.json().catch(() => null);
     const parsed = schema.safeParse(json);

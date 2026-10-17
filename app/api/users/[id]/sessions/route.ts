@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdmin();
+    await requireModule("utilisateurs");
     const sessions = await prisma.session.findMany({
       where: { userId: params.id, revoked: false, expiresAt: { gt: new Date() } },
       orderBy: { lastSeenAt: "desc" },
@@ -27,7 +27,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdmin();
+    await requireModule("utilisateurs");
     await prisma.session.updateMany({
       where: { userId: params.id, revoked: false },
       data: { revoked: true },

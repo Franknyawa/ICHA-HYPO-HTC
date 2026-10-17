@@ -10,7 +10,7 @@ export default async function CaissePage({
 }: {
   searchParams: { periode?: string; du?: string; au?: string };
 }) {
-  await requireAdminPage();
+  await requireAdminPage("caisse");
   const periode = resoudrePeriode(searchParams);
   const c = await getCaisse(periode.debut, periode.fin);
   return <CaisseView c={c} periode={periode} />;

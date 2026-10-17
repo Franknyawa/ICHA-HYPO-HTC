@@ -7,11 +7,13 @@ import {
   Pencil,
   UserX,
   UserCheck,
+  Trash2,
   Camera,
   ShieldCheck,
   Users as UsersIcon,
   Smartphone,
 } from "lucide-react";
+import { LIBELLES_ROLES, ROLES, type RoleId } from "@/lib/auth/permissions";
 import { compressImage } from "@/lib/utils/image";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { apiFetch, ApiError } from "@/lib/client/apiFetch";
@@ -22,7 +24,7 @@ type UserRow = {
   username: string;
   nom: string;
   prenom: string;
-  role: "ADMIN" | "COMMERCIAL";
+  role: RoleId;
   actif: boolean;
   avatarUrl: string | null;
   binome: { id: string; nom: string } | null;
@@ -36,12 +38,14 @@ function UserCard({
   onReset,
   onToggle,
   onSessions,
+  onDelete,
 }: {
   u: UserRow;
   onEdit: (u: UserRow) => void;
   onReset: (u: UserRow) => void;
   onToggle: (u: UserRow) => void;
   onSessions: (u: UserRow) => void;
+  onDelete: (u: UserRow) => void;
 }) {
   return (
     <div className="flex items-center justify-between rounded-xl bg-white dark:bg-slate-900 p-3 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
@@ -62,6 +66,11 @@ function UserCard({
         <div>
           <p className="font-medium text-slate-800 dark:text-slate-100">
             {u.prenom} {u.nom}
+            {u.role !== "COMMERCIAL" && (
+              <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                {LIBELLES_ROLES[u.role].nom}
+              </span>
+            )}
             {!u.actif && (
               <span className="ml-2 rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
                 Désactivé
@@ -105,6 +114,13 @@ function UserCard({
         >
           {u.actif ? <UserX size={14} /> : <UserCheck size={14} />}
         </button>
+        <button
+          onClick={() => onDelete(u)}
+          title="Supprimer définitivement"
+          className="flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
     </div>
   );
@@ -128,7 +144,7 @@ export default function UtilisateursPage() {
   const [editForm, setEditForm] = useState({
     nom: "",
     prenom: "",
-    role: "COMMERCIAL" as "ADMIN" | "COMMERCIAL",
+    role: "COMMERCIAL" as RoleId,
     binomeId: "",
     avatarUrl: "" as string | null,
   });
@@ -141,7 +157,7 @@ export default function UtilisateursPage() {
     password: "",
     nom: "",
     prenom: "",
-    role: "COMMERCIAL" as "ADMIN" | "COMMERCIAL",
+    role: "COMMERCIAL" as RoleId,
     binomeId: "",
   });
 
@@ -322,7 +338,26 @@ export default function UtilisateursPage() {
     }
   }
 
-  const admins = users.filter((u) => u.role === "ADMIN");
+  async function supprimerUtilisateur(u: UserRow) {
+    if (
+      !confirm(
+        `Supprimer définitivement le compte de ${u.prenom} ${u.nom} ?\n\nCette action est irréversible. Elle n'est possible que si le compte n'a aucune activité enregistrée.`
+      )
+    )
+      return;
+    setError(null);
+    const res = await fetch(`/api/users/${u.id}?definitif=1`, { method: "DELETE" });
+    if (res.ok) {
+      setMessage(`Compte de ${u.prenom} ${u.nom} supprimé.`);
+      loadUsers();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setMessage(null);
+      setError(data.error ?? "Échec de la suppression.");
+    }
+  }
+
+  const admins = users.filter((u) => u.role !== "COMMERCIAL");
   const commerciaux = users.filter((u) => u.role === "COMMERCIAL");
 
   // Regroupement des commerciaux par binôme — plus lisible qu'une liste
@@ -363,6 +398,9 @@ export default function UtilisateursPage() {
             {message}
           </p>
         )}
+        {error && !editTarget && !showCreate && !resetTarget && (
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>
+        )}
 
         {loading ? (
           <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500">Chargement...</p>
@@ -387,7 +425,7 @@ export default function UtilisateursPage() {
                   <ShieldCheck size={15} />
                 </span>
                 <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500">
-                  Administrateurs
+                  Équipe de gestion
                 </h2>
                 <span className="rounded-full bg-slate-200 dark:bg-slate-700 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
                   {admins.length}
@@ -406,10 +444,11 @@ export default function UtilisateursPage() {
                     }}
                     onToggle={toggleActif}
                     onSessions={openSessions}
+                    onDelete={supprimerUtilisateur}
                   />
                 ))}
                 {admins.length === 0 && (
-                  <p className="text-sm text-slate-400 dark:text-slate-500">Aucun administrateur.</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500">Aucun membre.</p>
                 )}
               </div>
             </section>
@@ -447,6 +486,7 @@ export default function UtilisateursPage() {
                           }}
                           onToggle={toggleActif}
                     onSessions={openSessions}
+                    onDelete={supprimerUtilisateur}
                         />
                       ))}
                     </div>
@@ -471,6 +511,7 @@ export default function UtilisateursPage() {
                           }}
                           onToggle={toggleActif}
                     onSessions={openSessions}
+                    onDelete={supprimerUtilisateur}
                         />
                       ))}
                     </div>
@@ -591,13 +632,19 @@ export default function UtilisateursPage() {
             <select
               value={editForm.role}
               onChange={(e) =>
-                setEditForm((f) => ({ ...f, role: e.target.value as "ADMIN" | "COMMERCIAL" }))
+                setEditForm((f) => ({ ...f, role: e.target.value as RoleId }))
               }
               className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             >
-              <option value="COMMERCIAL">Commercial</option>
-              <option value="ADMIN">Administrateur</option>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {LIBELLES_ROLES[r].nom}
+                </option>
+              ))}
             </select>
+            <p className="-mt-2 mb-3 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-900">
+              {LIBELLES_ROLES[editForm.role].description}
+            </p>
 
             {editForm.role === "COMMERCIAL" && (
               <select
@@ -698,13 +745,19 @@ export default function UtilisateursPage() {
             <select
               value={createForm.role}
               onChange={(e) =>
-                setCreateForm((f) => ({ ...f, role: e.target.value as "ADMIN" | "COMMERCIAL" }))
+                setCreateForm((f) => ({ ...f, role: e.target.value as RoleId }))
               }
               className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
             >
-              <option value="COMMERCIAL">Commercial</option>
-              <option value="ADMIN">Administrateur</option>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {LIBELLES_ROLES[r].nom}
+                </option>
+              ))}
             </select>
+            <p className="-mt-2 mb-3 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-900">
+              {LIBELLES_ROLES[createForm.role].description}
+            </p>
 
             {createForm.role === "COMMERCIAL" && (
               <select

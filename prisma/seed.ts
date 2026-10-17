@@ -167,7 +167,7 @@ async function main() {
     create: {
       username: "admin",
       passwordHash,
-      role: Role.ADMIN,
+      role: Role.SUPER_ADMIN,
       nom: "Admin",
       prenom: "ICHA",
     },

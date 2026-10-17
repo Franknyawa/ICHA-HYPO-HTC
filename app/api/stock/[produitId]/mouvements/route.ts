@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getMouvementsRecents } from "@/lib/queries/stock";
 
@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: { produitId: string } }
 ) {
   try {
-    await requireAdmin();
+    await requireModule("stock");
     const data = await getMouvementsRecents(params.produitId);
     return NextResponse.json({ data });
   } catch (error) {

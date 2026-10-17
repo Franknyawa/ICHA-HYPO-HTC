@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
+import { ROLES } from "@/lib/auth/permissions";
 import { handleApiError } from "@/lib/api-errors";
 import { hashPassword } from "@/lib/auth/password";
 
@@ -9,7 +10,7 @@ export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireModule("utilisateurs");
 
     const users = await prisma.user.findMany({
       orderBy: [{ role: "asc" }, { nom: "asc" }],
@@ -39,13 +40,13 @@ const createUserSchema = z.object({
   password: z.string().min(6, "Au moins 6 caractères."),
   nom: z.string().min(1),
   prenom: z.string().min(1),
-  role: z.enum(["ADMIN", "COMMERCIAL"]),
+  role: z.enum(ROLES),
   binomeId: z.string().optional().nullable(),
 });
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireModule("utilisateurs");
 
     const json = await req.json().catch(() => null);
     const parsed = createUserSchema.safeParse(json);

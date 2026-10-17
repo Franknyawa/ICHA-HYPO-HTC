@@ -33,7 +33,7 @@ async function prompt(rl: readline.Interface, question: string): Promise<string>
 }
 
 async function main() {
-  const existingAdmin = await prisma.user.findFirst({ where: { role: Role.ADMIN } });
+  const existingAdmin = await prisma.user.findFirst({ where: { role: Role.SUPER_ADMIN } });
   if (existingAdmin) {
     console.log(
       `\nUn compte admin existe déjà (${existingAdmin.username}). ` +
@@ -71,7 +71,7 @@ async function main() {
   const passwordHash = await bcrypt.hash(password, 10);
 
   const admin = await prisma.user.create({
-    data: { username, passwordHash, role: Role.ADMIN, nom, prenom },
+    data: { username, passwordHash, role: Role.SUPER_ADMIN, nom, prenom },
     select: { id: true, username: true, nom: true, prenom: true },
   });
 

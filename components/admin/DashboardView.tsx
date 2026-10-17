@@ -42,6 +42,8 @@ export function DashboardView({
   parVendeur,
   observations,
   ventesSlot,
+  peutCaisse = true,
+  peutStock = true,
 }: {
   prenom: string;
   dateLongue: string;
@@ -53,6 +55,8 @@ export function DashboardView({
   parVendeur: { nom: string; montant: number }[];
   observations: React.ComponentProps<typeof ObservationsTerrain>["observations"];
   ventesSlot: ReactNode;
+  peutCaisse?: boolean;
+  peutStock?: boolean;
 }) {
   const maxCommercial = Math.max(...visites.parCommercial.map((c) => c.points), 1);
 
@@ -100,6 +104,7 @@ export function DashboardView({
               ton="ambre"
               href={`/admin/rapports?dateFrom=${jour}&dateTo=${jour}`}
             />
+            {peutCaisse && (
             <KpiCard
               label="Encaissé en caisse"
               valeur={formatFcfa(caisse.recettesJour)}
@@ -108,6 +113,7 @@ export function DashboardView({
               ton="bleu"
               href="/admin/caisse"
             />
+            )}
             <KpiCard
               label="Commandes en attente"
               valeur={kpis.commandesEnAttente}
@@ -161,6 +167,7 @@ export function DashboardView({
 
         {/* Caisse, stock, réseau */}
         <section className="grid gap-4 lg:grid-cols-3">
+          {peutCaisse && (
           <Link
             href="/admin/caisse"
             className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1e3a8a] via-[#2563eb] to-[#359980] p-6 text-white shadow-lg shadow-blue-900/20"
@@ -185,7 +192,9 @@ export function DashboardView({
               </div>
             </div>
           </Link>
+          )}
 
+          {peutStock && (
           <Panneau
             titre="Stock par produit"
             sousTitre="Cartons disponibles"
@@ -224,18 +233,23 @@ export function DashboardView({
               </ul>
             )}
           </Panneau>
+          )}
 
           <Panneau titre="Réseau et crédits" sousTitre="Vue d'ensemble" icone={Users2} ton="bleu">
             <ul className="divide-y divide-slate-100 dark:divide-slate-800">
               {[
                 { label: "Clients", value: kpis.clientsTotal, href: "/admin/clients" },
                 { label: "Prospects", value: kpis.prospectsTotal, href: undefined },
-                {
-                  label: "Crédits à encaisser",
-                  value: `${caisse.nbCredits} · ${formatFcfa(caisse.creditsTotal)}`,
-                  href: "/admin/caisse",
-                  alerte: caisse.creditsTotal > 0,
-                },
+                ...(peutCaisse
+                  ? [
+                      {
+                        label: "Crédits à encaisser",
+                        value: `${caisse.nbCredits} · ${formatFcfa(caisse.creditsTotal)}`,
+                        href: "/admin/caisse" as string | undefined,
+                        alerte: caisse.creditsTotal > 0,
+                      },
+                    ]
+                  : []),
               ].map((l) => {
                 const contenu = (
                   <>

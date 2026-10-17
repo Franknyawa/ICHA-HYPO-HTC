@@ -22,6 +22,7 @@ export async function listPointsVente(params: ListPointsVenteParams) {
   const { page, pageSize, skip, take } = getPaginationParams(sp);
 
   const where: Prisma.PointVenteWhereInput = {
+    archivedAt: null,
     ...(params.villeId ? { villeId: params.villeId } : {}),
     ...(params.quartierId ? { quartierId: params.quartierId } : {}),
     ...(params.typeId ? { OR: [{ typeId: params.typeId }, { typesIds: { has: params.typeId } }] } : {}),
@@ -180,6 +181,7 @@ export async function getPointVenteDetail(id: string) {
     patronNom: pointVente.patronNom,
     typeAutre: pointVente.typeAutre,
     typesIds: pointVente.typesIds,
+    archivedAt: pointVente.archivedAt,
     typesNoms: typesNoms,
     repere: pointVente.repere,
     latitude: pointVente.latitude,

@@ -22,7 +22,7 @@ export default async function FacturesPage({
 }: {
   searchParams: { page?: string; commercialId?: string; villeId?: string; dateFrom?: string; dateTo?: string };
 }) {
-  await requireAdminPage();
+  await requireAdminPage("factures");
   const page = Number(searchParams.page ?? "1") || 1;
   const commercialId = searchParams.commercialId ?? "";
   const villeId = searchParams.villeId ?? "";

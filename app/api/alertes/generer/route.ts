@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { genererAlertesManuelles } from "@/lib/jobs/alertes";
 
@@ -8,7 +8,7 @@ export const maxDuration = 30;
 
 export async function POST() {
   try {
-    await requireAdmin();
+    await requireModule("alertes");
     await genererAlertesManuelles();
     return NextResponse.json({ ok: true });
   } catch (error) {

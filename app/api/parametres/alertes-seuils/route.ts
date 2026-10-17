@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getSeuilsAlertes, CLES_SEUILS } from "@/lib/jobs/alertes";
 
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireModule("parametres");
     const seuils = await getSeuilsAlertes();
     return NextResponse.json(seuils);
   } catch (error) {
@@ -29,7 +29,7 @@ const schema = z.object({
 
 export async function PATCH(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireModule("parametres");
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ error: "Données invalides." }, { status: 400 });

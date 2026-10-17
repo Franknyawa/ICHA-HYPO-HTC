@@ -42,12 +42,13 @@ export async function rechercherPointsVente(params: {
   const points = await prisma.pointVente.findMany({
     where: params.search
       ? {
+          archivedAt: null,
           OR: [
             { nom: { contains: params.search, mode: "insensitive" } },
             { vendeur: { contains: params.search, mode: "insensitive" } },
           ],
         }
-      : undefined,
+      : { archivedAt: null },
     take: params.lat && params.lng ? 200 : limit, // large échantillon si tri par distance ensuite
     orderBy: { createdAt: "desc" },
     include: {

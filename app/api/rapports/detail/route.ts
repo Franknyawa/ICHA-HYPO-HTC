@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getApercu, type RapportVue, type RapportFilters } from "@/lib/queries/rapports";
 
@@ -11,7 +11,7 @@ const VUES: RapportVue[] = ["commercial", "point_vente", "ville", "quartier", "v
 // la page Rapports, plus la vue et la clé de la ligne cliquée.
 export async function GET(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireModule("rapports");
     const sp = req.nextUrl.searchParams;
     const vue = sp.get("vue") as RapportVue;
     const cle = sp.get("cle");

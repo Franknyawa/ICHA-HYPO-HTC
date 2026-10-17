@@ -45,7 +45,7 @@ export default async function PointsVentePage({
     triCommandes?: string;
   };
 }) {
-  await requireAdminPage();
+  await requireAdminPage("points-vente");
   const page = Number(searchParams.page ?? "1") || 1;
   const search = searchParams.search ?? "";
   const villeId = searchParams.villeId ?? "";

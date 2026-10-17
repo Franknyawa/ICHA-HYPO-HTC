@@ -15,6 +15,7 @@ import {
   Package,
   Target,
   Wallet,
+  Archive,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -32,6 +33,7 @@ const RUBRIQUES: { prefixe: string; icone: LucideIcon; degrade: string }[] = [
   { prefixe: "/admin/tracking", icone: Navigation, degrade: "from-cyan-500 to-teal-500" },
   { prefixe: "/admin/clients", icone: Users2, degrade: "from-indigo-500 to-violet-500" },
   { prefixe: "/admin/rapports", icone: FileBarChart, degrade: "from-teal-500 to-emerald-500" },
+  { prefixe: "/admin/archives", icone: Archive, degrade: "from-orange-500 to-amber-400" },
   { prefixe: "/admin/parametres", icone: Settings, degrade: "from-slate-600 to-slate-500" },
   { prefixe: "/admin/utilisateurs", icone: UserCog, degrade: "from-blue-500 to-cyan-500" },
 ];

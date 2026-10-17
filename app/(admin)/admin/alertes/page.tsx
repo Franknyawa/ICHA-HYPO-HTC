@@ -33,7 +33,7 @@ export default async function AlertesPage({
 }: {
   searchParams: { type?: string };
 }) {
-  await requireAdminPage();
+  await requireAdminPage("alertes");
   const alertes = await listAlertes({ type: searchParams.type });
   const toutesLesAlertes = searchParams.type ? await listAlertes({}) : alertes;
 

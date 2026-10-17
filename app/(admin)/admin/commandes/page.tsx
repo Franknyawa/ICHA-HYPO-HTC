@@ -4,8 +4,10 @@ import { listCommandes, countCommandesParStatut, type StatutCommandeFiltre } fro
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CommandeStatusActions } from "@/components/admin/CommandeStatusActions";
+import { ArchiveButton, ArchiverAnciennesButton } from "@/components/admin/ArchiveButton";
 import { BonLivraisonButton } from "@/components/admin/BonLivraisonButton";
 import { requireAdminPage } from "@/lib/auth/rbac";
+import { peutAcceder } from "@/lib/auth/permissions";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -53,7 +55,8 @@ export default async function CommandesPage({
     dateTo?: string;
   };
 }) {
-  await requireAdminPage();
+  const session = await requireAdminPage("commandes");
+  const peutArchiver = peutAcceder(session.role, "archives");
   const page = Number(searchParams.page ?? "1") || 1;
   const statut = (searchParams.statut as StatutCommandeFiltre | undefined) ?? undefined;
   const villeId = searchParams.villeId ?? "";
@@ -78,7 +81,7 @@ export default async function CommandesPage({
 
   return (
     <main>
-      <AdminPageHeader title="Commandes" subtitle={`${pagination.total} au total`} />
+      <AdminPageHeader title="Commandes" subtitle={`${pagination.total} au total`} action={peutArchiver ? <ArchiverAnciennesButton jours={30} /> : undefined} />
 
       <div className="p-4 md:p-6">
         {/* Pastilles de filtre rapide par statut */}
@@ -184,6 +187,9 @@ export default async function CommandesPage({
                       <BonLivraisonButton commande={c as any} />
                     )}
                     <CommandeStatusActions id={c.id} statut={c.statut} />
+                    {peutArchiver && (c.statut === "LIVREE" || c.statut === "ANNULEE") && (
+                      <ArchiveButton url={`/api/commandes/${c.id}/archiver`} archive compact />
+                    )}
                   </div>
                 </div>
               </div>

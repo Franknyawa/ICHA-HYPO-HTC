@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/rbac";
+import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
@@ -29,7 +29,7 @@ function plagesCourantes() {
 // période — pas de job de régénération automatique pour l'instant).
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireModule("parametres");
     const { debutJour, finJour, debutSemaine, finSemaine } = plagesCourantes();
 
     const binomes = await prisma.binome.findMany({
@@ -70,7 +70,7 @@ const createSchema = z.object({
 // encore (ex: nouveau binôme, ou période jamais initialisée).
 export async function POST(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireModule("parametres");
     const parsed = createSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ error: "Données invalides." }, { status: 400 });

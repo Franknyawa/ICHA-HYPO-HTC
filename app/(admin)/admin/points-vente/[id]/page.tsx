@@ -13,8 +13,10 @@ import {
 import { getPointVenteDetail } from "@/lib/queries/points-vente";
 import { libelleRepondant } from "@/lib/utils/repondant";
 import { formatMontant } from "@/lib/utils/format";
+import { ArchiveButton } from "@/components/admin/ArchiveButton";
 import { ImprimerButton } from "@/components/admin/ImprimerButton";
 import { requireAdminPage } from "@/lib/auth/rbac";
+import { peutAcceder } from "@/lib/auth/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +47,7 @@ const STATUT_STYLES: Record<string, string> = {
 };
 
 export default async function PointVenteDetailPage({ params }: { params: { id: string } }) {
-  await requireAdminPage();
+  const session = await requireAdminPage("points-vente");
   const pv = await getPointVenteDetail(params.id);
   if (!pv) {
     notFound();
@@ -71,7 +73,16 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
           <ArrowLeft size={16} />
           Retour aux points de vente
         </Link>
-        <ImprimerButton />
+        <div className="flex items-center gap-2">
+          {peutAcceder(session.role, "archives") && (
+            <ArchiveButton
+              url={`/api/points-vente/${pv.id}/archiver`}
+              archive={!pv.archivedAt}
+              confirmation={pv.archivedAt ? undefined : "Archiver ce point de vente ? Il disparaîtra des listes et de la recherche des commerciaux ; son historique est conservé."}
+            />
+          )}
+          <ImprimerButton />
+        </div>
       </div>
 
       <div className="space-y-4 p-4 md:p-6">
