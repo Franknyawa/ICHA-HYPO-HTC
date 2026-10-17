@@ -12,6 +12,7 @@ import {
   BellOff,
 } from "lucide-react";
 import { requireAdminPage } from "@/lib/auth/rbac";
+import { peutModifier } from "@/lib/auth/permissions";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -33,7 +34,8 @@ export default async function AlertesPage({
 }: {
   searchParams: { type?: string };
 }) {
-  await requireAdminPage("alertes");
+  const session = await requireAdminPage("alertes");
+  const modifiable = peutModifier(session.role);
   const alertes = await listAlertes({ type: searchParams.type });
   const toutesLesAlertes = searchParams.type ? await listAlertes({}) : alertes;
 
@@ -47,7 +49,7 @@ export default async function AlertesPage({
       <AdminPageHeader
         title="Alertes"
         subtitle={`${alertes.length} alerte${alertes.length > 1 ? "s" : ""} active${alertes.length > 1 ? "s" : ""}`}
-        action={<GenererAlertesButton />}
+        action={modifiable ? <GenererAlertesButton /> : undefined}
       />
 
       <div className="p-4 md:p-6">
@@ -127,11 +129,12 @@ export default async function AlertesPage({
                       )}
                     </div>
                   </div>
-                  {a.statut === "EN_ATTENTE_VERIFICATION" ? (
-                    <VerifierAlerteButtons id={a.id} />
-                  ) : (
-                    <ResoudreButton id={a.id} />
-                  )}
+                  {modifiable &&
+                    (a.statut === "EN_ATTENTE_VERIFICATION" ? (
+                      <VerifierAlerteButtons id={a.id} />
+                    ) : (
+                      <ResoudreButton id={a.id} />
+                    ))}
                 </div>
               );
             })}

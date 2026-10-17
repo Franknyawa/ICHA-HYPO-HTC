@@ -1,11 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken } from "@/lib/auth/edge";
-import { estPersonnel, moduleDePath, peutAcceder } from "@/lib/auth/permissions";
+import { estPersonnel, moduleDePath, peutAcceder, peutModifier } from "@/lib/auth/permissions";
 
 const COOKIE_NAME = "icha_session";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Le Superviseur consulte seulement : toute écriture (POST, PATCH, PUT,
+  // DELETE) sur une rubrique d'administration est refusée côté serveur.
+  if (pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    if (moduleDePath(pathname)) {
+      const tk = req.cookies.get(COOKIE_NAME)?.value;
+      const sess = tk ? await verifySessionToken(tk) : null;
+      if (sess && estPersonnel(sess.role) && !peutModifier(sess.role)) {
+        return NextResponse.json(
+          { error: "Ton rôle permet de consulter uniquement, pas de modifier." },
+          { status: 403 }
+        );
+      }
+    }
+    return NextResponse.next();
+  }
 
   const isAdminRoute = pathname.startsWith("/admin");
   const isCommercialRoute =
@@ -53,5 +69,6 @@ export const config = {
     "/visites/:path*",
     "/historique/:path*",
     "/profil/:path*",
+    "/api/:path*",
   ],
 };

@@ -1530,7 +1530,7 @@ UPDATE "points_vente" SET "types_ids" = ARRAY["type_id"] WHERE "type_id" IS NOT 
 
 ## ✅ Rôles, archivage, suppression d'utilisateur, nettoyage
 
-- 4 rôles : Super Admin (tout), Administrateur (tout sauf Paramètres et Utilisateurs), Superviseur (alertes, points de vente, commandes, stock, rapports), Commercial (app mobile) — droits : `lib/auth/permissions.ts`.
+- 4 rôles : Super Admin (tout), Administrateur (tout sauf Paramètres et Utilisateurs), Superviseur (alertes, points de vente, commandes, stock, rapports — consultation seule, aucune modification), Commercial (app mobile) — droits : `lib/auth/permissions.ts`.
 - Archivage des points de vente et des commandes (page Admin → Archives), comptes désactivés restaurables.
 - Bouton « Supprimer » (compte sans activité uniquement) ; sinon désactiver.
 - Script de nettoyage des données de test : `docs/nettoyage-donnees-test.sql`.

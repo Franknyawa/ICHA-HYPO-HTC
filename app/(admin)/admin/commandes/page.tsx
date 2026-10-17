@@ -7,7 +7,7 @@ import { CommandeStatusActions } from "@/components/admin/CommandeStatusActions"
 import { ArchiveButton, ArchiverAnciennesButton } from "@/components/admin/ArchiveButton";
 import { BonLivraisonButton } from "@/components/admin/BonLivraisonButton";
 import { requireAdminPage } from "@/lib/auth/rbac";
-import { peutAcceder } from "@/lib/auth/permissions";
+import { peutAcceder, peutModifier } from "@/lib/auth/permissions";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -186,7 +186,7 @@ export default async function CommandesPage({
                     {(c.statut === "EN_LIVRAISON" || c.statut === "LIVREE") && (
                       <BonLivraisonButton commande={c as any} />
                     )}
-                    <CommandeStatusActions id={c.id} statut={c.statut} />
+                    {peutModifier(session.role) && <CommandeStatusActions id={c.id} statut={c.statut} />}
                     {peutArchiver && (c.statut === "LIVREE" || c.statut === "ANNULEE") && (
                       <ArchiveButton url={`/api/commandes/${c.id}/archiver`} archive compact />
                     )}

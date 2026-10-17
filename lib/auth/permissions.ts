@@ -98,3 +98,8 @@ export function moduleDePath(pathname: string): Module | null {
   if (parts[0] === "api") return API[parts[1] ?? ""] ?? null;
   return null;
 }
+
+/** Seuls le Super Admin et l'Admin peuvent modifier ; le Superviseur consulte seulement. */
+export function peutModifier(role: string | undefined | null): boolean {
+  return role === "SUPER_ADMIN" || role === "ADMIN";
+}
