@@ -24,14 +24,16 @@ export async function listPointsVente(params: ListPointsVenteParams) {
   const where: Prisma.PointVenteWhereInput = {
     ...(params.villeId ? { villeId: params.villeId } : {}),
     ...(params.quartierId ? { quartierId: params.quartierId } : {}),
-    ...(params.typeId ? { typeId: params.typeId } : {}),
+    ...(params.typeId ? { OR: [{ typeId: params.typeId }, { typesIds: { has: params.typeId } }] } : {}),
     ...(params.search
       ? {
+          AND: [{
           OR: [
             { nom: { contains: params.search, mode: "insensitive" } },
             { vendeur: { contains: params.search, mode: "insensitive" } },
             { repere: { contains: params.search, mode: "insensitive" } },
           ],
+          }],
         }
       : {}),
   };
@@ -149,6 +151,14 @@ export async function getPointVenteDetail(id: string) {
     produitsResume: resumeLignes(c.lignes) || "—",
   }));
 
+  const typesNoms = pointVente.typesIds.length
+    ? (await prisma.typePointVente.findMany({ where: { id: { in: pointVente.typesIds } }, select: { id: true, nom: true } }))
+        .sort((a, b) => pointVente.typesIds.indexOf(a.id) - pointVente.typesIds.indexOf(b.id))
+        .map((t) => t.nom)
+    : pointVente.type
+      ? [pointVente.type.nom]
+      : [];
+
   const visites = pointVente.visites.map((v) => ({
     id: v.id,
     dateVisite: v.dateVisite,
@@ -169,6 +179,8 @@ export async function getPointVenteDetail(id: string) {
     repondantFonction: pointVente.repondantFonction,
     patronNom: pointVente.patronNom,
     typeAutre: pointVente.typeAutre,
+    typesIds: pointVente.typesIds,
+    typesNoms: typesNoms,
     repere: pointVente.repere,
     latitude: pointVente.latitude,
     longitude: pointVente.longitude,

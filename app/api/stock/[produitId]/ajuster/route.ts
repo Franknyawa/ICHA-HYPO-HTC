@@ -11,6 +11,10 @@ const schema = z.object({
   type: z.enum(["ENTREE", "SORTIE"]),
   quantiteSachets: z.number().int().min(1),
   motif: z.string().optional(),
+  // Achat de stock : montant payé pour cette entrée. Enregistré automatiquement
+  // en dépense de caisse, et le coût moyen du carton est mis à jour.
+  coutTotal: z.number().positive().max(1_000_000_000).optional(),
+  canal: z.enum(["ESPECES", "MOBILE_MONEY"]).default("ESPECES"),
 });
 
 // Ajustement manuel du stock — réassort (ENTREE) ou correction/perte
@@ -21,13 +25,21 @@ export async function POST(
   { params }: { params: { produitId: string } }
 ) {
   try {
-    await requireAdmin();
+    const session = await requireAdmin();
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ error: "Données invalides." }, { status: 400 });
     }
 
     await prisma.$transaction(async (tx) => {
+      const achat = parsed.data.type === "ENTREE" ? parsed.data.coutTotal : undefined;
+      const avant = achat
+        ? await tx.produit.findUnique({
+            where: { id: params.produitId },
+            select: { nom: true, sachetsParCarton: true, coutCarton: true, stock: { select: { quantiteSachets: true } } },
+          })
+        : null;
+
       await applyStockMovement(tx, {
         uuidClient: crypto.randomUUID(),
         produitId: params.produitId,
@@ -36,6 +48,29 @@ export async function POST(
         referenceType: "AJUSTEMENT_MANUEL",
         referenceId: parsed.data.motif || undefined,
       });
+
+      if (achat && avant) {
+        const cartonsAjoutes = parsed.data.quantiteSachets / avant.sachetsParCarton;
+        const cartonsAvant = (avant.stock?.quantiteSachets ?? 0) / avant.sachetsParCarton;
+        const ancienCout = avant.coutCarton === null ? 0 : Number(avant.coutCarton);
+        // Coût moyen pondéré : (valeur au coût du stock actuel + achat) / cartons totaux.
+        const nouveauCout = (cartonsAvant * ancienCout + achat) / (cartonsAvant + cartonsAjoutes);
+        await tx.produit.update({
+          where: { id: params.produitId },
+          data: { coutCarton: Math.round(nouveauCout * 100) / 100 },
+        });
+        await tx.operationCaisse.create({
+          data: {
+            type: "DEPENSE",
+            canal: parsed.data.canal,
+            montant: achat,
+            categorie: "Achat de stock",
+            note: `${avant.nom} · ${Math.round(cartonsAjoutes * 100) / 100} carton(s)`,
+            referenceType: "MOUVEMENT_STOCK",
+            createdById: session.userId,
+          },
+        });
+      }
     });
 
     return NextResponse.json({ ok: true });

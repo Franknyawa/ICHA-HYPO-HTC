@@ -5,15 +5,28 @@
 // recensement, le réassort et la rotation.
 
 import Link from "next/link";
-import { ArrowLeft, ChevronDown } from "lucide-react";
+import { ArrowLeft, ChevronDown, type LucideIcon } from "lucide-react";
 
-const BLEU = "#1e3a8a";
 const VERT = "#359980";
 
 export const classeChamp =
   "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-base text-slate-900 placeholder:text-slate-400 transition-colors focus:border-[#359980] focus:outline-none focus:ring-2 focus:ring-[#359980]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500";
 
-/** En-tête de page : retour, titre, sous-titre. Sobre, sans dégradé. */
+export type Accent = "bleu" | "vert" | "orange" | "rose" | "violet";
+
+const ACCENTS: Record<Accent, { bande: string; badge: string; fond: string }> = {
+  bleu: { bande: "from-blue-600 to-indigo-500", badge: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300", fond: "from-blue-50/70" },
+  vert: { bande: "from-emerald-500 to-teal-400", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300", fond: "from-emerald-50/70" },
+  orange: { bande: "from-orange-500 to-amber-400", badge: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300", fond: "from-orange-50/70" },
+  rose: { bande: "from-rose-500 to-pink-400", badge: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300", fond: "from-rose-50/70" },
+  violet: { bande: "from-violet-600 to-fuchsia-500", badge: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300", fond: "from-violet-50/70" },
+};
+
+/** Fond de page : léger dégradé bleu → vert pour donner de la vie. */
+export const FOND_PAGE =
+  "min-h-screen bg-gradient-to-b from-blue-50 via-slate-50 to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-slate-950";
+
+/** En-tête de page : dégradé bleu → vert aux couleurs ICHA, titre blanc. */
 export function EnTeteFormulaire({
   titre,
   sousTitre,
@@ -24,41 +37,54 @@ export function EnTeteFormulaire({
   retour?: string;
 }) {
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200/80 bg-white/95 px-4 py-3.5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
+    <header className="sticky top-0 z-20 flex items-center gap-3 bg-gradient-to-r from-[#1e3a8a] via-[#2563eb] to-[#359980] px-4 py-4 text-white shadow-md">
       <Link
         href={retour}
         aria-label="Retour"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
       >
         <ArrowLeft size={20} />
       </Link>
       <div className="min-w-0">
-        <h1 className="truncate text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">{titre}</h1>
-        {sousTitre && <p className="truncate text-xs text-slate-500 dark:text-slate-400">{sousTitre}</p>}
+        <h1 className="truncate text-lg font-bold tracking-tight">{titre}</h1>
+        {sousTitre && <p className="truncate text-xs text-white/80">{sousTitre}</p>}
       </div>
     </header>
   );
 }
 
-/** Bloc de formulaire : un titre, du contenu, rien d'autre. */
+/** Bloc de formulaire : bande de couleur, pastille d'icône, titre. */
 export function Carte({
   titre,
   description,
   children,
+  icone: Icone,
+  accent = "bleu",
 }: {
   titre?: string;
   description?: string;
   children: React.ReactNode;
+  icone?: LucideIcon;
+  accent?: Accent;
 }) {
+  const a = ACCENTS[accent];
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+    <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className={`h-1.5 bg-gradient-to-r ${a.bande}`} />
       {titre && (
-        <div className="mb-4">
-          <h2 className="text-[15px] font-semibold text-slate-900 dark:text-slate-100">{titre}</h2>
-          {description && <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{description}</p>}
+        <div className={`flex items-center gap-3 bg-gradient-to-b ${a.fond} to-transparent px-5 pb-1 pt-4 dark:from-transparent`}>
+          {Icone && (
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${a.badge}`}>
+              <Icone size={18} />
+            </span>
+          )}
+          <div className="min-w-0">
+            <h2 className="text-[15px] font-bold text-slate-900 dark:text-slate-100">{titre}</h2>
+            {description && <p className="text-xs text-slate-500 dark:text-slate-400">{description}</p>}
+          </div>
         </div>
       )}
-      <div className="space-y-5">{children}</div>
+      <div className="space-y-5 p-5">{children}</div>
     </section>
   );
 }
@@ -157,13 +183,57 @@ export function Choix<T extends string>({
             role="radio"
             aria-checked={actif}
             onClick={() => onChange(o.value)}
-            className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
+            className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
               actif
-                ? "border-[#1e3a8a] bg-[#1e3a8a] text-white"
-                : "border-slate-300 bg-white text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                ? "border-transparent bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white shadow-md shadow-blue-900/20"
+                : "border-slate-200 bg-slate-50 text-slate-700 hover:border-[#359980] hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
             }`}
           >
             {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Choix multiples (plusieurs réponses possibles), en grille de cases à cocher stylées. */
+export function ChoixMultiple({
+  options,
+  values,
+  onToggle,
+  colonnes = 2,
+}: {
+  options: { value: string; label: string }[];
+  values: string[];
+  onToggle: (v: string) => void;
+  colonnes?: 2 | 3;
+}) {
+  return (
+    <div className={`grid gap-2 ${colonnes === 3 ? "grid-cols-3" : "grid-cols-2"}`} role="group">
+      {options.map((o) => {
+        const actif = values.includes(o.value);
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="checkbox"
+            aria-checked={actif}
+            onClick={() => onToggle(o.value)}
+            className={`flex items-center gap-2 rounded-xl border px-3 py-3 text-left text-sm font-semibold transition-all ${
+              actif
+                ? "border-transparent bg-gradient-to-r from-[#359980] to-emerald-500 text-white shadow-md shadow-emerald-900/20"
+                : "border-slate-200 bg-slate-50 text-slate-700 hover:border-[#359980] hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            }`}
+          >
+            <span
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[11px] ${
+                actif ? "border-white/70 bg-white/25 text-white" : "border-slate-300 bg-white text-transparent dark:bg-slate-800"
+              }`}
+            >
+              ✓
+            </span>
+            <span className="leading-tight">{o.label}</span>
           </button>
         );
       })}
@@ -212,8 +282,8 @@ export function QuantitesProduit({
     { cle: "cartons", label: "Cartons" },
   ];
   return (
-    <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-      <p className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">{nom}</p>
+    <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 dark:border-slate-800 dark:bg-transparent">
+      <p className="mb-3 text-sm font-bold text-slate-900 dark:text-slate-100">{nom}</p>
       <div className={`grid gap-3 ${champs.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
         {champs.map((c) => (
           <label key={c.cle} className="block">
@@ -251,7 +321,7 @@ export function Encart({
       className={`rounded-xl px-4 py-3 text-sm ${
         ton === "attention"
           ? "bg-amber-50 font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
-          : "bg-slate-50 text-slate-700 dark:bg-slate-950 dark:text-slate-300"
+          : "bg-blue-50 text-blue-900 dark:bg-slate-950 dark:text-slate-300"
       }`}
     >
       {children}
@@ -287,8 +357,7 @@ export function BoutonPrincipal({
       form={form}
       onClick={onClick}
       disabled={disabled}
-      className="w-full rounded-xl py-3.5 text-base font-semibold text-white transition-opacity disabled:opacity-50"
-      style={{ backgroundColor: BLEU }}
+      className="w-full rounded-xl bg-gradient-to-r from-[#1e3a8a] via-[#2563eb] to-[#359980] py-3.5 text-base font-bold text-white shadow-lg shadow-blue-900/25 transition-opacity disabled:opacity-50"
     >
       {children}
     </button>

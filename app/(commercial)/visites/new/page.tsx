@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, Camera, CheckCircle2, Clock, Download } from "lucide-react";
+import { MapPin, Camera, CheckCircle2, Clock, Download, Store, ShoppingCart, MessageSquareText } from "lucide-react";
 import { queuePendingVisite } from "@/lib/offline/db";
 import { chargerReferentiels, chargerMe } from "@/lib/offline/referentiels";
 import { syncPendingVisites } from "@/lib/offline/sync";
@@ -16,6 +16,8 @@ import {
   ZoneTexte,
   Liste,
   Choix,
+  ChoixMultiple,
+  FOND_PAGE,
   OuiNon,
   QuantitesProduit,
   Encart,
@@ -145,10 +147,16 @@ export default function NouvelleVisitePage() {
   const [villeId, setVilleId] = useState("");
   const [quartierNom, setQuartierNom] = useState("");
   const [repere, setRepere] = useState("");
-  // Type de boutique : un identifiant connu, ou « Autre » avec une saisie libre.
-  const [typeChoisi, setTypeChoisi] = useState("");
+  // Types de boutique : plusieurs choix possibles, plus « Autre » avec une saisie libre.
+  // Le premier type coché détermine les prix du catalogue.
+  const [typesChoisis, setTypesChoisis] = useState<string[]>([]);
   const [typeAutre, setTypeAutre] = useState("");
-  const typeId = typeChoisi === TYPE_AUTRE ? "" : typeChoisi;
+  const autreActif = typesChoisis.includes(TYPE_AUTRE);
+  const typesIds = typesChoisis.filter((t) => t !== TYPE_AUTRE);
+  const typeId = typesIds[0] ?? "";
+  function basculerType(v: string) {
+    setTypesChoisis((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
+  }
   const [presentoir, setPresentoir] = useState<boolean | null>(null);
   const [presentoirAuto, setPresentoirAuto] = useState(false);
   // Deux photos de devanture (demande de Victor) — tableaux de taille 2,
@@ -422,7 +430,8 @@ export default function NouvelleVisitePage() {
         villeId,
         quartierNom: quartierNom || undefined,
         typeId: typeId || undefined,
-        typeAutre: typeChoisi === TYPE_AUTRE ? typeAutre.trim() || undefined : undefined,
+        typesIds: typesIds.length > 0 ? typesIds : undefined,
+        typeAutre: autreActif ? typeAutre.trim() || undefined : undefined,
         repere: repere || undefined,
         presentoir: presentoir ?? false,
       },
@@ -572,46 +581,46 @@ export default function NouvelleVisitePage() {
   const roleChoisi = role !== "";
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-28 dark:bg-slate-950">
+    <main className={`${FOND_PAGE} pb-28`}>
       <EnTeteFormulaire titre="Nouveau recensement" sousTitre="Recensement terrain du jour" />
 
       <form onSubmit={handleSubmit} id="visite-form" className="mx-auto max-w-xl space-y-4 px-4 pt-4">
         {/* Équipe : simple rappel, rien à saisir */}
-        <section className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-slate-200/80 bg-white p-5 text-sm dark:border-slate-800 dark:bg-slate-900">
+        <section className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl bg-gradient-to-br from-[#1e3a8a] to-[#359980] p-5 text-sm text-white shadow-md shadow-blue-900/15 [&_p.t]:text-white/70">
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Date</p>
-            <p suppressHydrationWarning className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
+            <p className="text-xs text-white/70">Date</p>
+            <p suppressHydrationWarning className="mt-0.5 font-medium text-white">
               {now.toLocaleDateString("fr-FR")}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Heure</p>
-            <p suppressHydrationWarning className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
+            <p className="text-xs text-white/70">Heure</p>
+            <p suppressHydrationWarning className="mt-0.5 font-medium text-white">
               {now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Agent commercial</p>
-            <p className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
+            <p className="text-xs text-white/70">Agent commercial</p>
+            <p className="mt-0.5 font-medium text-white">
               {session ? `${session.prenom} ${session.nom}` : "..."}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Binôme</p>
-            <p className="mt-0.5 font-medium text-slate-900 dark:text-slate-100">
+            <p className="text-xs text-white/70">Binôme</p>
+            <p className="mt-0.5 font-medium text-white">
               {session?.binomeNom ?? "Non assigné"}
             </p>
           </div>
         </section>
 
         {/* Point de vente — on commence par « Qui nous répond ? » */}
-        <Carte titre="Point de vente">
+        <Carte titre="Point de vente" icone={Store} accent="bleu">
           <Champ label="Qui nous répond ?">
             <Choix<RoleRepondant> options={ROLES} value={role} onChange={setRole} colonnes={4} />
           </Champ>
 
           {roleChoisi && (
-            <div className="space-y-4 rounded-xl bg-slate-50 p-4 dark:bg-slate-950">
+            <div className="space-y-4 rounded-xl border border-blue-100 bg-blue-50/60 p-4 dark:border-slate-800 dark:bg-slate-950">
               {role === "AUTRE" && (
                 <Champ label="Sa fonction">
                   <Saisie
@@ -736,13 +745,13 @@ export default function NouvelleVisitePage() {
             <Saisie placeholder="Ex : PK8 entrée Lycée" value={repere} onChange={(e) => setRepere(e.target.value)} />
           </Champ>
 
-          <Champ label="Type de boutique">
-            <Choix<string>
+          <Champ label="Type de boutique" aide="Plusieurs choix possibles. Les prix suivent le premier type coché.">
+            <ChoixMultiple
               options={[...types.map((t) => ({ value: t.id, label: t.nom })), { value: TYPE_AUTRE, label: "Autre" }]}
-              value={typeChoisi}
-              onChange={setTypeChoisi}
+              values={typesChoisis}
+              onToggle={basculerType}
             />
-            {typeChoisi === TYPE_AUTRE && (
+            {autreActif && (
               <div className="mt-3">
                 <Saisie
                   placeholder="Précisez le type de boutique"
@@ -804,7 +813,7 @@ export default function NouvelleVisitePage() {
         </Carte>
 
         {/* Achat et commande */}
-        <Carte titre="Achat et commande du jour">
+        <Carte titre="Achat et commande du jour" icone={ShoppingCart} accent="vert">
           <Champ label="Le client veut commander ?">
             <OuiNon value={veutCommander} onChange={setVeutCommander} />
           </Champ>
@@ -950,7 +959,7 @@ export default function NouvelleVisitePage() {
         </Carte>
 
         {/* Observations */}
-        <Carte titre="Observations">
+        <Carte titre="Observations" icone={MessageSquareText} accent="orange">
           <Champ label="Points importants à signaler (optionnel)">
             <ZoneTexte
               value={observation}

@@ -15,6 +15,8 @@ export async function listStockAvecProduits() {
     quantiteCartons: Math.floor(s.quantiteSachets / s.produit.sachetsParCarton),
     sachetsParCarton: s.produit.sachetsParCarton,
     seuilAlerte: s.seuilAlerte,
+    prixCarton: Number(s.produit.prixCarton),
+    coutCarton: s.produit.coutCarton === null ? null : Number(s.produit.coutCarton),
     enAlerte: s.quantiteSachets < s.seuilAlerte,
     updatedAt: s.updatedAt,
   }));

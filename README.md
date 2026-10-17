@@ -1485,3 +1485,44 @@ Ce projet est basé sur 3 documents fournis par Victor :
 1. Cahier des charges fonctionnel v1.1
 2. Exigences de scalabilité et gestion de grande base de données
 3. Infrastructure et déploiement (Vercel)
+
+
+## ✅ Caisse, tableau de bord, formulaires colorés
+
+- Nouvelle page **Caisse** (`/admin/caisse`) : solde cumulé (espèces / Mobile Money), recettes, dépenses, résultat, crédits à encaisser (encaissement réel qui crée un paiement), stock valorisé (vente / coût), journal exportable (PDF, CSV).
+- Page **Stock** : champ « Prix d'achat total » sur une entrée → dépense de caisse automatique + coût moyen du carton.
+- **Tableau de bord** refait : points de vente visités par jour (7/30 jours), par commercial, caisse, stock, observations en cartes.
+- **Type de boutique** : choix multiples (le premier coché fixe les prix).
+- Pages admin plus vivantes (en-têtes, sidebar, cartes, tableaux).
+
+SQL à lancer dans Supabase AVANT le déploiement :
+
+```sql
+ALTER TABLE "points_vente" ADD COLUMN IF NOT EXISTS "types_ids" TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE "produits" ADD COLUMN IF NOT EXISTS "cout_carton" DECIMAL(12,2);
+
+DO $$ BEGIN
+  CREATE TYPE "TypeOperationCaisse" AS ENUM ('DEPENSE', 'RECETTE');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE TYPE "CanalCaisse" AS ENUM ('ESPECES', 'MOBILE_MONEY');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS "operations_caisse" (
+  "id" TEXT PRIMARY KEY,
+  "type" "TypeOperationCaisse" NOT NULL,
+  "canal" "CanalCaisse" NOT NULL DEFAULT 'ESPECES',
+  "montant" DECIMAL(12,2) NOT NULL,
+  "categorie" TEXT,
+  "note" TEXT,
+  "reference_type" TEXT,
+  "reference_id" TEXT,
+  "created_by" TEXT,
+  "date_operation" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "operations_caisse_date_operation_idx" ON "operations_caisse"("date_operation");
+CREATE INDEX IF NOT EXISTS "operations_caisse_type_idx" ON "operations_caisse"("type");
+-- Anciens points de vente : reprendre leur type unique
+UPDATE "points_vente" SET "types_ids" = ARRAY["type_id"] WHERE "type_id" IS NOT NULL AND cardinality("types_ids") = 0;
+```

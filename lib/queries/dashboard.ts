@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { ajouterJours, debutJour, finJour, jourDouala } from "@/lib/utils/periode";
 
+// « Aujourd'hui » = la journée du Cameroun (UTC+1), quel que soit le fuseau
+// du serveur (Vercel tourne en UTC : sans cela, la journée commence à 1 h).
 function todayRange() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  return { gte: start, lte: end };
+  const jour = jourDouala();
+  return { gte: debutJour(jour), lte: finJour(jour) };
 }
 
 export async function getDashboardKpis() {
@@ -132,7 +132,7 @@ export async function getCaParBinomeEtVendeur() {
 
 export async function getObservationsRecentes(limit = 8) {
   return prisma.visite.findMany({
-    where: { observation: { not: null } },
+    where: { observation: { not: null }, NOT: { observation: "" } },
     orderBy: { dateVisite: "desc" },
     take: limit,
     select: {
@@ -144,3 +144,67 @@ export async function getObservationsRecentes(limit = 8) {
     },
   });
 }
+
+
+export type JourVisites = { jour: string; label: string; visites: number; pointsVisites: number };
+
+/**
+ * Activité terrain des N derniers jours : nombre de visites et nombre de
+ * points de vente DIFFÉRENTS visités chaque jour (un point revu deux fois le
+ * même jour compte une fois dans « points visités »).
+ */
+export async function getVisitesParJour(jours = 30) {
+  const aujourdhui = jourDouala();
+  const premier = ajouterJours(aujourdhui, -(jours - 1));
+  const visites = await prisma.visite.findMany({
+    where: { dateVisite: { gte: debutJour(premier), lte: finJour(aujourdhui) } },
+    select: { dateVisite: true, pointVenteId: true, commercialId: true },
+  });
+
+  const parJour = new Map<string, { visites: number; points: Set<string> }>();
+  for (let i = 0; i < jours; i++) parJour.set(ajouterJours(premier, i), { visites: 0, points: new Set() });
+  for (const v of visites) {
+    const j = jourDouala(v.dateVisite);
+    const e = parJour.get(j);
+    if (!e) continue;
+    e.visites += 1;
+    e.points.add(v.pointVenteId);
+  }
+
+  const serie: JourVisites[] = [...parJour.entries()].map(([jour, e]) => ({
+    jour,
+    label: new Date(`${jour}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", timeZone: "UTC" }),
+    visites: e.visites,
+    pointsVisites: e.points.size,
+  }));
+
+  // Détail du jour par commercial
+  const commerciauxAujourdhui = new Map<string, Set<string>>();
+  for (const v of visites) {
+    if (jourDouala(v.dateVisite) !== aujourdhui) continue;
+    const set = commerciauxAujourdhui.get(v.commercialId) ?? new Set<string>();
+    set.add(v.pointVenteId);
+    commerciauxAujourdhui.set(v.commercialId, set);
+  }
+  const ids = [...commerciauxAujourdhui.keys()];
+  const users = ids.length
+    ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, prenom: true, nom: true } })
+    : [];
+  const parCommercial = users
+    .map((u) => ({ nom: `${u.prenom} ${u.nom}`, points: commerciauxAujourdhui.get(u.id)?.size ?? 0 }))
+    .sort((a, b) => b.points - a.points);
+
+  const moyenne7 = serie.slice(-7).reduce((s, j) => s + j.pointsVisites, 0) / 7;
+  const total30 = serie.reduce((s, j) => s + j.pointsVisites, 0);
+
+  return {
+    serie,
+    aujourdhui: serie[serie.length - 1],
+    hier: serie[serie.length - 2],
+    moyenne7: Math.round(moyenne7 * 10) / 10,
+    total30,
+    parCommercial,
+  };
+}
+
+export type VisitesParJour = Awaited<ReturnType<typeof getVisitesParJour>>;

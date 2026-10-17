@@ -81,7 +81,7 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
             <div>
               <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{pv.nom}</h1>
               <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                {pv.type?.nom ?? pv.typeAutre ?? "—"} · {pv.ville?.nom ?? "—"}
+                {[...pv.typesNoms, ...(pv.typeAutre ? [pv.typeAutre] : [])].join(", ") || "—"} · {pv.ville?.nom ?? "—"}
                 {pv.quartier ? ` · ${pv.quartier.nom}` : ""}
               </p>
             </div>

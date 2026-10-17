@@ -10,7 +10,7 @@
 // - Une réponse redirigée (ex. session expirée -> /login) n'est JAMAIS mise
 //   en cache : le navigateur refuse de servir une redirection à une navigation.
 
-const VERSION = "v6";
+const VERSION = "v7";
 const STATIC_CACHE = `siri-static-${VERSION}`;
 const PAGES_CACHE = `siri-pages-${VERSION}`;
 const PAGES_TERRAIN = ["/dashboard", "/visites/new", "/visites/rotation", "/visites/reassort", "/historique", "/profil"];

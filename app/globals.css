@@ -70,3 +70,50 @@ body {
     display: none !important;
   }
 }
+
+/* ------------------------------------------------------------------
+   Pages admin : un peu de vie. Fond légèrement teinté, cartes avec une
+   ombre douce, en-têtes de tableaux colorés, survol des lignes, boutons
+   principaux en dégradé. Appliqué via la classe .admin-vie du layout, sans
+   toucher au code de chaque page.
+   ------------------------------------------------------------------ */
+.admin-vie {
+  background-image: linear-gradient(180deg, #e8f0ff 0, #f4f8fb 320px, #f8fafc 100%);
+}
+.dark .admin-vie {
+  background-image: none;
+}
+.admin-vie .bg-white.rounded-2xl,
+.admin-vie .bg-white.rounded-xl {
+  box-shadow: 0 1px 2px rgba(30, 58, 138, 0.05), 0 6px 18px -8px rgba(30, 58, 138, 0.16);
+}
+.admin-vie thead tr {
+  background-image: linear-gradient(90deg, #eaf1ff, #e8f7f1);
+}
+.admin-vie thead th {
+  color: #3b4f7d;
+}
+.dark .admin-vie thead tr {
+  background-image: none;
+  background-color: rgba(30, 41, 59, 0.7);
+}
+.dark .admin-vie thead th {
+  color: #94a3b8;
+}
+.admin-vie tbody tr {
+  transition: background-color 0.15s;
+}
+.admin-vie tbody tr:hover {
+  background-color: rgba(37, 99, 235, 0.045);
+}
+.admin-vie .bg-brand,
+.admin-vie .bg-blue-700 {
+  background-image: linear-gradient(90deg, #1e3a8a, #2563eb);
+}
+.admin-vie input:focus,
+.admin-vie select:focus,
+.admin-vie textarea:focus {
+  outline: none;
+  border-color: #359980;
+  box-shadow: 0 0 0 3px rgba(53, 153, 128, 0.18);
+}

@@ -20,11 +20,22 @@ function formatFcfaShort(n: number) {
 }
 
 export function CaChart({ title, items, color = "#1e3a8a" }: { title: string; items: CaItem[]; color?: string }) {
+  const id = `g${color.replace("#", "")}`;
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 print:break-inside-avoid">
-      <p className="mb-4 text-sm font-semibold text-slate-800 dark:text-slate-200">{title}</p>
+    <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 print:break-inside-avoid">
+      <div className="h-1" style={{ background: `linear-gradient(90deg, ${color}, ${color}99)` }} />
+      <div className="p-5">
+      <p className="mb-4 text-sm font-bold text-slate-800 dark:text-slate-200">{title}</p>
+      {items.length === 0 && <p className="py-16 text-center text-sm text-slate-400">Aucune vente aujourd&apos;hui.</p>}
+      {items.length > 0 && (
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={items} margin={{ top: 4, right: 8, left: -20, bottom: 4 }}>
+          <defs>
+            <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.75} />
+              <stop offset="100%" stopColor={color} />
+            </linearGradient>
+          </defs>
           <XAxis
             axisLine={false}
             tickLine={false}
@@ -40,9 +51,11 @@ export function CaChart({ title, items, color = "#1e3a8a" }: { title: string; it
             formatter={(value: number) => [`${value.toLocaleString("fr-FR")} FCFA`, "CA"]}
             contentStyle={{ borderRadius: 10, border: "1px solid #e2e8f0", fontSize: 12 }}
           />
-          <Bar dataKey="montant" radius={[4, 4, 0, 0]} maxBarSize={44} fill={color} />
+          <Bar dataKey="montant" radius={[6, 6, 0, 0]} maxBarSize={44} fill={`url(#${id})`} />
         </BarChart>
       </ResponsiveContainer>
+      )}
+      </div>
     </div>
   );
 }
@@ -83,7 +96,7 @@ export function PrintButton() {
   return (
     <button
       onClick={() => window.print()}
-      className="hidden items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 md:flex hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 print:hidden"
+      className="hidden items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3.5 py-2 text-sm font-semibold text-[#1e3a8a] shadow-sm md:flex hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 print:hidden"
     >
       <Printer size={15} />
       Imprimer

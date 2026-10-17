@@ -20,7 +20,24 @@ import {
   BellRing,
   Package,
   Target,
+  Wallet,
 } from "lucide-react";
+
+const COULEURS_ICONES: Record<string, string> = {
+  "/admin/dashboard": "text-blue-600",
+  "/admin/alertes": "text-rose-500",
+  "/admin/points-vente": "text-emerald-600",
+  "/admin/commandes": "text-amber-500",
+  "/admin/stock": "text-violet-600",
+  "/admin/caisse": "text-[#359980]",
+  "/admin/objectifs": "text-pink-500",
+  "/admin/factures": "text-sky-600",
+  "/admin/tracking": "text-cyan-600",
+  "/admin/clients": "text-indigo-500",
+  "/admin/rapports": "text-teal-600",
+  "/admin/parametres": "text-slate-500",
+  "/admin/utilisateurs": "text-blue-500",
+};
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -28,6 +45,7 @@ const NAV_ITEMS = [
   { href: "/admin/points-vente", label: "Points de vente", icon: Store },
   { href: "/admin/commandes", label: "Commandes", icon: Truck },
   { href: "/admin/stock", label: "Stock", icon: Package },
+  { href: "/admin/caisse", label: "Caisse", icon: Wallet },
   { href: "/admin/objectifs", label: "Objectifs", icon: Target },
   { href: "/admin/factures", label: "Factures", icon: Receipt },
   { href: "/admin/tracking", label: "Tracking", icon: Navigation },
@@ -60,7 +78,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:flex">
       {/* Sidebar — desktop uniquement */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 md:flex print:hidden">
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200/80 bg-gradient-to-b from-white via-white to-emerald-50/60 dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 md:flex print:hidden">
         <div className="px-5 pb-4 pt-6">
           <IchaLogo height={54} />
           <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
@@ -78,12 +96,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 href={item.href}
                 className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                   active
-                    ? "bg-slate-100 font-semibold text-[#1e3a8a] dark:bg-slate-800 dark:text-blue-300"
-                    : "font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200"
+                    ? "bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] font-semibold text-white shadow-md shadow-blue-900/20"
+                    : "font-medium text-slate-600 hover:bg-blue-50/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200"
                 }`}
               >
-                {active && <span className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-[#359980]" />}
-                <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                <Icon size={18} strokeWidth={active ? 2.2 : 1.9} className={active ? "text-white" : COULEURS_ICONES[item.href]} />
                 {item.label}
                 {item.href === "/admin/alertes" && alertesCount > 0 && (
                   <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-alert px-1 text-[10px] font-bold text-white">
@@ -102,7 +119,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Contenu */}
-      <div className="min-h-screen flex-1 bg-slate-50 dark:bg-slate-950 pb-20 dark:bg-slate-950 md:pb-0">
+      <div className="admin-vie min-h-screen flex-1 bg-slate-50 pb-20 dark:bg-slate-950 md:pb-0">
         {/* Bouton déconnexion + thème flottants — mobile uniquement (la
             sidebar, hors écran sur mobile, porte déjà ces boutons sur
             desktop) */}

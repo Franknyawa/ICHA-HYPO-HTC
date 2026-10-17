@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, CheckCircle2, Clock, ShoppingCart } from "lucide-react";
+import { Camera, CheckCircle2, Clock, ShoppingCart, Search, MessageSquareText } from "lucide-react";
 import { PointVenteSearch, type ResultatRecherche } from "@/components/commercial/PointVenteSearch";
 import { compressImage } from "@/lib/utils/image";
 import { queuePendingVisite } from "@/lib/offline/db";
 import { syncPendingVisites } from "@/lib/offline/sync";
 import {
   EnTeteFormulaire,
+  FOND_PAGE,
   Carte,
   Champ,
   ZoneTexte,
@@ -139,12 +140,12 @@ export default function RotationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-28 dark:bg-slate-950">
+    <main className={`${FOND_PAGE} pb-28`}>
       <EnTeteFormulaire titre="Rotation et achalandage" sousTitre="Visite de suivi" />
 
       <div className="mx-auto max-w-xl space-y-4 px-4 pt-4">
         {!pointVente ? (
-          <Carte titre="Rechercher le point de vente">
+          <Carte titre="Rechercher le point de vente" icone={Search} accent="bleu">
             <PointVenteSearch onSelect={setPointVente} />
           </Carte>
         ) : (
@@ -168,7 +169,7 @@ export default function RotationPage() {
             </button>
 
             <form onSubmit={handleSubmit} id="rotation-form" className="space-y-4">
-              <Carte titre="Photo avec le boutiquier">
+              <Carte titre="Photo avec le boutiquier" icone={Camera} accent="vert">
                 <input
                   type="file"
                   accept="image/*"
@@ -212,7 +213,7 @@ export default function RotationPage() {
                 </p>
               </Carte>
 
-              <Carte titre="Rapport de visite">
+              <Carte titre="Rapport de visite" icone={MessageSquareText} accent="violet">
                 <Champ label="Observations">
                   <ZoneTexte
                     value={observation}

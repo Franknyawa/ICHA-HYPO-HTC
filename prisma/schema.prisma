@@ -98,6 +98,9 @@ model Produit {
   prixSachet        Decimal  @default(0) @map("prix_sachet") @db.Decimal(10, 2)
   prixFilet         Decimal? @map("prix_filet") @db.Decimal(10, 2) // null pour HYPO
   prixCarton        Decimal  @default(0) @map("prix_carton") @db.Decimal(10, 2)
+  // Coût d'achat moyen d'un carton (mis à jour à chaque entrée de stock avec prix d'achat).
+  // Sert à valoriser le stock au coût dans la caisse.
+  coutCarton        Decimal? @map("cout_carton") @db.Decimal(12, 2)
   actif             Boolean  @default(true)
   createdAt         DateTime @default(now()) @map("created_at")
 
@@ -252,6 +255,9 @@ model PointVente {
   repondantFonction  String? @map("repondant_fonction")
   patronNom          String? @map("patron_nom")
   typeAutre          String? @map("type_autre") // type de boutique saisi librement (option « Autre »)
+  // Plusieurs types possibles pour un même point de vente. typeId = le premier
+  // choisi : c'est lui qui détermine les prix du catalogue.
+  typesIds           String[] @default([]) @map("types_ids")
   villeId       String    @map("ville_id")
   ville         Ville     @relation(fields: [villeId], references: [id])
   quartierId    String?   @map("quartier_id")
@@ -517,6 +523,39 @@ model MouvementStock {
   @@index([createdAt])
   @@index([referenceType, referenceId])
   @@map("mouvements_stock")
+}
+
+// ---------------------------------------------------------------------------
+// CAISSE (opérations manuelles ; les encaissements des ventes viennent des paiements)
+// ---------------------------------------------------------------------------
+
+enum TypeOperationCaisse {
+  DEPENSE
+  RECETTE
+}
+
+enum CanalCaisse {
+  ESPECES
+  MOBILE_MONEY
+}
+
+model OperationCaisse {
+  id            String              @id @default(uuid())
+  type          TypeOperationCaisse
+  canal         CanalCaisse         @default(ESPECES)
+  montant       Decimal             @db.Decimal(12, 2)
+  categorie     String?             // « Achat de stock », « Transport », « Salaire »…
+  note          String?
+  // Liens facultatifs : ex. "MOUVEMENT_STOCK" pour un achat de stock enregistré depuis la page Stock
+  referenceType String?             @map("reference_type")
+  referenceId   String?             @map("reference_id")
+  createdById   String?             @map("created_by")
+  dateOperation DateTime            @default(now()) @map("date_operation")
+  createdAt     DateTime            @default(now()) @map("created_at")
+
+  @@index([dateOperation])
+  @@index([type])
+  @@map("operations_caisse")
 }
 
 // ---------------------------------------------------------------------------

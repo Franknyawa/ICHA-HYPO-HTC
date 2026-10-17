@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { apiFetch, ApiError } from "@/lib/client/apiFetch";
+import { formatFcfa } from "@/lib/utils/format";
 import {
   Package,
   AlertTriangle,
@@ -12,6 +13,7 @@ import {
   X,
   RefreshCw,
   ClipboardList,
+  Wallet,
 } from "lucide-react";
 
 type StockItem = {
@@ -23,6 +25,8 @@ type StockItem = {
   quantiteCartons: number;
   sachetsParCarton: number;
   seuilAlerte: number;
+  prixCarton: number;
+  coutCarton: number | null;
   enAlerte: boolean;
   updatedAt: string;
 };
@@ -66,6 +70,9 @@ export default function StockPage() {
   const [mvtUnite, setMvtUnite] = useState<"cartons" | "sachets">("cartons");
   const [mvtQuantite, setMvtQuantite] = useState<number | "">("");
   const [mvtNote, setMvtNote] = useState("");
+  // Achat de stock : prix payé pour l'entrée (enregistré en dépense de caisse).
+  const [mvtCout, setMvtCout] = useState<number | "">("");
+  const [mvtCanal, setMvtCanal] = useState<"ESPECES" | "MOBILE_MONEY">("ESPECES");
   const [mvtError, setMvtError] = useState<string | null>(null);
   const [mvtSuccess, setMvtSuccess] = useState<string | null>(null);
   const [mvtSaving, setMvtSaving] = useState(false);
@@ -171,13 +178,21 @@ export default function StockPage() {
       await apiFetch(`/api/stock/${cible.produitId}/ajuster`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, quantiteSachets, motif: mvtNote || undefined }),
+        body: JSON.stringify({
+          type,
+          quantiteSachets,
+          motif: mvtNote || undefined,
+          ...(mvtType === "ENTREE" && mvtCout !== "" && Number(mvtCout) > 0
+            ? { coutTotal: Number(mvtCout), canal: mvtCanal }
+            : {}),
+        }),
       });
       setMvtSuccess(
         `${mvtType === "ENTREE" ? "Entrée" : "Ajustement"} enregistré pour ${cible.produitNom}.`
       );
       setMvtQuantite("");
       setMvtNote("");
+      setMvtCout("");
       loadStocks();
       loadHistorique();
     } catch (e) {
@@ -214,6 +229,8 @@ export default function StockPage() {
                 <tr className="border-b border-slate-100 dark:border-slate-800 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                   <th className="px-4 py-3">Produit</th>
                   <th className="px-4 py-3">Stock disponible</th>
+                  <th className="px-4 py-3">Valeur à la vente</th>
+                  <th className="px-4 py-3">Coût moyen / carton</th>
                   <th className="px-4 py-3">Seuil d'alerte</th>
                   <th className="px-4 py-3">Statut</th>
                 </tr>
@@ -238,6 +255,12 @@ export default function StockPage() {
                     <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
                       <span className="font-semibold">{s.quantiteCartons}</span> cartons
                       <span className="text-slate-400 dark:text-slate-500"> · {s.quantiteSachets} sachets</span>
+                    </td>
+                    <td className="px-4 py-3 font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                      {formatFcfa(Math.round((s.quantiteSachets / s.sachetsParCarton) * s.prixCarton))}
+                    </td>
+                    <td className="px-4 py-3 tabular-nums text-slate-600 dark:text-slate-300">
+                      {s.coutCarton === null ? <span className="text-slate-300 dark:text-slate-600">—</span> : formatFcfa(s.coutCarton)}
                     </td>
                     <td className="px-4 py-3">
                       {seuilEnEdition === s.produitId ? (
@@ -293,7 +316,7 @@ export default function StockPage() {
                 ))}
                 {stocks.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
                       Aucun produit en stock.
                     </td>
                   </tr>
@@ -363,6 +386,40 @@ export default function StockPage() {
             >
               {mvtSaving ? "..." : "Valider"}
             </button>
+
+            {mvtType === "ENTREE" && (
+              <div className="grid gap-3 rounded-xl bg-emerald-50/70 p-3 dark:bg-slate-800/50 md:col-span-5 md:grid-cols-[1fr_auto]">
+                <label className="block">
+                  <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                    <Wallet size={13} /> Prix d&apos;achat total (FCFA) — facultatif
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Ex : 1 200 000 — enregistré en dépense de caisse"
+                    value={mvtCout}
+                    onChange={(e) => setMvtCout(e.target.value === "" ? "" : Number(e.target.value))}
+                    className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                </label>
+                <div className="flex items-end gap-2">
+                  {(["ESPECES", "MOBILE_MONEY"] as const).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setMvtCanal(c)}
+                      className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
+                        mvtCanal === c
+                          ? "border-transparent bg-[#359980] text-white"
+                          : "border-emerald-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                      }`}
+                    >
+                      {c === "ESPECES" ? "Espèces" : "Mobile Money"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </form>
 
           {mvtType === "AJUSTEMENT" && produitSelectionne && (

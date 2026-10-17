@@ -88,6 +88,7 @@ const nouveauPointVenteSchema = z.object({
   quartierNom: z.string().optional(),
   repere: z.string().optional(),
   typeId: z.string().uuid().optional().nullable(),
+  typesIds: z.array(z.string().uuid()).max(12).optional(),
   presentoir: z.boolean().default(false),
 });
 

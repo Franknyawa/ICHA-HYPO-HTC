@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, Clock, Download } from "lucide-react";
+import { CheckCircle2, Clock, Download, Search, ShoppingCart, Wallet, MessageSquareText } from "lucide-react";
 import { PointVenteSearch, type ResultatRecherche } from "@/components/commercial/PointVenteSearch";
 import { queuePendingVisite } from "@/lib/offline/db";
 import { chargerReferentiels, chargerMe, pointVenteLocal } from "@/lib/offline/referentiels";
@@ -10,6 +10,7 @@ import { syncPendingVisites } from "@/lib/offline/sync";
 import { genererFacturePdf } from "@/lib/utils/facture-pdf";
 import {
   EnTeteFormulaire,
+  FOND_PAGE,
   Carte,
   Champ,
   Saisie,
@@ -293,14 +294,14 @@ function ReassortContent() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-28 dark:bg-slate-950">
+    <main className={`${FOND_PAGE} pb-28`}>
       <EnTeteFormulaire titre="Visite de réassort" sousTitre="Commande de produits" />
 
       <div className="mx-auto max-w-xl space-y-4 px-4 pt-4">
         {chargementPrefill ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Chargement du point de vente...</p>
         ) : !pointVente ? (
-          <Carte titre="Rechercher le point de vente">
+          <Carte titre="Rechercher le point de vente" icone={Search} accent="bleu">
             <PointVenteSearch onSelect={setPointVente} />
           </Carte>
         ) : (
@@ -313,7 +314,7 @@ function ReassortContent() {
             </section>
 
             <form onSubmit={handleSubmit} id="reassort-form" className="space-y-4">
-              <Carte titre="Produits commandés">
+              <Carte titre="Produits commandés" icone={ShoppingCart} accent="vert">
                 <div className="space-y-3">
                   {produits.map((p) => (
                     <QuantitesProduit
@@ -334,7 +335,7 @@ function ReassortContent() {
                 </Champ>
               </Carte>
 
-              <Carte titre="Mode de paiement">
+              <Carte titre="Mode de paiement" icone={Wallet} accent="orange">
                 <Choix<typeof modePaiement>
                   colonnes={2}
                   value={modePaiement}
@@ -404,7 +405,7 @@ function ReassortContent() {
                 )}
               </Carte>
 
-              <Carte titre="Rapport de réassort">
+              <Carte titre="Rapport de réassort" icone={MessageSquareText} accent="violet">
                 <ZoneTexte
                   value={observation}
                   onChange={(e) => setObservation(e.target.value)}
