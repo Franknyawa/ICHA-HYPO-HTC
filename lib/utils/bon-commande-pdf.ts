@@ -111,7 +111,7 @@ export async function genererBonCommandePdf(data: BonCommandeData) {
   doc.text(formatFcfa(totalGeneral), largeur - MARGE, y + 1, { align: "right" });
 
   y = assurerPlace(doc, y + 18, 24);
-  dessinerSignatures(doc, y + 12, ["Signature du client", `Signature ${data.commercialNom}`]);
+  dessinerSignatures(doc, y + 12, ["Signature (Nom du client)", `Signature ${data.commercialNom}`]);
 
   dessinerPieds(doc);
   doc.save(nomFichier("bon-commande", data.reference, data.client.nom));

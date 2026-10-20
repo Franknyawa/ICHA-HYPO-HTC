@@ -1609,3 +1609,13 @@ rejouable sans danger.
 
 SQL à exécuter : `docs/migration-2026-10-20.sql`, BLOC 5 (seul), puis BLOC 6, puis BLOC 7.
 Objectifs : une seule carte « Objectif binôme » appliquée à tous les binômes actifs (`PUT /api/parametres/objectifs`).
+
+## Lot 3 (20 octobre 2026, soir)
+
+- Rubrique **Facturation** (ex-Factures) : onglets Factures, Factures d'avoir (**FA00001**) et Factures retour (**FR00001**), réservée Admin et Super Admin. Bouton « Avoir / Retour » sur chaque commande validée.
+- Retour : remise en stock vendable ou en avaries, avoir associé optionnel. L'avoir diminue la créance en Caisse.
+- PDF : « Date et Heure » sur tous les documents, « Signature (Nom du client) » sur factures, avoirs, retours et bons de commande.
+- Agent de facturation : plus de choix dans Commandes/Factures, réglage unique dans Paramètres.
+- Seuils d'alerte de stock : modifiés dans Paramètres (cartons) ; la rubrique Stock les affiche en lecture seule.
+- Performance : relations chargées en une requête SQL (`relationJoins`), requêtes en parallèle, photos en data URL servies à part, images en chargement différé.
+- SQL : `docs/migration-2026-10-20.sql`, BLOC 8.

@@ -11,13 +11,12 @@ export type AgentOption = { id: string; nom: string };
 
 /**
  * Génère la facture numérotée (FVICHA 0000X) d'une vente ou d'une commande.
- * L'agent de facturation par défaut est appliqué ; s'il y en a plusieurs, un
- * petit sélecteur permet d'en choisir un autre avant l'impression.
+ * L'agent de facturation par défaut se règle dans Paramètres.
  */
 export function FactureButton({
   type,
   id,
-  agents = [],
+  agents: _agents = [],
   label = "Facture",
 }: {
   type: "VENTE" | "COMMANDE";
@@ -26,7 +25,6 @@ export function FactureButton({
   label?: string;
 }) {
   const [loading, setLoading] = useState(false);
-  const [agentId, setAgentId] = useState("");
 
   async function generer() {
     setLoading(true);
@@ -34,7 +32,7 @@ export function FactureButton({
       const f = await apiFetch<FactureJson>(`/api/${type === "VENTE" ? "ventes" : "commandes"}/${id}/facture`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(agentId ? { agentId } : {}),
+        body: JSON.stringify({}),
       });
       await genererFacturePdf({
         numero: f.numero,
@@ -55,21 +53,6 @@ export function FactureButton({
 
   return (
     <span className="inline-flex items-center gap-1.5">
-      {agents.length > 1 && (
-        <select
-          value={agentId}
-          onChange={(e) => setAgentId(e.target.value)}
-          aria-label="Agent de facturation"
-          className="max-w-[9rem] rounded-lg border border-slate-200 bg-white px-1.5 py-1.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-        >
-          <option value="">Agent par défaut</option>
-          {agents.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.nom}
-            </option>
-          ))}
-        </select>
-      )}
       <button
         onClick={generer}
         disabled={loading}

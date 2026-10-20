@@ -119,3 +119,42 @@ CREATE UNIQUE INDEX IF NOT EXISTS "bons_commande_vente_id_key" ON "bons_commande
 -- ===== BLOC 7 : index pour accélérer les pages =====
 CREATE INDEX IF NOT EXISTS "paiements_commande_id_idx" ON "paiements"("commande_id");
 CREATE INDEX IF NOT EXISTS "commandes_statut_date_idx" ON "commandes"("statut", "date_commande");
+
+
+-- ============================================================
+-- BLOC 8 (lot 3) : factures d'avoir (FA) et factures retour (FR)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS "factures_avoir" (
+  "id" TEXT PRIMARY KEY,
+  "numero" SERIAL NOT NULL,
+  "commande_id" TEXT NOT NULL,
+  "retour_id" TEXT,
+  "motif" TEXT NOT NULL,
+  "montant" DECIMAL(12,2) NOT NULL,
+  "lignes" JSONB NOT NULL DEFAULT '[]',
+  "created_by_id" TEXT,
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "factures_avoir_numero_key" ON "factures_avoir"("numero");
+CREATE UNIQUE INDEX IF NOT EXISTS "factures_avoir_retour_id_key" ON "factures_avoir"("retour_id");
+CREATE INDEX IF NOT EXISTS "factures_avoir_commande_id_idx" ON "factures_avoir"("commande_id");
+CREATE INDEX IF NOT EXISTS "factures_avoir_created_at_idx" ON "factures_avoir"("created_at");
+
+CREATE TABLE IF NOT EXISTS "factures_retour" (
+  "id" TEXT PRIMARY KEY,
+  "numero" SERIAL NOT NULL,
+  "commande_id" TEXT NOT NULL,
+  "motif" TEXT NOT NULL,
+  "destination" TEXT NOT NULL DEFAULT 'STOCK',
+  "montant" DECIMAL(12,2) NOT NULL,
+  "lignes" JSONB NOT NULL DEFAULT '[]',
+  "created_by_id" TEXT,
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "factures_retour_numero_key" ON "factures_retour"("numero");
+CREATE INDEX IF NOT EXISTS "factures_retour_commande_id_idx" ON "factures_retour"("commande_id");
+CREATE INDEX IF NOT EXISTS "factures_retour_created_at_idx" ON "factures_retour"("created_at");
+
+-- Index de performance (pages Commandes et Points de vente)
+CREATE INDEX IF NOT EXISTS "commandes_date_commande_idx" ON "commandes"("date_commande");
+CREATE INDEX IF NOT EXISTS "commandes_point_vente_id_idx" ON "commandes"("point_vente_id");

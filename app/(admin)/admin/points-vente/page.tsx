@@ -201,6 +201,8 @@ export default async function PointsVentePage({
                         <img
                           src={photo.url}
                           alt={pv.nom}
+                          loading="lazy"
+                          decoding="async"
                           className="h-11 w-11 rounded-lg object-cover"
                         />
                       ) : (
@@ -288,6 +290,8 @@ export default async function PointsVentePage({
                   <img
                     src={photo.url}
                     alt={pv.nom}
+                    loading="lazy"
+                    decoding="async"
                     className="h-14 w-14 shrink-0 rounded-xl object-cover"
                   />
                 ) : (

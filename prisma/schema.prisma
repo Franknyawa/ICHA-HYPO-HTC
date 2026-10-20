@@ -6,7 +6,10 @@
 // ============================================================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // Charge les relations d'une liste en UNE requête SQL (JOIN) au lieu de 6 à 8
+  // requêtes successives : gain net sur les pages Commandes et Points de vente.
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -176,6 +179,40 @@ model BonLivraison {
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@map("bons_livraison")
+}
+
+/// Facture d'avoir « FA00001 » : annule tout ou partie d'une facture (erreur de prix, remise, produit abîmé…). Diminue la créance de la commande.
+model FactureAvoir {
+  id          String   @id @default(uuid())
+  numero      Int      @unique @default(autoincrement())
+  commandeId  String   @map("commande_id")
+  retourId    String?  @unique @map("retour_id")
+  motif       String
+  montant     Decimal  @db.Decimal(12, 2)
+  lignes      Json     @default("[]")
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([commandeId])
+  @@index([createdAt])
+  @@map("factures_avoir")
+}
+
+/// Facture retour « FR00001 » : marchandise rendue par le client (retour en stock ou en avaries).
+model FactureRetour {
+  id          String   @id @default(uuid())
+  numero      Int      @unique @default(autoincrement())
+  commandeId  String   @map("commande_id")
+  motif       String
+  destination String   @default("STOCK") // STOCK | AVARIES
+  montant     Decimal  @db.Decimal(12, 2)
+  lignes      Json     @default("[]")
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([commandeId])
+  @@index([createdAt])
+  @@map("factures_retour")
 }
 
 /// Objectifs de cartons par région ou par ville, paramétrables par période.

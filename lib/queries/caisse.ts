@@ -72,7 +72,7 @@ type LigneCreance = {
 export async function getCreditsAEncaisser(): Promise<CreditAEncaisser[]> {
   const rows = await prisma.$queryRaw<LigneCreance[]>`
     SELECT c.id,
-           c.montant_total::float8 AS total,
+           (c.montant_total - COALESCE(av.credit, 0))::float8 AS total,
            COALESCE(p.paye, 0)::float8 AS paye,
            c.mode_paiement::text AS mode,
            c.created_at AS date,
@@ -88,9 +88,14 @@ export async function getCreditsAEncaisser(): Promise<CreditAEncaisser[]> {
       WHERE commande_id IS NOT NULL
       GROUP BY commande_id
     ) p ON p.commande_id = c.id
+    LEFT JOIN (
+      SELECT commande_id, SUM(montant) AS credit
+      FROM factures_avoir
+      GROUP BY commande_id
+    ) av ON av.commande_id = c.id
     WHERE c.statut IN ('EN_LIVRAISON', 'LIVREE')
       AND c.montant_total > 0
-      AND c.montant_total - COALESCE(p.paye, 0) > 0.5
+      AND c.montant_total - COALESCE(av.credit, 0) - COALESCE(p.paye, 0) > 0.5
     ORDER BY c.created_at ASC`;
 
   return rows.map((r) => ({

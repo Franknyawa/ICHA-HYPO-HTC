@@ -152,11 +152,6 @@ export default function StockView({ lectureSeule = false }: { lectureSeule?: boo
   const [sortieError, setSortieError] = useState<string | null>(null);
   const [sortieSuccess, setSortieSuccess] = useState<string | null>(null);
 
-  // --- Édition inline du seuil d'alerte -----------------------------
-  const [seuilEnEdition, setSeuilEnEdition] = useState<string | null>(null); // produitId
-  const [seuilValeur, setSeuilValeur] = useState(0);
-  const [seuilSaving, setSeuilSaving] = useState(false);
-
   // --- Formulaire "Enregistrer un mouvement manuel" -----------------
   const [mvtProduitId, setMvtProduitId] = useState("");
   const [mvtType, setMvtType] = useState<"ENTREE" | "AJUSTEMENT">("ENTREE");
@@ -293,28 +288,6 @@ export default function StockView({ lectureSeule = false }: { lectureSeule?: boo
     [stocks, mvtProduitId]
   );
 
-  function ouvrirEditionSeuil(item: StockItem) {
-    setSeuilEnEdition(item.produitId);
-    setSeuilValeur(item.seuilAlerte);
-  }
-
-  async function enregistrerSeuil(item: StockItem) {
-    setSeuilSaving(true);
-    try {
-      await apiFetch(`/api/stock/${item.produitId}/seuil`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seuilAlerte: seuilValeur }),
-      });
-      setSeuilEnEdition(null);
-      loadStocks();
-    } catch (e) {
-      alert(e instanceof ApiError ? e.message : "Échec de l'enregistrement du seuil.");
-    } finally {
-      setSeuilSaving(false);
-    }
-  }
-
   async function soumettreMouvement(e: React.FormEvent) {
     e.preventDefault();
     setMvtError(null);
@@ -412,7 +385,7 @@ export default function StockView({ lectureSeule = false }: { lectureSeule?: boo
                   <th className="px-4 py-3">Stock disponible</th>
                   <th className="px-4 py-3">Valeur à la vente</th>
                   <th className="px-4 py-3">Coût moyen / carton</th>
-                  <th className="px-4 py-3">Seuil d'alerte</th>
+                  <th className="px-4 py-3" title="Se règle dans Paramètres">Seuil d'alerte</th>
                   <th className="px-4 py-3">Statut</th>
                 </tr>
               </thead>
@@ -444,43 +417,7 @@ export default function StockView({ lectureSeule = false }: { lectureSeule?: boo
                       {s.coutCarton === null ? <span className="text-slate-300 dark:text-slate-600">—</span> : formatFcfa(s.coutCarton)}
                     </td>
                     <td className="px-4 py-3">
-                      {seuilEnEdition === s.produitId ? (
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            min={0}
-                            autoFocus
-                            value={seuilValeur}
-                            onChange={(e) => setSeuilValeur(Number(e.target.value) || 0)}
-                            className="w-20 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-sm"
-                          />
-                          <button
-                            onClick={() => enregistrerSeuil(s)}
-                            disabled={seuilSaving}
-                            className="flex h-7 w-7 items-center justify-center rounded-md bg-green-50 text-green-700 disabled:opacity-50"
-                            aria-label="Enregistrer le seuil"
-                          >
-                            <Check size={14} />
-                          </button>
-                          <button
-                            onClick={() => setSeuilEnEdition(null)}
-                            className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                            aria-label="Annuler"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ) : lectureSeule ? (
-                          <span className="text-slate-600 dark:text-slate-300">{s.seuilAlerte} sachets</span>
-                        ) : (
-                          <button
-                            onClick={() => ouvrirEditionSeuil(s)}
-                            className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-brand"
-                          >
-                            {s.seuilAlerte} sachets
-                            <Pencil size={12} className="text-slate-300 dark:text-slate-600" />
-                          </button>
-                      )}
+                      <span className="text-slate-600 dark:text-slate-300">{s.seuilAlerte} sachets</span>
                     </td>
                     <td className="px-4 py-3">
                       {s.enAlerte ? (

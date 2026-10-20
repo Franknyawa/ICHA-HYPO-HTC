@@ -126,7 +126,7 @@ export async function genererFacturePdf(data: FactureData) {
 
   // --- Signatures --------------------------------------------------------------
   y = assurerPlace(doc, y, 22);
-  dessinerSignatures(doc, y + 10, ["Signature ETS ICHA IMPORT", "Signature Client"]);
+  dessinerSignatures(doc, y + 10, ["Signature ETS ICHA IMPORT", "Signature (Nom du client)"]);
 
   dessinerPieds(doc);
   doc.save(nomFichier("facture", data.numero, data.client.nom));

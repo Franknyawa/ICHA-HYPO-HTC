@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 export type ListPointsVenteParams = {
   page?: number;
@@ -43,8 +43,9 @@ export async function listPointsVente(params: ListPointsVenteParams) {
     ? { commandes: { _count: params.triCommandes } }
     : { createdAt: "desc" };
 
-  const [data, total] = await prisma.$transaction([
+  const [lignes, total] = await Promise.all([
     prisma.pointVente.findMany({
+      relationLoadStrategy: "join",
       where,
       skip,
       take,
@@ -53,12 +54,26 @@ export async function listPointsVente(params: ListPointsVenteParams) {
         ville: { select: { id: true, nom: true } },
         quartier: { select: { id: true, nom: true } },
         type: { select: { id: true, nom: true } },
-        photos: { orderBy: { createdAt: "desc" }, take: 1 },
         _count: { select: { commandes: true } },
       },
     }),
     prisma.pointVente.count({ where }),
   ]);
+
+  // Dernière photo de chaque point de vente, en une requête. Une photo stockée
+  // en data URL (ancien repli hors ligne, plusieurs centaines de Ko) n'est
+  // jamais chargée dans la liste : elle est servie à part, mise en cache.
+  const ids = lignes.map((l) => l.id);
+  const photosBrutes = ids.length
+    ? await prisma.$queryRaw<{ point_vente_id: string; id: string; url: string | null }[]>`
+        SELECT DISTINCT ON (point_vente_id) point_vente_id, id,
+               CASE WHEN url LIKE 'data:%' THEN NULL ELSE url END AS url
+        FROM photos
+        WHERE point_vente_id IN (${Prisma.join(ids)})
+        ORDER BY point_vente_id, created_at DESC`
+    : [];
+  const photoParPv = new Map(photosBrutes.map((p) => [p.point_vente_id, { id: p.id, url: p.url ?? `/api/points-vente/photo/${p.id}` }]));
+  const data = lignes.map((l) => ({ ...l, photos: photoParPv.has(l.id) ? [photoParPv.get(l.id)!] : [] }));
 
   return buildPaginatedResponse(data, total, page, pageSize);
 }

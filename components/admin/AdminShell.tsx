@@ -51,7 +51,7 @@ const TOUS_LES_ITEMS: { href: string; label: string; icon: LucideIcon; module: M
   { href: "/admin/stock", label: "Stock", icon: Package, module: "stock" },
   { href: "/admin/caisse", label: "Caisse", icon: Wallet, module: "caisse" },
   { href: "/admin/objectifs", label: "Objectifs", icon: Target, module: "objectifs" },
-  { href: "/admin/factures", label: "Factures", icon: Receipt, module: "factures" },
+  { href: "/admin/factures", label: "Facturation", icon: Receipt, module: "factures" },
   { href: "/admin/tracking", label: "Tracking", icon: Navigation, module: "tracking" },
   { href: "/admin/clients", label: "Clients", icon: Users2, module: "clients" },
   { href: "/admin/rapports", label: "Rapports", icon: FileBarChart, module: "rapports" },

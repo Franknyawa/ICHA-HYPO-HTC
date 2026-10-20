@@ -70,7 +70,7 @@ export default async function CommandesPage({
 
   const filtresSansStatut = { villeId, commercialId, dateFrom, dateTo };
 
-  const [{ data, pagination }, { parStatut, total: totalToutStatut }, villes, commerciaux, agents] = await Promise.all([
+  const [{ data, pagination }, { parStatut, total: totalToutStatut }, villes, commerciaux] = await Promise.all([
     listCommandes({ page, statut, ...filtresSansStatut }),
     countCommandesParStatut(filtresSansStatut),
     listerVilles(),
@@ -79,7 +79,6 @@ export default async function CommandesPage({
       orderBy: { nom: "asc" },
       select: { id: true, nom: true, prenom: true },
     }),
-    prisma.agentFacturation.findMany({ where: { actif: true }, orderBy: { nom: "asc" }, select: { id: true, nom: true } }),
   ]);
 
   const baseQuery = { statut, villeId, commercialId, dateFrom, dateTo };
@@ -227,7 +226,7 @@ export default async function CommandesPage({
                     {(c.statut === "EN_LIVRAISON" || c.statut === "LIVREE") && peutModifier(session.role) && (
                       <>
                         <BonLivraisonButton commandeId={c.id} />
-                        <FactureButton type="COMMANDE" id={c.id} agents={agents} />
+                        <FactureButton type="COMMANDE" id={c.id} />
                       </>
                     )}
                     {peutModifier(session.role) && <CommandeStatusActions id={c.id} statut={c.statut} />}

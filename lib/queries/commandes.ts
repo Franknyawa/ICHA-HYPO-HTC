@@ -37,8 +37,9 @@ export async function listCommandes(params: ListCommandesParams) {
       : {}),
   };
 
-  const [data, total] = await prisma.$transaction([
+  const [data, total] = await Promise.all([
     prisma.commande.findMany({
+      relationLoadStrategy: "join",
       where,
       skip,
       take,

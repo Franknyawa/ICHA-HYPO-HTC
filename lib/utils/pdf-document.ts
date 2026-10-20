@@ -62,12 +62,17 @@ export function dessinerEnTete(doc: jsPDF, largeur: number, dateHeure: Date) {
   doc.text(lignes, xTexte, HAUTEUR_EN_TETE / 2 + 4);
 
   const { date, heure } = formaterDateHeure(dateHeure);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(200, 215, 240);
+  doc.text("Date et Heure", largeur - MARGE, 12, { align: "right" });
+  doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text(date, largeur - MARGE, 16, { align: "right" });
+  doc.text(date, largeur - MARGE, 18, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text(`à ${heure}`, largeur - MARGE, 22, { align: "right" });
+  doc.text(`à ${heure}`, largeur - MARGE, 24, { align: "right" });
 }
 
 /** Pied de page légal, répété sur chaque page du document. */

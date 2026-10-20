@@ -12,6 +12,8 @@ export const ENTREPRISE = {
 const pad5 = (n: number) => String(n).padStart(5, "0");
 
 export const numeroFacture = (n: number) => `FVICHA ${pad5(n)}`;
+export const numeroAvoir = (n: number) => `FA${pad5(n)}`;
+export const numeroRetour = (n: number) => `FR${pad5(n)}`;
 export const numeroBonCommande = (n: number) => `BCICHA ${pad5(n)}`;
 export const numeroBonLivraison = (n: number) => `BLICHA ${pad5(n)}`;
 

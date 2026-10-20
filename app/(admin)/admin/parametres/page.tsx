@@ -998,6 +998,59 @@ function SeuilsAlertesManager() {
           ))}
         </div>
       ))}
+      {ouvert && <SeuilsStockManager />}
+    </div>
+  );
+}
+
+function SeuilsStockManager() {
+  const [data, setData] = useState<{ produitId: string; nom: string; code: string; sachetsParCarton: number; seuilAlerte: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  function load() {
+    setLoading(true);
+    apiFetch<{ data: typeof data }>("/api/parametres/stock-seuils")
+      .then((d) => setData(d.data ?? []))
+      .catch((e: ApiError) => {
+        if (e.status !== 401) console.error(e);
+      })
+      .finally(() => setLoading(false));
+  }
+  useEffect(load, []);
+
+  async function save(produitId: string, cartons: number, sachetsParCarton: number) {
+    setSaving(produitId);
+    await fetch(`/api/stock/${produitId}/seuil`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seuilAlerte: cartons * sachetsParCarton }),
+    });
+    setSaving(null);
+    load();
+  }
+
+  if (loading) return <p className="mt-3 text-sm text-slate-400 dark:text-slate-500">Chargement...</p>;
+  return (
+    <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+      <p className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">Alertes de stock</p>
+      <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
+        Une alerte « stock faible » apparaît sous ce nombre de cartons. Les entrées de stock restent dans la rubrique Stock.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        {data.map((p) => (
+          <div key={p.produitId}>
+            <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              {p.nom} — seuil (cartons)
+            </label>
+            <ObjectifInput
+              defaultValue={Math.round(p.seuilAlerte / p.sachetsParCarton)}
+              saving={saving === p.produitId}
+              onSave={(v) => save(p.produitId, v, p.sachetsParCarton)}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

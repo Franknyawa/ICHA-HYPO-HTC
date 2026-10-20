@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
+import { peutModifier } from "@/lib/auth/permissions";
 import { handleApiError } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
@@ -13,7 +14,10 @@ export async function PATCH(
   { params }: { params: { produitId: string } }
 ) {
   try {
-    await requireModule("stock");
+    const session = await requireModule("stock");
+    if (!peutModifier(session.role)) {
+      return NextResponse.json({ error: "Réservé aux administrateurs." }, { status: 403 });
+    }
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ error: "Valeur invalide." }, { status: 400 });
