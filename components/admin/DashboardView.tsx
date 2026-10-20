@@ -156,7 +156,7 @@ export function DashboardView({
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#359980] to-emerald-400"
+                        className="h-full rounded-full bg-[#359980]/80"
                         style={{ width: `${Math.max(6, (c.points / maxCommercial) * 100)}%` }}
                       />
                     </div>
@@ -172,7 +172,7 @@ export function DashboardView({
           {peutCaisse && (
           <Link
             href="/admin/caisse"
-            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1e3a8a] via-[#2563eb] to-[#359980] p-6 text-white shadow-lg shadow-blue-900/20"
+            className="group relative overflow-hidden rounded-2xl bg-[#1e3a8a] p-6 text-white shadow-sm"
           >
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
             <div className="absolute -bottom-10 right-8 h-24 w-24 rounded-full bg-white/10" />
@@ -225,7 +225,7 @@ export function DashboardView({
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                         <div
-                          className={`h-full rounded-full ${bas ? "bg-gradient-to-r from-red-500 to-orange-400" : "bg-gradient-to-r from-violet-500 to-fuchsia-400"}`}
+                          className={`h-full rounded-full ${bas ? "bg-red-500/80" : "bg-slate-500"}`}
                           style={{ width: `${Math.max(4, (s.cartons / ref) * 100)}%` }}
                         />
                       </div>

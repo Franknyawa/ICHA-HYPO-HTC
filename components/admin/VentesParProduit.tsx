@@ -138,7 +138,7 @@ function ListeClassement({ titre, sousTitre, items, indicateur }: { titre: strin
               </span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#359980] to-emerald-400" style={{ width: `${max > 0 ? Math.max(4, (x[indicateur] / max) * 100) : 0}%` }} />
+              <div className="h-full rounded-full bg-[#359980]/80" style={{ width: `${max > 0 ? Math.max(4, (x[indicateur] / max) * 100) : 0}%` }} />
             </div>
           </li>
         ))}
@@ -187,7 +187,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
                 key={i}
                 onClick={() => setIndicateur(i)}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-                  indicateur === i ? "bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white shadow" : "text-slate-500 dark:text-slate-400"
+                  indicateur === i ? "bg-[#1e3a8a] text-white shadow" : "text-slate-500 dark:text-slate-400"
                 }`}
               >
                 {i === "cartons" ? "Cartons" : "Chiffre d'affaires"}
@@ -211,7 +211,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
       ) : (
         <>
           {/* Produit le plus vendu */}
-          <div className="relative mb-4 flex flex-wrap items-center justify-between gap-5 overflow-hidden rounded-2xl bg-gradient-to-r from-[#1e3a8a] via-[#2563eb] to-[#359980] p-5 text-white shadow-lg shadow-blue-900/20">
+          <div className="relative mb-4 flex flex-wrap items-center justify-between gap-5 overflow-hidden rounded-2xl bg-[#1e3a8a] p-5 text-white shadow-sm">
             <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
             <div className="relative flex items-center gap-4">
               <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white backdrop-blur">

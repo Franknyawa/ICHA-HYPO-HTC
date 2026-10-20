@@ -124,7 +124,7 @@ export function ObjectifsTerritoireManager() {
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
       <button onClick={() => setOuvert((v) => !v)} className="flex w-full items-center gap-2 text-left">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-600 text-white">
           <Target size={16} />
         </span>
         <h2 className="font-bold text-slate-800 dark:text-slate-100">Objectifs par région et par ville</h2>

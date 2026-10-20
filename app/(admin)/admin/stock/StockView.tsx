@@ -76,7 +76,7 @@ const SORTIES: {
     placeholder: "Motif (ex : cartons mouillés)",
     icone: PackageX,
     carte: "border-rose-200 bg-rose-50/70 dark:border-rose-900/60 dark:bg-rose-950/20",
-    pastille: "bg-rose-600 text-white",
+    pastille: "bg-red-700 text-white",
     actif: "ring-2 ring-rose-500",
   },
   {
@@ -86,7 +86,7 @@ const SORTIES: {
     placeholder: "Pour qui ? (ex : prospect Akwa)",
     icone: FlaskConical,
     carte: "border-violet-200 bg-violet-50/70 dark:border-violet-900/60 dark:bg-violet-950/20",
-    pastille: "bg-violet-600 text-white",
+    pastille: "bg-slate-600 text-white",
     actif: "ring-2 ring-violet-500",
   },
   {
@@ -96,7 +96,7 @@ const SORTIES: {
     placeholder: "Bénéficiaire (ex : client fidèle)",
     icone: Gift,
     carte: "border-amber-200 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/20",
-    pastille: "bg-amber-500 text-white",
+    pastille: "bg-slate-500 text-white",
     actif: "ring-2 ring-amber-500",
   },
 ];

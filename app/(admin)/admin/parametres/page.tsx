@@ -419,7 +419,7 @@ function ProduitsManager() {
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <div className="mb-3 flex items-center justify-between">
         <button onClick={() => setOuvert((v) => !v)} className="flex flex-1 items-center gap-2 text-left">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-600 text-white">
             <Package size={16} />
           </span>
           <h2 className="font-bold text-slate-800 dark:text-slate-100">Produits & prix</h2>
@@ -756,7 +756,7 @@ function ObjectifsManager() {
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <button onClick={() => setOuvert((v) => !v)} className="mb-3 flex w-full items-center gap-2 text-left">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600 text-white">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-600 text-white">
           <Target size={16} />
         </span>
         <h2 className="font-bold text-slate-800 dark:text-slate-100">Objectif binôme</h2>
@@ -886,7 +886,7 @@ function ObjectifsIndividuelsManager() {
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <button onClick={() => setOuvert((v) => !v)} className="mb-3 flex w-full items-center gap-2 text-left">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-600 text-white">
           <Target size={16} />
         </span>
         <div className="flex-1">
@@ -968,7 +968,7 @@ function SeuilsAlertesManager() {
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
       <button onClick={() => setOuvert((v) => !v)} className="mb-3 flex w-full items-center gap-2 text-left">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600 text-white">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-600 text-white">
           <BellRing size={16} />
         </span>
         <div className="flex-1">

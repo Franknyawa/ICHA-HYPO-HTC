@@ -19,7 +19,7 @@ export function VisitesChart({ serie }: { serie: JourVisites[] }) {
               key={j}
               onClick={() => setJours(j)}
               className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-colors ${
-                jours === j ? "bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white shadow" : "text-slate-500 dark:text-slate-400"
+                jours === j ? "bg-[#1e3a8a] text-white shadow" : "text-slate-500 dark:text-slate-400"
               }`}
             >
               {j} jours

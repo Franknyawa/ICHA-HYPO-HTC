@@ -1624,3 +1624,6 @@ Objectifs : une seule carte « Objectif binôme » appliquée à tous les binôm
 - Facture, avoir, retour : quantités converties en cartons (colonne « Quantité (cartons) », une ligne par produit, ex. 2 cartons + 1 filet de 6 + 12 sachets = 2,75).
 - Signature : « Signature <nom du client> » (client de la commande, sinon vendeur, sinon point de vente).
 - Seuils de stock affichés en cartons (page Stock et messages d'alerte).
+
+## Apparence admin sobre (20 octobre 2026)
+Côté administration uniquement : en-têtes de page blancs, menu latéral blanc avec icônes grises (seule la rubrique active est en bleu marine), pastilles et cartes en tons éteints, plus de dégradés vifs. Le côté commercial est inchangé.

@@ -29,7 +29,7 @@ export default async function ObjectifsPage() {
       <div className="space-y-6 p-4 md:p-6">
         <section>
           <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-700 text-white">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-600 text-white">
               <Globe2 size={14} />
             </span>
             <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -43,7 +43,7 @@ export default async function ObjectifsPage() {
 
         <section>
           <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-700 text-white">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-600 text-white">
               <Users2 size={14} />
             </span>
             <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500">
@@ -68,7 +68,7 @@ export default async function ObjectifsPage() {
 
         <section>
           <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-600 text-white">
               <User size={14} />
             </span>
             <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500">

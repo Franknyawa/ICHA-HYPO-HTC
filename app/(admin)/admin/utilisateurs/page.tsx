@@ -421,7 +421,7 @@ export default function UtilisateursPage() {
             {/* Administrateurs */}
             <section>
               <div className="mb-2 flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-600 text-white">
                   <ShieldCheck size={15} />
                 </span>
                 <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500">
@@ -456,7 +456,7 @@ export default function UtilisateursPage() {
             {/* Commerciaux, groupés par binôme */}
             <section>
               <div className="mb-2 flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-700 text-white">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-600 text-white">
                   <UsersIcon size={15} />
                 </span>
                 <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 dark:text-slate-500">

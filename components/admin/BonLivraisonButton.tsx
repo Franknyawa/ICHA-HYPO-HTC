@@ -109,7 +109,7 @@ export function BonLivraisonButton({ commandeId }: { commandeId: string }) {
             <button
               onClick={imprimer}
               disabled={loading}
-              className="mt-4 w-full rounded-xl bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] py-3 text-sm font-bold text-white disabled:opacity-50"
+              className="mt-4 w-full rounded-xl bg-[#1e3a8a] py-3 text-sm font-bold text-white disabled:opacity-50"
             >
               {loading ? "Génération…" : "Télécharger le bon de livraison"}
             </button>

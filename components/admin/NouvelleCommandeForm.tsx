@@ -317,7 +317,7 @@ export function NouvelleCommandeForm({
           </div>
         </Section>
 
-        <section className="rounded-2xl bg-gradient-to-br from-[#1e3a8a] via-[#2563eb] to-[#359980] p-5 text-white shadow-lg shadow-blue-900/20">
+        <section className="rounded-2xl bg-[#1e3a8a] p-5 text-white shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-white/80">Total de la commande</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">{formatFcfa(commande.total)}</p>
           {erreur && <p className="mt-3 rounded-lg bg-white/15 px-3 py-2 text-sm">{erreur}</p>}

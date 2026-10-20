@@ -193,7 +193,7 @@ export function CorrectionButton({ commandeId }: { commandeId: string }) {
                 <button
                   onClick={valider}
                   disabled={loading}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] py-3 text-sm font-bold text-white disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e3a8a] py-3 text-sm font-bold text-white disabled:opacity-50"
                 >
                   {loading && <Loader2 size={15} className="animate-spin" />}
                   {mode === "RETOUR" ? "Émettre la facture retour" : "Émettre la facture d'avoir"}

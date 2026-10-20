@@ -11,7 +11,7 @@ const PERIODES: { id: PeriodeTerritoire; label: string }[] = [
   { id: "MENSUEL", label: "Ce mois" },
 ];
 
-const COULEUR_BARRE = { vert: "bg-green-500", orange: "bg-amber-500", rouge: "bg-red-500" } as const;
+const COULEUR_BARRE = { vert: "bg-emerald-600/80", orange: "bg-amber-500/80", rouge: "bg-red-500/80" } as const;
 
 function Carte({ ligne, periode }: { ligne: LigneTerritoire; periode: PeriodeTerritoire }) {
   const m = ligne.periodes[periode];

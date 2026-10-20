@@ -7,41 +7,42 @@ import type { ReactNode } from "react";
 
 export type Ton = "bleu" | "vert" | "rose" | "ambre" | "violet" | "ardoise";
 
+// Palette sobre : pastilles unies en tons éteints, fonds quasi neutres.
 const TONS: Record<Ton, { puce: string; fond: string; texte: string; barre: string }> = {
   bleu: {
-    puce: "from-blue-600 to-indigo-500",
-    fond: "from-blue-50 to-white dark:from-blue-950/40 dark:to-slate-900",
-    texte: "text-blue-700 dark:text-blue-300",
-    barre: "bg-blue-500",
+    puce: "from-[#2b4a8f] to-[#2b4a8f]",
+    fond: "from-slate-50 to-white dark:from-slate-800/40 dark:to-slate-900",
+    texte: "text-slate-500 dark:text-slate-400",
+    barre: "bg-[#2b4a8f]",
   },
   vert: {
-    puce: "from-emerald-500 to-teal-500",
-    fond: "from-emerald-50 to-white dark:from-emerald-950/40 dark:to-slate-900",
+    puce: "from-[#3f8f7a] to-[#3f8f7a]",
+    fond: "from-slate-50 to-white dark:from-slate-800/40 dark:to-slate-900",
     texte: "text-emerald-700 dark:text-emerald-300",
-    barre: "bg-emerald-500",
+    barre: "bg-[#3f8f7a]",
   },
   rose: {
-    puce: "from-rose-500 to-orange-400",
-    fond: "from-rose-50 to-white dark:from-rose-950/40 dark:to-slate-900",
+    puce: "from-[#a85c5c] to-[#a85c5c]",
+    fond: "from-slate-50 to-white dark:from-slate-800/40 dark:to-slate-900",
     texte: "text-rose-700 dark:text-rose-300",
-    barre: "bg-rose-500",
+    barre: "bg-[#a85c5c]",
   },
   ambre: {
-    puce: "from-amber-500 to-yellow-400",
-    fond: "from-amber-50 to-white dark:from-amber-950/40 dark:to-slate-900",
+    puce: "from-[#a8864a] to-[#a8864a]",
+    fond: "from-slate-50 to-white dark:from-slate-800/40 dark:to-slate-900",
     texte: "text-amber-700 dark:text-amber-300",
-    barre: "bg-amber-500",
+    barre: "bg-[#a8864a]",
   },
   violet: {
-    puce: "from-violet-600 to-fuchsia-500",
-    fond: "from-violet-50 to-white dark:from-violet-950/40 dark:to-slate-900",
-    texte: "text-violet-700 dark:text-violet-300",
-    barre: "bg-violet-500",
+    puce: "from-[#5b6b8c] to-[#5b6b8c]",
+    fond: "from-slate-50 to-white dark:from-slate-800/40 dark:to-slate-900",
+    texte: "text-slate-500 dark:text-slate-400",
+    barre: "bg-[#5b6b8c]",
   },
   ardoise: {
-    puce: "from-slate-600 to-slate-500",
-    fond: "from-slate-100 to-white dark:from-slate-800/60 dark:to-slate-900",
-    texte: "text-slate-700 dark:text-slate-300",
+    puce: "from-slate-600 to-slate-600",
+    fond: "from-slate-50 to-white dark:from-slate-800/40 dark:to-slate-900",
+    texte: "text-slate-600 dark:text-slate-300",
     barre: "bg-slate-500",
   },
 };

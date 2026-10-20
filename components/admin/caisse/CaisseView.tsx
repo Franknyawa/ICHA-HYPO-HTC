@@ -84,7 +84,7 @@ export function CaisseView({
               href={`/admin/caisse?periode=${p.id}`}
               className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                 periode.id === p.id
-                  ? "bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white shadow"
+                  ? "bg-[#1e3a8a] text-white shadow"
                   : "bg-slate-100 text-slate-600 hover:bg-blue-50 dark:bg-slate-800 dark:text-slate-300"
               }`}
             >
@@ -102,7 +102,7 @@ export function CaisseView({
 
         {/* Solde + répartition par canal */}
         <section className="grid gap-4 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1e3a8a] via-[#2563eb] to-[#359980] p-6 text-white shadow-lg shadow-blue-900/20">
+          <div className="relative overflow-hidden rounded-2xl bg-[#1e3a8a] p-6 text-white shadow-sm">
             <div className="absolute -right-8 -top-8 h-36 w-36 rounded-full bg-white/10" />
             <div className="absolute -bottom-10 right-10 h-28 w-28 rounded-full bg-white/10" />
             <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-white/80">

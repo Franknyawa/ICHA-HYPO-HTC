@@ -107,9 +107,9 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
   }
 
   const onglets: { id: Onglet; label: string; icone: React.ReactNode; actif: string }[] = [
-    { id: "CREDIT", label: "Valider un encaissement", icone: <HandCoins size={15} />, actif: "bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white" },
-    { id: "DEPENSE", label: "Dépense", icone: <ArrowUpCircle size={15} />, actif: "bg-gradient-to-r from-rose-600 to-orange-500 text-white" },
-    { id: "RECETTE", label: "Autre recette", icone: <ArrowDownCircle size={15} />, actif: "bg-gradient-to-r from-emerald-600 to-teal-500 text-white" },
+    { id: "CREDIT", label: "Valider un encaissement", icone: <HandCoins size={15} />, actif: "bg-[#1e3a8a] text-white" },
+    { id: "DEPENSE", label: "Dépense", icone: <ArrowUpCircle size={15} />, actif: "bg-red-700 text-white" },
+    { id: "RECETTE", label: "Autre recette", icone: <ArrowDownCircle size={15} />, actif: "bg-[#359980] text-white" },
   ];
 
   return (
@@ -215,7 +215,7 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
                 onClick={() => setCanal(c)}
                 className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all ${
                   canal === c
-                    ? "border-transparent bg-gradient-to-r from-[#359980] to-emerald-500 text-white shadow-md shadow-emerald-900/15"
+                    ? "border-transparent bg-[#359980]/80 text-white shadow-sm"
                     : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                 }`}
               >
@@ -238,7 +238,7 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
           <button
             type="submit"
             disabled={envoi || (onglet === "CREDIT" && credits.length === 0)}
-            className="w-full rounded-xl bg-gradient-to-r from-[#1e3a8a] via-[#2563eb] to-[#359980] py-3 text-sm font-bold text-white shadow-md shadow-blue-900/20 disabled:opacity-50"
+            className="w-full rounded-xl bg-[#1e3a8a] py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50"
           >
             {envoi ? "Enregistrement…" : onglet === "CREDIT" ? "Encaisser" : "Enregistrer"}
           </button>

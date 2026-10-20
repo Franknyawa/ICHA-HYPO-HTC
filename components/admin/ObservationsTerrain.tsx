@@ -9,12 +9,12 @@ type Observation = {
 };
 
 const COULEURS = [
-  "from-blue-600 to-indigo-500",
-  "from-emerald-500 to-teal-500",
-  "from-amber-500 to-orange-400",
-  "from-violet-600 to-fuchsia-500",
-  "from-rose-500 to-pink-400",
-  "from-cyan-500 to-sky-500",
+  "from-slate-600 to-slate-500",
+  "from-slate-600 to-slate-500",
+  "from-slate-600 to-slate-500",
+  "from-slate-600 to-slate-500",
+  "from-slate-600 to-slate-500",
+  "from-slate-600 to-slate-500",
 ];
 
 function couleur(nom: string) {
