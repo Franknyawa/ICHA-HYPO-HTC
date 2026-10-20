@@ -1598,3 +1598,14 @@ rejouable sans danger.
 - Les quantités livrées d'un bon de livraison ne sont pas enregistrées (le
   reste à livrer est calculé à l'impression).
 - Objectifs territoire : cartons des ventes + commandes non annulées.
+
+## Flux de validation des commandes (20 octobre 2026, lot 2)
+
+1. Le commercial enregistre sa visite : une **commande EN_ATTENTE** est créée (même pour un « achat du jour ») avec un **bon de commande BCICHA 00001, 00002…** (numéro attribué par la base).
+2. L'admin ouvre **Commandes**, vérifie le détail puis clique **Valider et autoriser la livraison** : le stock est **débité à ce moment** (annulation ou réactivation = remise en stock automatique ; jamais de double débit). Stock insuffisant = message d'erreur, rien n'est modifié.
+3. Une fois validée, la commande apparaît en **Caisse** (créances) : l'admin valide l'encaissement (Espèces, Mobile Money ou **Banque**) au retour du superviseur.
+4. Bon de livraison et facture ne sont disponibles **qu'après validation**. Le bon de livraison n'agit pas une 2e fois sur le stock.
+5. Les quantités sont libellées en cartons / filets / sachets sur la facture et le BL.
+
+SQL à exécuter : `docs/migration-2026-10-20.sql`, BLOC 5 (seul), puis BLOC 6, puis BLOC 7.
+Objectifs : une seule carte « Objectif binôme » appliquée à tous les binômes actifs (`PUT /api/parametres/objectifs`).

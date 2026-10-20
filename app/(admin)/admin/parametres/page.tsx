@@ -739,29 +739,19 @@ function ObjectifsManager() {
 
   useEffect(load, []);
 
-  async function saveValeur(
-    binomeId: string,
-    periode: "JOURNALIER" | "HEBDOMADAIRE",
-    objectifId: string | null,
-    valeur: number
-  ) {
-    setSaving(`${binomeId}-${periode}`);
-    if (objectifId) {
-      await fetch(`/api/parametres/objectifs/${objectifId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ valeurCartons: valeur }),
-      });
-    } else {
-      await fetch("/api/parametres/objectifs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ binomeId, periode, valeurCartons: valeur }),
-      });
-    }
+  async function saveValeur(periode: "JOURNALIER" | "HEBDOMADAIRE", valeur: number) {
+    setSaving(periode);
+    await fetch("/api/parametres/objectifs", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ periode, valeurCartons: valeur }),
+    });
     setSaving(null);
     load();
   }
+
+  // Un seul objectif pour tous les binômes : on affiche la valeur du premier.
+  const ref = data[0];
 
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
@@ -769,45 +759,35 @@ function ObjectifsManager() {
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-600 text-white">
           <Target size={16} />
         </span>
-        <h2 className="font-bold text-slate-800 dark:text-slate-100">Objectifs (période en cours)</h2>
+        <h2 className="font-bold text-slate-800 dark:text-slate-100">Objectif binôme</h2>
         <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
       </button>
 
       {ouvert && (loading ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
       ) : (
-        <div className="space-y-3">
-          {data.map((b) => (
-            <div key={b.id} className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3">
-              <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{b.nom}</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                    Cartons / jour
-                  </label>
-                  <ObjectifInput
-                    defaultValue={b.objectifJournalier?.valeurCartons ?? 42}
-                    saving={saving === `${b.id}-JOURNALIER`}
-                    onSave={(v) =>
-                      saveValeur(b.id, "JOURNALIER", b.objectifJournalier?.id ?? null, v)
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                    Cartons / semaine
-                  </label>
-                  <ObjectifInput
-                    defaultValue={b.objectifHebdomadaire?.valeurCartons ?? 2500}
-                    saving={saving === `${b.id}-HEBDOMADAIRE`}
-                    onSave={(v) =>
-                      saveValeur(b.id, "HEBDOMADAIRE", b.objectifHebdomadaire?.id ?? null, v)
-                    }
-                  />
-                </div>
-              </div>
+        <div className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3">
+          <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+            Valeur appliquée à chaque binôme actif ({data.length}).
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">Cartons / jour</label>
+              <ObjectifInput
+                defaultValue={ref?.objectifJournalier?.valeurCartons ?? 42}
+                saving={saving === "JOURNALIER"}
+                onSave={(v) => saveValeur("JOURNALIER", v)}
+              />
             </div>
-          ))}
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">Cartons / semaine</label>
+              <ObjectifInput
+                defaultValue={ref?.objectifHebdomadaire?.valeurCartons ?? 2500}
+                saving={saving === "HEBDOMADAIRE"}
+                onSave={(v) => saveValeur("HEBDOMADAIRE", v)}
+              />
+            </div>
+          </div>
         </div>
       ))}
     </div>

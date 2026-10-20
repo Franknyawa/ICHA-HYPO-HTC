@@ -5,6 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import {
   libelleModePaiement,
+  numeroBonCommande,
   numeroBonLivraison,
   numeroFacture,
   type AdresseClient,
@@ -205,5 +206,46 @@ export async function obtenirBonLivraison(commandeId: string): Promise<BonLivrai
     agentNom: agent?.nom ?? null,
     client: versClient(c.pointVente),
     sources: versSources(c.lignes),
+  };
+}
+
+export type BonCommandeJson = {
+  numero: string;
+  date: string;
+  commercialNom: string;
+  client: AdresseClient;
+  sources: LigneSource[];
+  livraisonPrevue: string | null;
+};
+
+/** Bon de commande (BCICHA 0000X) d'une commande : repris s'il existe déjà, créé sinon. */
+export async function obtenirBonCommande(commandeId: string): Promise<BonCommandeJson | null> {
+  const c = await prisma.commande.findUnique({
+    where: { id: commandeId },
+    select: {
+      dateLivraisonPrevue: true,
+      commercial: { select: { nom: true, prenom: true } },
+      pointVente: { select: selectPointVente },
+      lignes: { select: selectLigne },
+    },
+  });
+  if (!c) return null;
+
+  let bon = await prisma.bonCommande.findUnique({ where: { commandeId } });
+  if (!bon) {
+    try {
+      bon = await prisma.bonCommande.create({ data: { commandeId } });
+    } catch {
+      bon = await prisma.bonCommande.findUnique({ where: { commandeId } });
+    }
+  }
+  if (!bon) return null;
+  return {
+    numero: numeroBonCommande(bon.numero),
+    date: bon.createdAt.toISOString(),
+    commercialNom: `${c.commercial.prenom} ${c.commercial.nom}`.trim(),
+    client: versClient(c.pointVente),
+    sources: versSources(c.lignes),
+    livraisonPrevue: c.dateLivraisonPrevue ? c.dateLivraisonPrevue.toISOString() : null,
   };
 }

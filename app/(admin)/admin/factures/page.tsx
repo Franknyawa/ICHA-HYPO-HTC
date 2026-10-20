@@ -1,7 +1,7 @@
 import { listerVilles } from "@/lib/geo/synchro-villes";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Receipt } from "lucide-react";
-import { listVentes } from "@/lib/queries/ventes";
+import { listCommandes } from "@/lib/queries/commandes";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { FactureButton } from "@/components/admin/FactureButton";
@@ -32,7 +32,7 @@ export default async function FacturesPage({
   const dateTo = searchParams.dateTo ?? "";
 
   const [{ data, pagination }, villes, commerciaux, agents] = await Promise.all([
-    listVentes({ page, commercialId, villeId, dateFrom, dateTo }),
+    listCommandes({ page, commercialId, villeId, dateFrom, dateTo, statuts: ["EN_LIVRAISON", "LIVREE"] }),
     listerVilles(),
     prisma.user.findMany({
       where: { role: "COMMERCIAL" },
@@ -46,7 +46,7 @@ export default async function FacturesPage({
 
   return (
     <main>
-      <AdminPageHeader title="Factures" subtitle={`${pagination.total} ventes au total`} />
+      <AdminPageHeader title="Factures" subtitle={`${pagination.total} commandes validées`} />
 
       <div className="p-4 md:p-6">
         <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-4" action="/admin/factures">
@@ -80,7 +80,7 @@ export default async function FacturesPage({
                   <p className="font-medium text-slate-800 dark:text-slate-100">{v.pointVente.nom}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
                     {v.commercial.prenom} {v.commercial.nom} · {v.pointVente.ville?.nom ?? "—"} ·{" "}
-                    {new Date(v.createdAt).toLocaleDateString("fr-FR")}
+                    {new Date(v.dateCommande).toLocaleDateString("fr-FR")}
                   </p>
                 </div>
               </div>
@@ -89,17 +89,17 @@ export default async function FacturesPage({
                   {Number(v.montantTotal).toLocaleString("fr-FR")} FCFA
                 </p>
                 <ModePaiementSelect
-                  type="VENTE"
+                  type="COMMANDE"
                   id={v.id}
-                  valeur={v.modePaiement ?? v.paiements[0]?.modePaiement ?? null}
+                  valeur={v.modePaiement}
                 />
-                <FactureButton type="VENTE" id={v.id} agents={agents} />
+                <FactureButton type="COMMANDE" id={v.id} agents={agents} />
               </div>
             </div>
           ))}
           {data.length === 0 && (
             <p className="rounded-2xl bg-white dark:bg-slate-900 py-10 text-center text-sm text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-              Aucune vente trouvée.
+              Aucune commande validée. Validez une commande pour pouvoir la facturer.
             </p>
           )}
         </div>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FileText, Loader2, X } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/client/apiFetch";
 import { genererBonLivraisonPdf } from "@/lib/utils/bon-livraison-pdf";
-import { lignesDocument, type LigneDocument } from "@/lib/utils/documents";
+import { lignesDocument, texteQuantite, type LigneDocument } from "@/lib/utils/documents";
 import type { BonLivraisonJson } from "@/lib/services/documents-data";
 
 /**
@@ -32,7 +32,7 @@ export function BonLivraisonButton({ commandeId }: { commandeId: string }) {
     }
   }
 
-  const texte = (l: LigneDocument, n: number) => (l.unite === "carton" ? String(n) : `${n} ${l.unite}s`);
+  const texte = (l: LigneDocument, n: number) => texteQuantite(l.unite, n);
 
   async function imprimer() {
     if (!bon) return;

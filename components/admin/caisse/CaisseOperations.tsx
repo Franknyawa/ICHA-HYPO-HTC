@@ -23,7 +23,7 @@ type Onglet = "CREDIT" | "DEPENSE" | "RECETTE";
 type Canal = "ESPECES" | "MOBILE_MONEY" | "BANQUE";
 
 const LIBELLE_CANAL: Record<Canal, string> = { ESPECES: "Espèces", MOBILE_MONEY: "OM/MOMO", BANQUE: "Opération bancaire" };
-const CANAUX_CREANCE: Canal[] = ["ESPECES", "MOBILE_MONEY"];
+const CANAUX_CREANCE: Canal[] = ["ESPECES", "MOBILE_MONEY", "BANQUE"];
 
 const CATEGORIES_DEPENSE = ["Achat de stock", "Transport", "Salaires", "Carburant", "Loyer", "Communication", "Autre"];
 
@@ -207,7 +207,7 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
             onWheel={(e) => (e.target as HTMLInputElement).blur()}
           />
 
-          <div className={`grid gap-2 ${onglet === "CREDIT" ? "grid-cols-2" : "grid-cols-3"}`}>
+          <div className={`grid gap-2 ${"grid-cols-3"}`}>
             {(onglet === "CREDIT" ? CANAUX_CREANCE : (["ESPECES", "MOBILE_MONEY", "BANQUE"] as Canal[])).map((c) => (
               <button
                 key={c}

@@ -4,8 +4,7 @@ import { requireAuth, requireAdmin } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import { createVisiteSchema } from "@/lib/validations/visite";
-import { applyStockMovement, InsufficientStockError } from "@/lib/services/stock";
-import { convertToSachets } from "@/lib/services/produits";
+import { InsufficientStockError } from "@/lib/services/stock";
 import { uploadPhoto, isTrustedPhotoUrl } from "@/lib/services/storage";
 import type { Prisma } from "@prisma/client";
 
@@ -237,9 +236,9 @@ export async function POST(req: NextRequest) {
       const produits = await tx.produit.findMany();
       const produitParCode = new Map(produits.map((p) => [p.code, p]));
 
-      // 4. Vente + lignes + déduction de stock (transactionnel, §17 CDC) +
-      //    paiement éventuel
+      // 4. Vente (statistiques) + commande à valider ; aucun mouvement de stock ici
       let vente = null;
+      let commandeDeVente: { id: string } | null = null;
       if (input.vente) {
         vente = await tx.vente.create({
           data: {
@@ -276,21 +275,39 @@ export async function POST(req: NextRequest) {
           include: { lignes: true },
         });
 
-        for (const ligne of input.vente.lignes) {
-          const produit = produitParCode.get(ligne.produitCode);
-          if (!produit) continue;
-          const quantiteSachets = convertToSachets(produit, ligne);
-          if (quantiteSachets === 0) continue;
-
-          await applyStockMovement(tx, {
-            uuidClient: `${input.vente.uuidClient}-${produit.code}`,
-            produitId: produit.id,
-            type: "SORTIE",
-            quantiteSachets,
-            referenceType: "VENTE",
-            referenceId: vente.id,
-          });
-        }
+        // Chaque commande terrain devient aussi une commande à valider dans
+        // le back office (l'admin autorise la livraison : le stock baisse à
+        // ce moment-là, puis la créance arrive en caisse). La vente reste
+        // l'enregistrement des statistiques.
+        commandeDeVente = await tx.commande.create({
+          data: {
+            uuidClient: `${input.vente.uuidClient}:cmd`,
+            venteId: vente.id,
+            pointVenteId,
+            clientId: input.vente.clientId,
+            commercialId: session.userId,
+            dateCommande: new Date(input.dateVisite),
+            montantTotal: input.vente.montantTotal,
+            modePaiement: input.vente.paiement?.modePaiement,
+            lignes: {
+              create: input.vente.lignes.map((l) => {
+                const produit = produitParCode.get(l.produitCode);
+                if (!produit) throw new Error(`Produit inconnu : ${l.produitCode}`);
+                return {
+                  produitId: produit.id,
+                  nbSachets: l.nbSachets,
+                  nbFilets: l.nbFilets,
+                  nbCartons: l.nbCartons,
+                  prixSachet: l.prixSachet,
+                  prixFilet: l.prixFilet,
+                  prixCarton: l.prixCarton,
+                  montant: l.montant ?? 0,
+                };
+              }),
+            },
+          },
+          select: { id: true },
+        });
       }
 
       // 5. Commande (livraison future — distincte de la vente immédiate)
@@ -328,7 +345,18 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      return { visite, vente, commande };
+      // 6. Bon de commande numéroté (BCICHA 0000X), un par visite avec commande.
+      let bonCommande: { numero: number } | null = null;
+      const commandeLiee = commandeDeVente?.id ?? commande?.id ?? null;
+      if (commandeLiee || vente) {
+        const bon = await tx.bonCommande.create({
+          data: { commandeId: commandeLiee ?? undefined, venteId: commandeDeVente ? vente?.id : undefined },
+          select: { numero: true },
+        });
+        bonCommande = bon;
+      }
+
+      return { visite, vente, commande, bonCommande };
       },
       {
         // Délai généreux : l'écriture d'une photo en base64 (voir README —

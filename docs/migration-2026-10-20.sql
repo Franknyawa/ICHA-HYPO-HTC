@@ -91,3 +91,31 @@ UPDATE "produits" SET "designation" = 'HYPO eau de Javel carton de 112 sachets d
  WHERE "code" = 'HYPO' AND "designation" IS NULL;
 UPDATE "produits" SET "designation" = 'HYPO Toilet Cleanser (HTC) carton de 120 sachets de 60ml'
  WHERE "code" = 'HTC' AND "designation" IS NULL;
+
+
+-- =====================================================================
+-- COMPLÉMENT (20 oct., 2e livraison) — à lancer APRÈS les blocs ci-dessus
+-- =====================================================================
+
+-- ===== BLOC 5 (à lancer SEUL) : option Banque dans les paiements =====
+ALTER TYPE "ModePaiement" ADD VALUE IF NOT EXISTS 'BANQUE';
+
+-- ===== BLOC 6 : lien commande ↔ vente terrain + bons de commande numérotés =====
+ALTER TABLE "commandes" ADD COLUMN IF NOT EXISTS "vente_id" TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS "commandes_vente_id_key" ON "commandes"("vente_id");
+
+CREATE TABLE IF NOT EXISTS "bons_commande" (
+  "id" TEXT NOT NULL,
+  "numero" SERIAL NOT NULL,
+  "commande_id" TEXT,
+  "vente_id" TEXT,
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "bons_commande_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "bons_commande_numero_key" ON "bons_commande"("numero");
+CREATE UNIQUE INDEX IF NOT EXISTS "bons_commande_commande_id_key" ON "bons_commande"("commande_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "bons_commande_vente_id_key" ON "bons_commande"("vente_id");
+
+-- ===== BLOC 7 : index pour accélérer les pages =====
+CREATE INDEX IF NOT EXISTS "paiements_commande_id_idx" ON "paiements"("commande_id");
+CREATE INDEX IF NOT EXISTS "commandes_statut_date_idx" ON "commandes"("statut", "date_commande");

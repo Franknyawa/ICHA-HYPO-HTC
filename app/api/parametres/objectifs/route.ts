@@ -90,3 +90,42 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+const appliquerSchema = z.object({
+  periode: z.enum(["JOURNALIER", "HEBDOMADAIRE"]),
+  valeurCartons: z.number().int().min(0),
+});
+
+// « Objectif binôme » unique : la valeur saisie s'applique à tous les binômes
+// actifs (met à jour l'objectif de la période en cours, ou le crée).
+export async function PUT(req: NextRequest) {
+  try {
+    await requireModule("parametres");
+    const parsed = appliquerSchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Données invalides." }, { status: 400 });
+    }
+    const { periode, valeurCartons } = parsed.data;
+    const { debutJour, finJour, debutSemaine, finSemaine } = plagesCourantes();
+    const [dateDebut, dateFin] =
+      periode === "JOURNALIER" ? [debutJour, finJour] : [debutSemaine, finSemaine];
+
+    const binomes = await prisma.binome.findMany({ where: { actif: true }, select: { id: true } });
+    await prisma.$transaction(async (tx) => {
+      for (const b of binomes) {
+        const existant = await tx.objectif.findFirst({
+          where: { binomeId: b.id, periode, dateDebut: { lte: dateFin }, dateFin: { gte: dateDebut } },
+          select: { id: true },
+        });
+        if (existant) {
+          await tx.objectif.update({ where: { id: existant.id }, data: { valeurCartons } });
+        } else {
+          await tx.objectif.create({ data: { binomeId: b.id, periode, valeurCartons, dateDebut, dateFin } });
+        }
+      }
+    });
+    return NextResponse.json({ ok: true, binomes: binomes.length });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}

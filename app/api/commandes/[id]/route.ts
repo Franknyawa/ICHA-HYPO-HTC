@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { applyStockMovement, InsufficientStockError } from "@/lib/services/stock";
+import { convertToSachets } from "@/lib/services/produits";
 
 export const runtime = "nodejs";
 
@@ -46,11 +48,73 @@ export async function PATCH(
       return NextResponse.json({ error: "Commande introuvable." }, { status: 404 });
     }
 
-    const commande = await prisma.commande.update({
-      where: { id: params.id },
-      data: { statut: parsed.data.statut },
-      select: { id: true, statut: true },
-    });
+    // Le stock est débité dès que l'admin valide (EN_LIVRAISON / LIVREE) et
+    // remis en stock si la commande est annulée ou réactivée. On compare ce
+    // qui est déjà sorti (mouvements de cette commande) à ce qui doit l'être :
+    // l'opération est donc idempotente et ne débite jamais deux fois.
+    const doitEtreSortie = ["EN_LIVRAISON", "LIVREE"].includes(parsed.data.statut);
+
+    let commande;
+    try {
+      commande = await prisma.$transaction(async (tx) => {
+        const lignes = await tx.commandeLigne.findMany({
+          where: { commandeId: params.id },
+          select: {
+            produitId: true,
+            nbSachets: true,
+            nbFilets: true,
+            nbCartons: true,
+            produit: { select: { sachetsParFilet: true, sachetsParCarton: true } },
+          },
+        });
+
+        const voulu = new Map<string, number>();
+        if (doitEtreSortie) {
+          for (const l of lignes) {
+            voulu.set(l.produitId, (voulu.get(l.produitId) ?? 0) + convertToSachets(l.produit, l));
+          }
+        }
+
+        const mouvements = await tx.mouvementStock.findMany({
+          where: { referenceType: "COMMANDE", referenceId: params.id },
+          select: { produitId: true, type: true, quantiteSachets: true },
+        });
+        const sorti = new Map<string, number>();
+        for (const m of mouvements) {
+          const signe = m.type === "SORTIE" ? 1 : -1;
+          sorti.set(m.produitId, (sorti.get(m.produitId) ?? 0) + signe * m.quantiteSachets);
+        }
+
+        const produitIds = new Set([...voulu.keys(), ...sorti.keys()]);
+        for (const produitId of produitIds) {
+          const ecart = (voulu.get(produitId) ?? 0) - (sorti.get(produitId) ?? 0);
+          if (ecart === 0) continue;
+          await applyStockMovement(tx, {
+            uuidClient: `cmd-${params.id}-${produitId}-${Date.now()}`,
+            produitId,
+            type: ecart > 0 ? "SORTIE" : "ENTREE",
+            quantiteSachets: Math.abs(ecart),
+            referenceType: "COMMANDE",
+            referenceId: params.id,
+            note: ecart > 0 ? "Validation de commande" : "Annulation / réactivation de commande",
+          });
+        }
+
+        return tx.commande.update({
+          where: { id: params.id },
+          data: { statut: parsed.data.statut },
+          select: { id: true, statut: true },
+        });
+      });
+    } catch (e) {
+      if (e instanceof InsufficientStockError) {
+        return NextResponse.json(
+          { error: "Stock insuffisant pour valider cette commande. Réapprovisionnez le stock puis réessayez." },
+          { status: 409 }
+        );
+      }
+      throw e;
+    }
 
     // Quand l'admin valide une commande (passage en livraison), le
     // commercial qui l'a enregistrée est notifié — il n'a autrement aucun

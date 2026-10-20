@@ -9,9 +9,11 @@ type Statut = "EN_ATTENTE" | "EN_LIVRAISON" | "LIVREE" | "ANNULEE";
 export function CommandeStatusActions({ id, statut }: { id: string; statut: Statut }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
 
   async function updateStatut(nouveauStatut: Statut) {
     setSaving(true);
+    setErreur(null);
     const res = await fetch(`/api/commandes/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -19,21 +21,25 @@ export function CommandeStatusActions({ id, statut }: { id: string; statut: Stat
     });
     if (res.ok) {
       router.refresh();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setErreur(d.error ?? "Action impossible.");
     }
     setSaving(false);
   }
 
+  const boutons = (() => {
   if (statut === "EN_ATTENTE") {
     return (
       <div className="flex gap-1.5">
         <button
           onClick={() => updateStatut("EN_LIVRAISON")}
           disabled={saving}
-          title="Valider la commande — le commercial est notifié"
+          title="Valider : autorise la livraison, débite le stock et notifie le commercial"
           className="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-brand disabled:opacity-50"
         >
           <CheckCircle2 size={13} />
-          Valider
+          Valider et autoriser la livraison
         </button>
         <button
           onClick={() => updateStatut("ANNULEE")}
@@ -79,5 +85,13 @@ export function CommandeStatusActions({ id, statut }: { id: string; statut: Stat
       <RotateCcw size={13} />
       Réactiver
     </button>
+  );
+  })();
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      {boutons}
+      {erreur && <p className="max-w-[220px] text-[11px] text-alert">{erreur}</p>}
+    </div>
   );
 }

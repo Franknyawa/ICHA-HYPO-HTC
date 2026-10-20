@@ -47,71 +47,64 @@ export type LigneStock = {
 };
 
 function canalDe(mode: string): Canal {
-  return mode === "MOBILE_MONEY" ? "MOBILE_MONEY" : "ESPECES";
+  return mode === "MOBILE_MONEY" ? "MOBILE_MONEY" : mode === "BANQUE" ? "BANQUE" : "ESPECES";
 }
 
 const num = (x: unknown) => Number(x ?? 0);
 
-/** Créances : toutes les ventes et commandes non annulées dont le reste dû est > 0. */
+type LigneCreance = {
+  id: string;
+  total: number;
+  paye: number;
+  mode: string | null;
+  date: Date;
+  pv: string;
+  prenom: string;
+  nom: string;
+};
+
+/**
+ * Créances : commandes VALIDÉES par l'admin (en livraison ou livrées) dont
+ * le reste dû est > 0. Une seule requête SQL agrégée (pas de chargement de
+ * toutes les commandes en mémoire) pour que la caisse et le tableau de bord
+ * restent rapides.
+ */
 export async function getCreditsAEncaisser(): Promise<CreditAEncaisser[]> {
-  const [ventes, commandes] = await Promise.all([
-    prisma.vente.findMany({
-      where: { montantTotal: { gt: 0 } },
-      select: {
-        id: true,
-        montantTotal: true,
-        modePaiement: true,
-        createdAt: true,
-        pointVente: { select: { nom: true } },
-        commercial: { select: { prenom: true, nom: true } },
-        paiements: { select: { montant: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.commande.findMany({
-      where: { montantTotal: { gt: 0 }, statut: { not: "ANNULEE" } },
-      select: {
-        id: true,
-        montantTotal: true,
-        modePaiement: true,
-        createdAt: true,
-        pointVente: { select: { nom: true } },
-        commercial: { select: { prenom: true, nom: true } },
-        paiements: { select: { montant: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-  ]);
+  const rows = await prisma.$queryRaw<LigneCreance[]>`
+    SELECT c.id,
+           c.montant_total::float8 AS total,
+           COALESCE(p.paye, 0)::float8 AS paye,
+           c.mode_paiement::text AS mode,
+           c.created_at AS date,
+           pv.nom AS pv,
+           u.prenom AS prenom,
+           u.nom AS nom
+    FROM commandes c
+    JOIN points_vente pv ON pv.id = c.point_vente_id
+    JOIN users u ON u.id = c.commercial_id
+    LEFT JOIN (
+      SELECT commande_id, SUM(montant) AS paye
+      FROM paiements
+      WHERE commande_id IS NOT NULL
+      GROUP BY commande_id
+    ) p ON p.commande_id = c.id
+    WHERE c.statut IN ('EN_LIVRAISON', 'LIVREE')
+      AND c.montant_total > 0
+      AND c.montant_total - COALESCE(p.paye, 0) > 0.5
+    ORDER BY c.created_at ASC`;
 
-  const alertes = ventes.length
-    ? await prisma.alerte.findMany({
-        where: { type: "CREDIT_RETARD", entiteType: "Vente", entiteId: { in: ventes.map((v) => v.id) }, statut: "RESOLUE" },
-        select: { entiteId: true },
-      })
-    : [];
-  const resolues = new Set(alertes.map((a) => a.entiteId));
-
-  const liste: CreditAEncaisser[] = [];
-  const ajouter = (type: "VENTE" | "COMMANDE", o: (typeof ventes)[number]) => {
-    const paye = o.paiements.reduce((s, p) => s + num(p.montant), 0);
-    const du = num(o.montantTotal) - paye;
-    if (du <= 0.5) return;
-    liste.push({
-      cle: `${type}:${o.id}`,
-      type,
-      id: o.id,
-      pointVenteNom: o.pointVente.nom,
-      commercialNom: `${o.commercial.prenom} ${o.commercial.nom}`,
-      date: o.createdAt,
-      montantTotal: num(o.montantTotal),
-      paye,
-      du,
-      modeAnnonce: o.modePaiement,
-    });
-  };
-  for (const v of ventes) if (!resolues.has(v.id)) ajouter("VENTE", v);
-  for (const c of commandes) ajouter("COMMANDE", c);
-  return liste.sort((a, b) => a.date.getTime() - b.date.getTime());
+  return rows.map((r) => ({
+    cle: `COMMANDE:${r.id}`,
+    type: "COMMANDE" as const,
+    id: r.id,
+    pointVenteNom: r.pv,
+    commercialNom: `${r.prenom} ${r.nom}`,
+    date: new Date(r.date),
+    montantTotal: r.total,
+    paye: r.paye,
+    du: r.total - r.paye,
+    modeAnnonce: r.mode,
+  }));
 }
 
 /** Stock présent valorisé au prix de vente et au coût d'achat moyen. */

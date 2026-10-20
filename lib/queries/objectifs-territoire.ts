@@ -48,7 +48,8 @@ export async function getProgressionTerritoires(): Promise<ProgressionTerritoire
       select: { nbCartons: true, vente: { select: { dateVente: true, pointVente: { select: { villeId: true } } } } },
     }),
     prisma.commandeLigne.findMany({
-      where: { nbCartons: { gt: 0 }, commande: { statut: { not: "ANNULEE" }, dateCommande: { gte: depuis } } },
+      // Les commandes issues d'une vente terrain (venteId) sont déjà comptées dans les ventes.
+      where: { nbCartons: { gt: 0 }, commande: { statut: { not: "ANNULEE" }, venteId: null, dateCommande: { gte: depuis } } },
       select: { nbCartons: true, commande: { select: { dateCommande: true, pointVente: { select: { villeId: true } } } } },
     }),
     prisma.objectifTerritoire.findMany(),

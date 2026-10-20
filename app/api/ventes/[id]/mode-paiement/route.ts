@@ -6,7 +6,7 @@ import { handleApiError } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
 
-const schema = z.object({ modePaiement: z.enum(["ESPECES", "MOBILE_MONEY", "CREDIT_PARTIEL", "CREDIT_TOTAL"]) });
+const schema = z.object({ modePaiement: z.enum(["ESPECES", "MOBILE_MONEY", "BANQUE", "CREDIT_PARTIEL", "CREDIT_TOTAL"]) });
 
 /**
  * Corrige le mode de paiement (ex. annoncé OM/MOMO sur le terrain, finalement

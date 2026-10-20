@@ -8,6 +8,8 @@ export type ListCommandesParams = {
   page?: number;
   pageSize?: number;
   statut?: StatutCommandeFiltre;
+  /** Plusieurs statuts à la fois (ex. commandes validées pour la page Factures). */
+  statuts?: StatutCommandeFiltre[];
   villeId?: string;
   commercialId?: string;
   dateFrom?: string;
@@ -22,7 +24,7 @@ export async function listCommandes(params: ListCommandesParams) {
 
   const where: Prisma.CommandeWhereInput = {
     archivedAt: null,
-    ...(params.statut ? { statut: params.statut } : {}),
+    ...(params.statut ? { statut: params.statut } : params.statuts ? { statut: { in: params.statuts } } : {}),
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),
     ...(params.commercialId ? { commercialId: params.commercialId } : {}),
     ...(params.dateFrom || params.dateTo

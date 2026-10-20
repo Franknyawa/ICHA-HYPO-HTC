@@ -8,7 +8,7 @@ import { chargerReferentiels, chargerMe } from "@/lib/offline/referentiels";
 import { syncPendingVisites } from "@/lib/offline/sync";
 import { compressImage } from "@/lib/utils/image";
 import { genererBonCommandePdf, referenceBonCommande } from "@/lib/utils/bon-commande-pdf";
-import { lignesDocument } from "@/lib/utils/documents";
+import { lignesDocument, numeroBonCommande } from "@/lib/utils/documents";
 import { preparerCommande, type ProduitForm } from "@/lib/utils/commande-terrain";
 import type { PalierTarif } from "@/lib/utils/tarifs";
 import { COORDONNEES_VILLES } from "@/lib/geo/cameroun";
@@ -395,6 +395,11 @@ export default function NouvelleVisitePage() {
         return;
       }
 
+      const d = await res.json().catch(() => null);
+      if (d?.bonCommande?.numero) {
+        const numero = numeroBonCommande(d.bonCommande.numero);
+        setBonRef((prev) => (prev ? { ...prev, reference: numero } : prev));
+      }
       setSuccess(true);
       if (!aUneCommande) {
         setTimeout(() => router.push("/dashboard"), 1200);

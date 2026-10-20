@@ -12,13 +12,15 @@ export const ENTREPRISE = {
 const pad5 = (n: number) => String(n).padStart(5, "0");
 
 export const numeroFacture = (n: number) => `FVICHA ${pad5(n)}`;
+export const numeroBonCommande = (n: number) => `BCICHA ${pad5(n)}`;
 export const numeroBonLivraison = (n: number) => `BLICHA ${pad5(n)}`;
 
-export type ModePaiementId = "ESPECES" | "MOBILE_MONEY" | "CREDIT_PARTIEL" | "CREDIT_TOTAL";
+export type ModePaiementId = "ESPECES" | "MOBILE_MONEY" | "BANQUE" | "CREDIT_PARTIEL" | "CREDIT_TOTAL";
 
 export const LIBELLE_MODE_PAIEMENT: Record<ModePaiementId, string> = {
   ESPECES: "Espèces",
   MOBILE_MONEY: "OM/MOMO",
+  BANQUE: "Opération bancaire",
   CREDIT_PARTIEL: "Crédit partiel",
   CREDIT_TOTAL: "Crédit total",
 };
@@ -44,6 +46,11 @@ export function designationProduit(p: ProduitDesignation): string {
   return p.nom;
 }
 
+/** « 5 cartons », « 1 filet », « 12 sachets » : l'unité est toujours écrite. */
+export function texteQuantite(unite: "carton" | "filet" | "sachet", n: number): string {
+  return `${n} ${unite}${n > 1 ? "s" : ""}`;
+}
+
 export type LigneSource = {
   produitCode: string;
   produitNom: string;
@@ -64,7 +71,7 @@ export type LigneDocument = {
   reference: string;
   designation: string;
   quantite: number;
-  /** Texte affiché : « 5 » pour des cartons, « 12 sachets » / « 3 filets » sinon. */
+  /** Texte affiché avec son unité : « 5 cartons », « 3 filets », « 12 sachets ». */
   quantiteTexte: string;
   unite: "carton" | "filet" | "sachet";
   prixUnitaire: number | null;
@@ -102,7 +109,7 @@ export function lignesDocument(sources: LigneSource[]): LigneDocument[] {
         reference: s.produitCode,
         designation: u.unite === "carton" ? base : `${base} — vente au ${u.unite}`,
         quantite: u.qte,
-        quantiteTexte: u.unite === "carton" ? String(u.qte) : `${u.qte} ${u.unite}s`,
+        quantiteTexte: texteQuantite(u.unite, u.qte),
         unite: u.unite,
         prixUnitaire: prix,
         total: prix === null ? null : Math.round(prix * u.qte),

@@ -8,7 +8,7 @@ import { queuePendingVisite } from "@/lib/offline/db";
 import { chargerReferentiels, chargerMe, pointVenteLocal } from "@/lib/offline/referentiels";
 import { syncPendingVisites } from "@/lib/offline/sync";
 import { genererBonCommandePdf, referenceBonCommande } from "@/lib/utils/bon-commande-pdf";
-import { lignesDocument } from "@/lib/utils/documents";
+import { lignesDocument, numeroBonCommande } from "@/lib/utils/documents";
 import { preparerCommande, type ProduitForm, type QuantitesParCode } from "@/lib/utils/commande-terrain";
 import type { PalierTarif, PrixTypeTarif } from "@/lib/utils/tarifs";
 import {
@@ -168,6 +168,11 @@ function ReassortContent() {
         return;
       }
 
+      const d = await res.json().catch(() => null);
+      if (d?.bonCommande?.numero) {
+        const numero = numeroBonCommande(d.bonCommande.numero);
+        setBonRef((prev) => (prev ? { ...prev, reference: numero } : prev));
+      }
       setSuccess(true);
     } catch {
       await queuePendingVisite(visiteUuid, payload);

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CommandeStatusActions } from "@/components/admin/CommandeStatusActions";
 import { ArchiveButton, ArchiverAnciennesButton } from "@/components/admin/ArchiveButton";
+import { BonCommandeButton } from "@/components/admin/BonCommandeButton";
 import { BonLivraisonButton } from "@/components/admin/BonLivraisonButton";
 import { FactureButton } from "@/components/admin/FactureButton";
 import { ModePaiementSelect } from "@/components/admin/ModePaiementSelect";
@@ -88,7 +89,7 @@ export default async function CommandesPage({
       <AdminPageHeader title="Commandes" subtitle={`${pagination.total} au total`} action={
           <div className="flex items-center gap-2">
             {peutModifier(session.role) && (
-              <Link href="/admin/commandes/nouvelle" className="flex items-center gap-1.5 rounded-xl bg-white/20 px-3.5 py-2 text-sm font-semibold text-white hover:bg-white/30">
+              <Link href="/admin/commandes/nouvelle" className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#2563eb]">
                 <Plus size={15} /> Nouvelle commande
               </Link>
             )}
@@ -97,6 +98,14 @@ export default async function CommandesPage({
         } />
 
       <div className="p-4 md:p-6">
+        {peutModifier(session.role) && (
+          <Link
+            href="/admin/commandes/nouvelle"
+            className="mb-4 flex w-fit items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#2563eb] md:hidden"
+          >
+            <Plus size={15} /> Nouvelle commande
+          </Link>
+        )}
         {/* Pastilles de filtre rapide par statut */}
         <div className="mb-4 flex flex-wrap gap-2">
           <Link
@@ -176,9 +185,14 @@ export default async function CommandesPage({
                         l.produit.code === "HYPO" ? "bg-blue-50 text-blue-700" : "bg-teal-50 text-teal-700"
                       }`}
                     >
-                      {l.produit.code} — {l.nbCartons} cartons
-                      {l.nbFilets > 0 ? `, ${l.nbFilets} filets` : ""}
-                      {l.nbSachets > 0 ? `, ${l.nbSachets} sachets` : ""}
+                      {l.produit.code} —{" "}
+                      {[
+                        l.nbCartons > 0 ? `${l.nbCartons} carton${l.nbCartons > 1 ? "s" : ""}` : "",
+                        l.nbFilets > 0 ? `${l.nbFilets} filet${l.nbFilets > 1 ? "s" : ""}` : "",
+                        l.nbSachets > 0 ? `${l.nbSachets} sachet${l.nbSachets > 1 ? "s" : ""}` : "",
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
                     </span>
                   ))}
                 </div>
@@ -208,7 +222,9 @@ export default async function CommandesPage({
                         <Phone size={15} />
                       </a>
                     )}
-                    {c.statut !== "ANNULEE" && peutModifier(session.role) && (
+                    {c.statut !== "ANNULEE" && peutModifier(session.role) && <BonCommandeButton commandeId={c.id} />}
+                    {/* Facture et bon de livraison : seulement une fois la commande validée par l'admin. */}
+                    {(c.statut === "EN_LIVRAISON" || c.statut === "LIVREE") && peutModifier(session.role) && (
                       <>
                         <BonLivraisonButton commandeId={c.id} />
                         <FactureButton type="COMMANDE" id={c.id} agents={agents} />

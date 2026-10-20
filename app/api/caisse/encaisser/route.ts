@@ -10,7 +10,7 @@ const schema = z.object({
   type: z.enum(["VENTE", "COMMANDE"]).default("VENTE"),
   id: z.string().uuid(),
   montant: z.number().positive().max(1_000_000_000),
-  canal: z.enum(["ESPECES", "MOBILE_MONEY"]).default("ESPECES"),
+  canal: z.enum(["ESPECES", "MOBILE_MONEY", "BANQUE"]).default("ESPECES"),
 });
 
 /**

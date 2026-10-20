@@ -157,6 +157,17 @@ model Facture {
   @@map("factures")
 }
 
+/// Bon de commande numéroté « BCICHA 00001 » : attribué à l'enregistrement de la commande terrain (ou à la première impression au bureau).
+model BonCommande {
+  id          String   @id @default(uuid())
+  numero      Int      @unique @default(autoincrement())
+  commandeId  String?  @unique @map("commande_id")
+  venteId     String?  @unique @map("vente_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("bons_commande")
+}
+
 /// Bon de livraison numéroté « BLICHA 00001 » : créé à la première impression pour une commande.
 model BonLivraison {
   id          String   @id @default(uuid())
@@ -512,6 +523,8 @@ model Commande {
   dateLivraisonPrevue DateTime?      @map("date_livraison_prevue")
   montantTotal        Decimal        @default(0) @map("montant_total") @db.Decimal(12, 2)
   modePaiement        ModePaiement?  @map("mode_paiement")
+  // Vente terrain à l'origine de cette commande (statistiques) — null pour une commande « à livrer plus tard » ou saisie au bureau.
+  venteId             String?        @unique @map("vente_id")
   archivedAt          DateTime?      @map("archived_at")
   createdAt           DateTime       @default(now()) @map("created_at")
 
@@ -550,6 +563,7 @@ enum ModePaiement {
   MOBILE_MONEY
   CREDIT_PARTIEL
   CREDIT_TOTAL
+  BANQUE
 }
 
 model Paiement {

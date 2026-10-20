@@ -11,6 +11,9 @@ export async function imprimerListePdf(opts: {
   /** Alignement à droite des colonnes numériques (index). */
   droite?: number[];
   paysage?: boolean;
+  /** Télécharger le fichier au lieu d'ouvrir la boîte d'impression. */
+  telecharger?: boolean;
+  nomFichier?: string;
 }) {
   const { default: JsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
@@ -43,6 +46,11 @@ export async function imprimerListePdf(opts: {
   });
 
   dessinerPieds(doc);
+  if (opts.telecharger) {
+    const jour = new Date().toISOString().slice(0, 10);
+    doc.save(`${opts.nomFichier ?? "liste"}-${jour}.pdf`);
+    return;
+  }
   doc.autoPrint();
   const url = doc.output("bloburl");
   window.open(String(url), "_blank");
