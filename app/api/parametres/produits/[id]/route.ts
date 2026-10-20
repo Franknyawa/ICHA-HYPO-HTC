@@ -11,6 +11,7 @@ export const runtime = "nodejs";
 // prix, conversions, formulaires) ; le renommer casserait l'application.
 const schema = z.object({
   gamme: z.string().trim().max(40).optional().nullable(),
+  designation: z.string().trim().max(160).optional().nullable(),
   prixSachet: z.number().min(0).optional(),
   prixFilet: z.number().min(0).optional().nullable(),
   prixCarton: z.number().min(0).optional(),
@@ -27,11 +28,15 @@ export async function PATCH(
     if (!parsed.success) {
       return NextResponse.json({ error: "Données invalides." }, { status: 400 });
     }
-    const { gamme, ...reste } = parsed.data;
+    const { gamme, designation, ...reste } = parsed.data;
     const produit = await prisma.produit.update({
       where: { id: params.id },
       // Gamme vide = « Sans gamme » (null), pas une chaîne vide.
-      data: { ...reste, ...(gamme !== undefined ? { gamme: gamme || null } : {}) },
+      data: {
+        ...reste,
+        ...(gamme !== undefined ? { gamme: gamme || null } : {}),
+        ...(designation !== undefined ? { designation: designation || null } : {}),
+      },
     });
     return NextResponse.json(produit);
   } catch (error) {

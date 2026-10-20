@@ -126,7 +126,13 @@ async function genererAlertesCredits(joursCreditRetard: number) {
   seuil.setDate(seuil.getDate() - joursCreditRetard);
 
   const ventes = await prisma.vente.findMany({
-    where: { createdAt: { lte: seuil }, paiements: { some: { estCredit: true } } },
+    where: {
+      createdAt: { lte: seuil },
+      OR: [
+        { paiements: { some: { estCredit: true } } },
+        { modePaiement: { in: ["CREDIT_PARTIEL", "CREDIT_TOTAL"] } },
+      ],
+    },
     select: {
       id: true,
       montantTotal: true,

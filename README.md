@@ -1545,3 +1545,56 @@ ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'SUPERVISEUR';
 ALTER TABLE "points_vente" ADD COLUMN IF NOT EXISTS "archived_at" TIMESTAMP(3);
 ALTER TABLE "commandes" ADD COLUMN IF NOT EXISTS "archived_at" TIMESTAMP(3);
 ```
+
+---
+
+## Module : bons de commande, factures, caisse, stock, objectifs, tarifs (20 octobre 2026)
+
+**⚠️ Changement de schéma — migration nécessaire AVANT de déployer :** ouvrir
+`docs/migration-2026-10-20.sql` dans Supabase (SQL Editor) et lancer les
+4 blocs **un par un**, le BLOC 1 (`ALTER TYPE`) tout seul. Tout est
+rejouable sans danger.
+
+### Terrain (commercial)
+- Après validation d'une commande : **bon de commande** (désignation, prix
+  unitaire, quantité, total, nom et adresse du client). La facture est émise
+  plus tard par le bureau.
+- Paiement : libellé **OM/MOMO**, plus de case « paiement reçu » — le
+  commercial indique seulement le montant à encaisser ; le superviseur
+  encaisse ensuite. Aucun `Paiement` n'est créé depuis le formulaire : mode
+  et montant sont seulement *annoncés* (`Vente.modePaiement/montantAnnonce`,
+  `Commande.modePaiement`).
+- Quartier et repère en saisie libre (création du quartier à la volée,
+  insensible à la casse). Les villes sont une liste fixe
+  (`lib/geo/cameroun.ts`) : plus de gestion villes/quartiers en back office.
+- Prix : base → prix du type de boutique → grille par quantité
+  (`lib/utils/tarifs.ts`, un seul calcul pour terrain, bureau et serveur).
+
+### Back office
+- **Caisse** : toute vente / commande enregistrée est une créance « à
+  encaisser » ; l'admin valide l'argent remis par le superviseur (espèces ou
+  OM/MOMO). Nouvelle opération : 3 canaux (Espèces, OM/MOMO, Opération bancaire).
+- **Mode de paiement modifiable** sur les commandes et les factures
+  (liste déroulante, sans toucher aux paiements déjà validés).
+- **Factures** `FVICHA 00001` et **bons de livraison** `BLICHA 00001`
+  (numérotation par compteur en base, agent de facturation choisi/par défaut
+  NSINZE SABA, géré par le Super Admin dans Paramètres). Boutons Facture et
+  Bon de livraison dans l'onglet Commandes ; le bon de livraison demande les
+  quantités livrées et calcule le reste à livrer.
+- **Nouvelle commande** au bureau (Commandes → Nouvelle commande) : client
+  existant ou nouveau (ajouté aux points de vente), prix recalculés côté serveur.
+- **Stock** : sorties hors vente (avaries, échantillons, gifts — le stock
+  baisse, rien n'est facturé), historique filtrable et imprimable.
+- **Clients** : tous les points de vente ayant déjà acheté ; filtres
+  date/ville/quartier/type ; export Excel (CSV) et impression PDF.
+- **Objectifs par région et par ville** (Paramètres, Super Admin) ; progression
+  sur le tableau de bord et dans « Objectifs » (jour / semaine / mois).
+- **Tarifs** (Paramètres) : matrice compacte « type de boutique × unité » et
+  grille par quantité de cartons (ex. 0–10 cartons = 9 000, 11–100 = 8 500).
+
+### Limites connues
+- Une commande livrée ne décrémente pas encore le stock (comportement
+  historique, à traiter avec la refonte multi-dépôts).
+- Les quantités livrées d'un bon de livraison ne sont pas enregistrées (le
+  reste à livrer est calculé à l'impression).
+- Objectifs territoire : cartons des ventes + commandes non annulées.

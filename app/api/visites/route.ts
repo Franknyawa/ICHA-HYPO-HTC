@@ -68,12 +68,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Un mode de paiement CREDIT_* implique un crédit — dérivé ici plutôt que
-// redemandé au commercial (évite une case à cocher redondante avec le menu).
-function isCredit(mode: string) {
-  return mode === "CREDIT_PARTIEL" || mode === "CREDIT_TOTAL";
-}
-
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth();
@@ -168,9 +162,9 @@ export async function POST(req: NextRequest) {
           // Quartier en texte libre : find-or-create sous la ville choisie.
           let quartierId: string | undefined;
           if (npv.quartierNom && npv.quartierNom.trim()) {
-            const quartierNom = npv.quartierNom.trim();
-            const existingQuartier = await tx.quartier.findUnique({
-              where: { villeId_nom: { villeId: npv.villeId, nom: quartierNom } },
+            const quartierNom = npv.quartierNom.trim().replace(/\s+/g, " ");
+            const existingQuartier = await tx.quartier.findFirst({
+              where: { villeId: npv.villeId, nom: { equals: quartierNom, mode: "insensitive" } },
             });
             quartierId = existingQuartier
               ? existingQuartier.id
@@ -258,6 +252,10 @@ export async function POST(req: NextRequest) {
             // et synchronisée le lendemain doit compter pour le bon jour.
             dateVente: new Date(input.dateVisite),
             montantTotal: input.vente.montantTotal,
+            // Mode et montant DÉCLARÉS par le commercial : l'argent n'est
+            // réellement encaissé (Paiement) que lorsque l'admin valide.
+            modePaiement: input.vente.paiement?.modePaiement,
+            montantAnnonce: input.vente.paiement?.montant,
             lignes: {
               create: input.vente.lignes.map((l) => {
                 const produit = produitParCode.get(l.produitCode);
@@ -267,7 +265,10 @@ export async function POST(req: NextRequest) {
                   nbSachets: l.nbSachets,
                   nbFilets: l.nbFilets,
                   nbCartons: l.nbCartons,
-                  montant: 0, // pas de prix par produit saisi sur le terrain (MVP)
+                  prixSachet: l.prixSachet,
+                  prixFilet: l.prixFilet,
+                  prixCarton: l.prixCarton,
+                  montant: l.montant ?? 0,
                 };
               }),
             },
@@ -290,18 +291,6 @@ export async function POST(req: NextRequest) {
             referenceId: vente.id,
           });
         }
-
-        if (input.vente.paiement) {
-          await tx.paiement.create({
-            data: {
-              uuidClient: input.vente.paiement.uuidClient,
-              venteId: vente.id,
-              montant: input.vente.paiement.montant,
-              modePaiement: input.vente.paiement.modePaiement,
-              estCredit: isCredit(input.vente.paiement.modePaiement),
-            },
-          });
-        }
       }
 
       // 5. Commande (livraison future — distincte de la vente immédiate)
@@ -314,6 +303,8 @@ export async function POST(req: NextRequest) {
             clientId: input.commande.clientId,
             commercialId: session.userId,
             dateCommande: new Date(input.dateVisite),
+            montantTotal: input.commande.montantTotal ?? 0,
+            modePaiement: input.commande.modePaiement,
             dateLivraisonPrevue: input.commande.dateLivraisonPrevue
               ? new Date(input.commande.dateLivraisonPrevue)
               : undefined,
@@ -326,6 +317,10 @@ export async function POST(req: NextRequest) {
                   nbSachets: l.nbSachets,
                   nbFilets: l.nbFilets,
                   nbCartons: l.nbCartons,
+                  prixSachet: l.prixSachet,
+                  prixFilet: l.prixFilet,
+                  prixCarton: l.prixCarton,
+                  montant: l.montant ?? 0,
                 };
               }),
             },

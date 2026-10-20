@@ -1,3 +1,4 @@
+import { listerVilles } from "@/lib/geo/synchro-villes";
 import Link from "next/link";
 import { getRapport, type RapportVue, type RapportFilters } from "@/lib/queries/rapports";
 import { prisma } from "@/lib/prisma";
@@ -100,7 +101,7 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
       select: { id: true, nom: true, prenom: true },
     }),
     prisma.binome.findMany({ orderBy: { nom: "asc" } }),
-    prisma.ville.findMany({ orderBy: { nom: "asc" } }),
+    listerVilles(),
     prisma.typePointVente.findMany({ orderBy: { nom: "asc" } }),
     prisma.produit.findMany({ orderBy: { code: "asc" }, select: { code: true, nom: true, gamme: true } }),
   ]);

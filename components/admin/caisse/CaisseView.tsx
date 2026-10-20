@@ -22,7 +22,7 @@ import { ExportCsvButton } from "@/components/admin/ExportCsvButton";
 import { PdfExportButton } from "@/components/admin/PdfExportButton";
 import { ImprimerButton } from "@/components/admin/ImprimerButton";
 
-const LIBELLE_CANAL = { ESPECES: "Espèces", MOBILE_MONEY: "Mobile Money" } as const;
+const LIBELLE_CANAL = { ESPECES: "Espèces", MOBILE_MONEY: "OM/MOMO", BANQUE: "Opération bancaire" } as const;
 
 export function CaisseView({
   c,
@@ -101,7 +101,7 @@ export function CaisseView({
         </form>
 
         {/* Solde + répartition par canal */}
-        <section className="grid gap-4 lg:grid-cols-[1.3fr_1fr_1fr]">
+        <section className="grid gap-4 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1e3a8a] via-[#2563eb] to-[#359980] p-6 text-white shadow-lg shadow-blue-900/20">
             <div className="absolute -right-8 -top-8 h-36 w-36 rounded-full bg-white/10" />
             <div className="absolute -bottom-10 right-10 h-28 w-28 rounded-full bg-white/10" />
@@ -110,7 +110,7 @@ export function CaisseView({
             </p>
             <p className="mt-3 text-3xl font-bold tabular-nums md:text-4xl">{formatFcfa(c.soldeTotal)}</p>
             <p className="mt-2 text-xs text-white/75">
-              Tous les encaissements de ventes, plus les recettes, moins les dépenses.
+              Tous les encaissements validés, plus les recettes, moins les dépenses.
             </p>
           </div>
           <KpiCard
@@ -121,11 +121,18 @@ export function CaisseView({
             ton="vert"
           />
           <KpiCard
-            label="Solde Mobile Money"
+            label="Solde OM/MOMO"
             valeur={formatFcfa(c.solde.MOBILE_MONEY)}
             sous={`période : ${c.parCanalPeriode.MOBILE_MONEY.entrees - c.parCanalPeriode.MOBILE_MONEY.sorties >= 0 ? "+" : ""}${formatFcfa(c.parCanalPeriode.MOBILE_MONEY.entrees - c.parCanalPeriode.MOBILE_MONEY.sorties)}`}
             icone={Smartphone}
             ton="ambre"
+          />
+          <KpiCard
+            label="Solde banque"
+            valeur={formatFcfa(c.solde.BANQUE)}
+            sous={`période : ${c.parCanalPeriode.BANQUE.entrees - c.parCanalPeriode.BANQUE.sorties >= 0 ? "+" : ""}${formatFcfa(c.parCanalPeriode.BANQUE.entrees - c.parCanalPeriode.BANQUE.sorties)}`}
+            icone={Landmark}
+            ton="bleu"
           />
         </section>
 
@@ -149,9 +156,9 @@ export function CaisseView({
               ton={resultatPositif ? "bleu" : "rose"}
             />
             <KpiCard
-              label="Crédits à encaisser"
+              label="Commandes à encaisser"
               valeur={formatFcfa(c.creditsTotal)}
-              sous={`${c.credits.length} vente${c.credits.length > 1 ? "s" : ""} · toutes périodes`}
+              sous={`${c.credits.length} commande${c.credits.length > 1 ? "s" : ""} · toutes périodes`}
               icone={HandCoins}
               ton="ambre"
             />
@@ -160,7 +167,7 @@ export function CaisseView({
 
         {/* Opérations + crédits */}
         <CaisseOperations
-          credits={c.credits.map((x) => ({ ...x, dateVente: x.dateVente.toISOString() }))}
+          credits={c.credits.map((x) => ({ ...x, date: x.date.toISOString() }))}
         />
 
         {/* Stock présent */}

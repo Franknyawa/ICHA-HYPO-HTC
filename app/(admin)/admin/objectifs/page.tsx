@@ -2,6 +2,9 @@ import { getProgressionBinomes, getProgressionCommerciaux } from "@/lib/queries/
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { StatBar } from "@/components/StatBar";
 import { Users2, User } from "lucide-react";
+import { TerritoiresSection, TerritoiresSkeleton } from "@/components/admin/TerritoiresSection";
+import { Suspense } from "react";
+import { Globe2 } from "lucide-react";
 import { requireAdminPage } from "@/lib/auth/rbac";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
@@ -24,6 +27,20 @@ export default async function ObjectifsPage() {
       />
 
       <div className="space-y-6 p-4 md:p-6">
+        <section>
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-700 text-white">
+              <Globe2 size={14} />
+            </span>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Par région et par ville
+            </h2>
+          </div>
+          <Suspense fallback={<TerritoiresSkeleton />}>
+            <TerritoiresSection />
+          </Suspense>
+        </section>
+
         <section>
           <div className="mb-3 flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-700 text-white">

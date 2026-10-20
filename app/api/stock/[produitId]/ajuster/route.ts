@@ -10,11 +10,13 @@ export const runtime = "nodejs";
 const schema = z.object({
   type: z.enum(["ENTREE", "SORTIE"]),
   quantiteSachets: z.number().int().min(1),
-  motif: z.string().optional(),
+  motif: z.string().max(300).optional(),
+  // Sortie hors vente : le stock diminue mais rien n'est facturé.
+  motifType: z.enum(["AVARIE", "ECHANTILLON", "GIFT"]).optional(),
   // Achat de stock : montant payé pour cette entrée. Enregistré automatiquement
   // en dépense de caisse, et le coût moyen du carton est mis à jour.
   coutTotal: z.number().positive().max(1_000_000_000).optional(),
-  canal: z.enum(["ESPECES", "MOBILE_MONEY"]).default("ESPECES"),
+  canal: z.enum(["ESPECES", "MOBILE_MONEY", "BANQUE"]).default("ESPECES"),
 });
 
 // Ajustement manuel du stock — réassort (ENTREE) ou correction/perte
@@ -31,6 +33,10 @@ export async function POST(
       return NextResponse.json({ error: "Données invalides." }, { status: 400 });
     }
 
+    if (parsed.data.motifType && parsed.data.type !== "SORTIE") {
+      return NextResponse.json({ error: "Une avarie, un échantillon ou un gift est une sortie de stock." }, { status: 400 });
+    }
+
     await prisma.$transaction(async (tx) => {
       const achat = parsed.data.type === "ENTREE" ? parsed.data.coutTotal : undefined;
       const avant = achat
@@ -45,8 +51,8 @@ export async function POST(
         produitId: params.produitId,
         type: parsed.data.type,
         quantiteSachets: parsed.data.quantiteSachets,
-        referenceType: "AJUSTEMENT_MANUEL",
-        referenceId: parsed.data.motif || undefined,
+        referenceType: parsed.data.motifType ?? "AJUSTEMENT_MANUEL",
+        note: parsed.data.motif || undefined,
       });
 
       if (achat && avant) {

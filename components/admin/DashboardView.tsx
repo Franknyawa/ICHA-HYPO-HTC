@@ -42,6 +42,7 @@ export function DashboardView({
   parVendeur,
   observations,
   ventesSlot,
+  territoiresSlot,
   peutCaisse = true,
   peutStock = true,
 }: {
@@ -55,6 +56,7 @@ export function DashboardView({
   parVendeur: { nom: string; montant: number }[];
   observations: React.ComponentProps<typeof ObservationsTerrain>["observations"];
   ventesSlot: ReactNode;
+  territoiresSlot: ReactNode;
   peutCaisse?: boolean;
   peutStock?: boolean;
 }) {
@@ -289,6 +291,12 @@ export function DashboardView({
 
         {/* Ventes par produit : chargé en streaming */}
         <section>{ventesSlot}</section>
+
+        {/* Objectifs par région et par ville */}
+        <section>
+          <TitreSection ton="vert">Objectifs par région et par ville</TitreSection>
+          {territoiresSlot}
+        </section>
 
         {/* Observations terrain récentes */}
         <section>

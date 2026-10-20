@@ -1,9 +1,11 @@
+import { listerVilles } from "@/lib/geo/synchro-villes";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Receipt } from "lucide-react";
 import { listVentes } from "@/lib/queries/ventes";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { FactureButton } from "@/components/admin/FactureButton";
+import { ModePaiementSelect } from "@/components/admin/ModePaiementSelect";
 import { requireAdminPage } from "@/lib/auth/rbac";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
@@ -29,21 +31,22 @@ export default async function FacturesPage({
   const dateFrom = searchParams.dateFrom ?? "";
   const dateTo = searchParams.dateTo ?? "";
 
-  const [{ data, pagination }, villes, commerciaux] = await Promise.all([
+  const [{ data, pagination }, villes, commerciaux, agents] = await Promise.all([
     listVentes({ page, commercialId, villeId, dateFrom, dateTo }),
-    prisma.ville.findMany({ orderBy: { nom: "asc" } }),
+    listerVilles(),
     prisma.user.findMany({
       where: { role: "COMMERCIAL" },
       orderBy: { nom: "asc" },
       select: { id: true, nom: true, prenom: true },
     }),
+    prisma.agentFacturation.findMany({ where: { actif: true }, orderBy: { nom: "asc" }, select: { id: true, nom: true } }),
   ]);
 
   const baseQuery = { commercialId, villeId, dateFrom, dateTo };
 
   return (
     <main>
-      <AdminPageHeader title="Factures générées" subtitle={`${pagination.total} ventes au total`} />
+      <AdminPageHeader title="Factures" subtitle={`${pagination.total} ventes au total`} />
 
       <div className="p-4 md:p-6">
         <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-4" action="/admin/factures">
@@ -85,7 +88,12 @@ export default async function FacturesPage({
                 <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
                   {Number(v.montantTotal).toLocaleString("fr-FR")} FCFA
                 </p>
-                <FactureButton vente={v as any} />
+                <ModePaiementSelect
+                  type="VENTE"
+                  id={v.id}
+                  valeur={v.modePaiement ?? v.paiements[0]?.modePaiement ?? null}
+                />
+                <FactureButton type="VENTE" id={v.id} agents={agents} />
               </div>
             </div>
           ))}

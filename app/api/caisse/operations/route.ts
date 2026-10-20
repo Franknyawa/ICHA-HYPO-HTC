@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 const schema = z.object({
   type: z.enum(["DEPENSE", "RECETTE"]),
-  canal: z.enum(["ESPECES", "MOBILE_MONEY"]).default("ESPECES"),
+  canal: z.enum(["ESPECES", "MOBILE_MONEY", "BANQUE"]).default("ESPECES"),
   montant: z.number().positive().max(1_000_000_000),
   categorie: z.string().trim().max(80).optional(),
   note: z.string().trim().max(300).optional(),

@@ -24,6 +24,8 @@ datasource db {
 model Ville {
   id        String     @id @default(uuid())
   nom       String     @unique
+  // Région administrative (liste fixe dans lib/geo/cameroun.ts) — sert aux objectifs par région.
+  region    String?
   actif     Boolean    @default(true)
   createdAt DateTime   @default(now()) @map("created_at")
   quartiers Quartier[]
@@ -101,9 +103,13 @@ model Produit {
   // Coût d'achat moyen d'un carton (mis à jour à chaque entrée de stock avec prix d'achat).
   // Sert à valoriser le stock au coût dans la caisse.
   coutCarton        Decimal? @map("cout_carton") @db.Decimal(12, 2)
+  // Libellé complet imprimé sur les factures et bons (ex. « HYPO eau de Javel carton de 112 sachets de 75ml »).
+  // Vide = construit automatiquement à partir du nom, du conditionnement et du volume.
+  designation       String?
   actif             Boolean  @default(true)
   createdAt         DateTime @default(now()) @map("created_at")
 
+  paliersPrix    PalierPrix[]
   venteLignes    VenteLigne[]
   commandeLignes CommandeLigne[]
   stock          Stock?
@@ -111,6 +117,67 @@ model Produit {
   prixParType     PrixParType[]
 
   @@map("produits")
+}
+
+/// Grille tarifaire : prix du carton selon la quantité commandée d'un produit
+/// (ex. 0–10 cartons = 9 000 F, 11–100 cartons = 8 500 F). maxCartons vide = sans limite haute.
+model PalierPrix {
+  id          String  @id @default(uuid())
+  produitId   String  @map("produit_id")
+  produit     Produit @relation(fields: [produitId], references: [id], onDelete: Cascade)
+  minCartons  Int     @map("min_cartons")
+  maxCartons  Int?    @map("max_cartons")
+  prixCarton  Decimal @map("prix_carton") @db.Decimal(10, 2)
+
+  @@index([produitId])
+  @@map("paliers_prix")
+}
+
+/// Agents de facturation proposés à l'impression d'une facture (gérés par le Super Admin).
+model AgentFacturation {
+  id        String    @id @default(uuid())
+  nom       String
+  actif     Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+  factures  Facture[]
+
+  @@map("agents_facturation")
+}
+
+/// Facture numérotée « FVICHA 00001 » : créée à la première impression d'une vente ou d'une commande.
+model Facture {
+  id          String            @id @default(uuid())
+  numero      Int               @unique @default(autoincrement())
+  venteId     String?           @unique @map("vente_id")
+  commandeId  String?           @unique @map("commande_id")
+  agentId     String?           @map("agent_id")
+  agent       AgentFacturation? @relation(fields: [agentId], references: [id])
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  @@map("factures")
+}
+
+/// Bon de livraison numéroté « BLICHA 00001 » : créé à la première impression pour une commande.
+model BonLivraison {
+  id          String   @id @default(uuid())
+  numero      Int      @unique @default(autoincrement())
+  commandeId  String   @unique @map("commande_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("bons_livraison")
+}
+
+/// Objectifs de cartons par région ou par ville, paramétrables par période.
+model ObjectifTerritoire {
+  id            String          @id @default(uuid())
+  niveau        String          // "REGION" | "VILLE"
+  cle           String          // nom de la région, ou id de la ville
+  periode       PeriodeObjectif
+  valeurCartons Int             @map("valeur_cartons")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  @@unique([niveau, cle, periode])
+  @@map("objectifs_territoire")
 }
 
 // ---------------------------------------------------------------------------
@@ -386,6 +453,11 @@ model Vente {
   commercial   User         @relation(fields: [commercialId], references: [id])
   dateVente    DateTime     @default(now()) @map("date_vente")
   montantTotal Decimal      @default(0) @map("montant_total") @db.Decimal(12, 2)
+  // Mode de paiement annoncé sur le terrain (modifiable par l'admin) et montant que le
+  // commercial annonce à encaisser. Aucun argent n'est compté en caisse tant qu'un
+  // paiement n'a pas été validé par l'admin (table paiements).
+  modePaiement   ModePaiement? @map("mode_paiement")
+  montantAnnonce Decimal?      @map("montant_annonce") @db.Decimal(12, 2)
   createdAt    DateTime     @default(now()) @map("created_at")
 
   lignes    VenteLigne[]
@@ -409,6 +481,10 @@ model VenteLigne {
   nbFilets   Int     @default(0) @map("nb_filets")
   nbCartons  Int     @default(0) @map("nb_cartons")
   montant    Decimal @default(0) @db.Decimal(12, 2)
+  // Prix unitaires appliqués au moment de la saisie (figés pour la facture).
+  prixSachet Decimal? @map("prix_sachet") @db.Decimal(10, 2)
+  prixFilet  Decimal? @map("prix_filet") @db.Decimal(10, 2)
+  prixCarton Decimal? @map("prix_carton") @db.Decimal(10, 2)
 
   @@index([venteId])
   @@index([produitId])
@@ -434,6 +510,8 @@ model Commande {
   statut              StatutCommande @default(EN_ATTENTE)
   dateCommande         DateTime      @default(now()) @map("date_commande")
   dateLivraisonPrevue DateTime?      @map("date_livraison_prevue")
+  montantTotal        Decimal        @default(0) @map("montant_total") @db.Decimal(12, 2)
+  modePaiement        ModePaiement?  @map("mode_paiement")
   archivedAt          DateTime?      @map("archived_at")
   createdAt           DateTime       @default(now()) @map("created_at")
 
@@ -457,6 +535,10 @@ model CommandeLigne {
   nbSachets  Int      @default(0) @map("nb_sachets")
   nbFilets   Int      @default(0) @map("nb_filets")
   nbCartons  Int      @default(0) @map("nb_cartons")
+  montant    Decimal  @default(0) @db.Decimal(12, 2)
+  prixSachet Decimal? @map("prix_sachet") @db.Decimal(10, 2)
+  prixFilet  Decimal? @map("prix_filet") @db.Decimal(10, 2)
+  prixCarton Decimal? @map("prix_carton") @db.Decimal(10, 2)
 
   @@index([commandeId])
   @@index([produitId])
@@ -480,6 +562,8 @@ model Paiement {
   montant      Decimal      @db.Decimal(12, 2)
   modePaiement ModePaiement @map("mode_paiement")
   estCredit    Boolean      @default(false) @map("est_credit")
+  // Admin qui a validé l'encaissement (null pour les anciens paiements saisis sur le terrain).
+  encaisseParId String?     @map("encaisse_par_id")
   datePaiement DateTime     @default(now()) @map("date_paiement")
   createdAt    DateTime     @default(now()) @map("created_at")
 
@@ -521,6 +605,8 @@ model MouvementStock {
   quantiteSachets Int               @map("quantite_sachets")
   referenceType  String?            @map("reference_type") // "VENTE" | "COMMANDE" | "AJUSTEMENT"
   referenceId    String?            @map("reference_id")
+  // Précision libre : motif d'une avarie, bénéficiaire d'un échantillon ou d'un gift…
+  note           String?
   createdAt      DateTime           @default(now()) @map("created_at")
 
   @@index([produitId])
@@ -541,6 +627,7 @@ enum TypeOperationCaisse {
 enum CanalCaisse {
   ESPECES
   MOBILE_MONEY
+  BANQUE
 }
 
 model OperationCaisse {

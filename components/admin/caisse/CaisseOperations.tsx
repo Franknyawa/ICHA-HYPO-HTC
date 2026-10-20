@@ -7,17 +7,23 @@ import { apiFetch, ApiError } from "@/lib/client/apiFetch";
 import { formatFcfa } from "@/lib/utils/format";
 
 type Credit = {
-  venteId: string;
+  cle: string;
+  type: "VENTE" | "COMMANDE";
+  id: string;
+  modeAnnonce: string | null;
   pointVenteNom: string;
   commercialNom: string;
-  dateVente: string;
+  date: string;
   montantTotal: number;
   paye: number;
   du: number;
 };
 
 type Onglet = "CREDIT" | "DEPENSE" | "RECETTE";
-type Canal = "ESPECES" | "MOBILE_MONEY";
+type Canal = "ESPECES" | "MOBILE_MONEY" | "BANQUE";
+
+const LIBELLE_CANAL: Record<Canal, string> = { ESPECES: "Espèces", MOBILE_MONEY: "OM/MOMO", BANQUE: "Opération bancaire" };
+const CANAUX_CREANCE: Canal[] = ["ESPECES", "MOBILE_MONEY"];
 
 const CATEGORIES_DEPENSE = ["Achat de stock", "Transport", "Salaires", "Carburant", "Loyer", "Communication", "Autre"];
 
@@ -31,13 +37,13 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
   const [montant, setMontant] = useState<number | "">("");
   const [note, setNote] = useState("");
   const [categorie, setCategorie] = useState(CATEGORIES_DEPENSE[0]);
-  const [venteId, setVenteId] = useState("");
+  const [cleChoisie, setCleChoisie] = useState("");
   const [recherche, setRecherche] = useState("");
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [succes, setSucces] = useState<string | null>(null);
 
-  const creditChoisi = credits.find((c) => c.venteId === venteId) ?? null;
+  const creditChoisi = credits.find((c) => c.cle === cleChoisie) ?? null;
 
   const filtres = useMemo(() => {
     const q = recherche.trim().toLowerCase();
@@ -47,7 +53,9 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
 
   function choisirCredit(c: Credit) {
     setOnglet("CREDIT");
-    setVenteId(c.venteId);
+    setCleChoisie(c.cle);
+    if (c.modeAnnonce === "MOBILE_MONEY") setCanal("MOBILE_MONEY");
+    else if (c.modeAnnonce === "ESPECES") setCanal("ESPECES");
     setMontant(c.du);
     setErreur(null);
     setSucces(null);
@@ -65,15 +73,15 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
       if (onglet === "CREDIT") {
         if (!creditChoisi) {
           setEnvoi(false);
-          return setErreur("Choisissez le crédit à encaisser.");
+          return setErreur("Choisissez la commande à encaisser.");
         }
         await apiFetch("/api/caisse/encaisser", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ venteId: creditChoisi.venteId, montant: m, canal }),
+          body: JSON.stringify({ type: creditChoisi.type, id: creditChoisi.id, montant: m, canal }),
         });
         setSucces(`${formatFcfa(m)} encaissés chez ${creditChoisi.pointVenteNom}.`);
-        setVenteId("");
+        setCleChoisie("");
       } else {
         await apiFetch("/api/caisse/operations", {
           method: "POST",
@@ -99,7 +107,7 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
   }
 
   const onglets: { id: Onglet; label: string; icone: React.ReactNode; actif: string }[] = [
-    { id: "CREDIT", label: "Encaisser un crédit", icone: <HandCoins size={15} />, actif: "bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white" },
+    { id: "CREDIT", label: "Valider un encaissement", icone: <HandCoins size={15} />, actif: "bg-gradient-to-r from-[#1e3a8a] to-[#2563eb] text-white" },
     { id: "DEPENSE", label: "Dépense", icone: <ArrowUpCircle size={15} />, actif: "bg-gradient-to-r from-rose-600 to-orange-500 text-white" },
     { id: "RECETTE", label: "Autre recette", icone: <ArrowDownCircle size={15} />, actif: "bg-gradient-to-r from-emerald-600 to-teal-500 text-white" },
   ];
@@ -128,7 +136,7 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
             >
               {o.icone}
               <span className="hidden sm:inline">{o.label}</span>
-              <span className="sm:hidden">{o.id === "CREDIT" ? "Crédit" : o.label}</span>
+              <span className="sm:hidden">{o.id === "CREDIT" ? "Encaisser" : o.label}</span>
             </button>
           ))}
         </div>
@@ -153,23 +161,25 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
                   </div>
                   <select
                     className={champ}
-                    value={venteId}
+                    value={cleChoisie}
                     onChange={(e) => {
-                      setVenteId(e.target.value);
-                      const c = credits.find((x) => x.venteId === e.target.value);
+                      setCleChoisie(e.target.value);
+                      const c = credits.find((x) => x.cle === e.target.value);
                       setMontant(c ? c.du : "");
+                      if (c?.modeAnnonce === "MOBILE_MONEY") setCanal("MOBILE_MONEY");
+                      else if (c?.modeAnnonce === "ESPECES") setCanal("ESPECES");
                     }}
                   >
-                    <option value="">Choisir le crédit à encaisser…</option>
+                    <option value="">Choisir la commande à encaisser…</option>
                     {filtres.map((c) => (
-                      <option key={c.venteId} value={c.venteId}>
-                        {c.pointVenteNom} — reste {formatFcfa(c.du)}
+                      <option key={c.cle} value={c.cle}>
+                        {c.pointVenteNom} · {c.type === "VENTE" ? "vente" : "commande"} — reste {formatFcfa(c.du)}
                       </option>
                     ))}
                   </select>
                   {creditChoisi && (
                     <p className="rounded-xl bg-blue-50 px-4 py-2.5 text-xs text-blue-900 dark:bg-slate-800 dark:text-slate-300">
-                      Vente de {formatFcfa(creditChoisi.montantTotal)} · déjà payé {formatFcfa(creditChoisi.paye)} ·{" "}
+                      {creditChoisi.type === "VENTE" ? "Vente" : "Commande"} de {formatFcfa(creditChoisi.montantTotal)} · déjà payé {formatFcfa(creditChoisi.paye)} ·{" "}
                       <strong>reste {formatFcfa(creditChoisi.du)}</strong>
                     </p>
                   )}
@@ -191,14 +201,14 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
             min={0}
             inputMode="numeric"
             className={champ}
-            placeholder={onglet === "CREDIT" ? "Montant encaissé (FCFA)" : "Montant (FCFA)"}
+            placeholder={onglet === "CREDIT" ? "Montant reçu du superviseur (FCFA)" : "Montant (FCFA)"}
             value={montant}
             onChange={(e) => setMontant(e.target.value === "" ? "" : Number(e.target.value))}
             onWheel={(e) => (e.target as HTMLInputElement).blur()}
           />
 
-          <div className="grid grid-cols-2 gap-2">
-            {(["ESPECES", "MOBILE_MONEY"] as const).map((c) => (
+          <div className={`grid gap-2 ${onglet === "CREDIT" ? "grid-cols-2" : "grid-cols-3"}`}>
+            {(onglet === "CREDIT" ? CANAUX_CREANCE : (["ESPECES", "MOBILE_MONEY", "BANQUE"] as Canal[])).map((c) => (
               <button
                 key={c}
                 type="button"
@@ -209,7 +219,7 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
                     : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                 }`}
               >
-                {c === "ESPECES" ? "Espèces" : "Mobile Money"}
+                {LIBELLE_CANAL[c]}
               </button>
             ))}
           </div>
@@ -238,18 +248,18 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
       {/* Crédits à encaisser */}
       <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-          <AlertTriangle size={16} /> Crédits à encaisser ({credits.length})
+          <AlertTriangle size={16} /> Commandes à encaisser ({credits.length})
         </h2>
         {credits.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Aucun crédit en cours : toutes les commandes sont soldées.</p>
         ) : (
           <ul className="max-h-[360px] divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
             {credits.map((c) => (
-              <li key={c.venteId} className="flex items-center justify-between gap-3 py-3">
+              <li key={c.cle} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{c.pointVenteNom}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {c.commercialNom} · {new Date(c.dateVente).toLocaleDateString("fr-FR")}
+                    {c.commercialNom} · {new Date(c.date).toLocaleDateString("fr-FR")}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">

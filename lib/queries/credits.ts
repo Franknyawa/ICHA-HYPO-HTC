@@ -24,7 +24,13 @@ export type CreditDetail = {
  */
 export async function getCreditsCommercial(commercialId: string) {
   const ventes = await prisma.vente.findMany({
-    where: { commercialId, paiements: { some: { estCredit: true } } },
+    where: {
+      commercialId,
+      OR: [
+        { paiements: { some: { estCredit: true } } },
+        { modePaiement: { in: ["CREDIT_PARTIEL", "CREDIT_TOTAL"] } },
+      ],
+    },
     select: {
       id: true,
       montantTotal: true,

@@ -21,7 +21,10 @@ export async function getDashboardKpis() {
   const [visitesAujourdhui, prospectsTotal, clientsTotal] = await Promise.all([
     prisma.visite.count({ where: { dateVisite: today } }),
     prisma.prospect.count(),
-    prisma.client.count(),
+    // « Clients » = points de vente ayant déjà acheté (vente ou commande non annulée).
+    prisma.pointVente.count({
+      where: { archivedAt: null, OR: [{ ventes: { some: {} } }, { commandes: { some: { statut: { not: "ANNULEE" } } } }] },
+    }),
   ]);
 
   const [ventesAujourdhui, commandesEnAttente, lignesVenteAujourdhui] = await Promise.all([

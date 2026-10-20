@@ -7,7 +7,10 @@ import { PointVenteSearch, type ResultatRecherche } from "@/components/commercia
 import { queuePendingVisite } from "@/lib/offline/db";
 import { chargerReferentiels, chargerMe, pointVenteLocal } from "@/lib/offline/referentiels";
 import { syncPendingVisites } from "@/lib/offline/sync";
-import { genererFacturePdf } from "@/lib/utils/facture-pdf";
+import { genererBonCommandePdf, referenceBonCommande } from "@/lib/utils/bon-commande-pdf";
+import { lignesDocument } from "@/lib/utils/documents";
+import { preparerCommande, type ProduitForm, type QuantitesParCode } from "@/lib/utils/commande-terrain";
+import type { PalierTarif, PrixTypeTarif } from "@/lib/utils/tarifs";
 import {
   EnTeteFormulaire,
   FOND_PAGE,
@@ -15,35 +18,16 @@ import {
   Champ,
   Saisie,
   ZoneTexte,
-  Choix,
-  Encart,
   QuantitesProduit,
   BarreAction,
   BoutonPrincipal,
+  BlocPaiement,
+  type ModePaiementTerrain,
 } from "@/components/commercial/form-ui";
 
 function uuid() {
   return crypto.randomUUID();
 }
-
-type Produit = {
-  id: string;
-  code: string;
-  nom: string;
-  prixSachet: number;
-  prixFilet: number | null;
-  prixCarton: number;
-};
-
-type PrixParType = {
-  produitId: string;
-  typeId: string;
-  prixSachet: number;
-  prixFilet: number | null;
-  prixCarton: number;
-};
-
-type Quantites = Record<string, { sachets: number; filets: number; cartons: number }>;
 
 function ReassortContent() {
   const router = useRouter();
@@ -54,16 +38,13 @@ function ReassortContent() {
   const [chargementPrefill, setChargementPrefill] = useState(Boolean(pointVenteIdPrefill));
   const [session, setSession] = useState<{ nom: string; prenom: string } | null>(null);
 
-  const [produits, setProduits] = useState<Produit[]>([]);
-  const [prixParType, setPrixParType] = useState<PrixParType[]>([]);
-  const [quantites, setQuantites] = useState<Quantites>({});
+  const [produits, setProduits] = useState<ProduitForm[]>([]);
+  const [prixParType, setPrixParType] = useState<PrixTypeTarif[]>([]);
+  const [paliers, setPaliers] = useState<PalierTarif[]>([]);
+  const [quantites, setQuantites] = useState<QuantitesParCode>({});
 
-  const [montantEncaisse, setMontantEncaisse] = useState(0);
-  const [montantRecu, setMontantRecu] = useState(0);
-  const [mobileMoneyConfirme, setMobileMoneyConfirme] = useState(false);
-  const [modePaiement, setModePaiement] = useState<
-    "ESPECES" | "MOBILE_MONEY" | "CREDIT_PARTIEL" | "CREDIT_TOTAL"
-  >("ESPECES");
+  const [acompte, setAcompte] = useState(0);
+  const [modePaiement, setModePaiement] = useState<ModePaiementTerrain>("ESPECES");
   const [dateLivraison, setDateLivraison] = useState("");
   const [observation, setObservation] = useState("");
 
@@ -71,13 +52,15 @@ function ReassortContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [queuedOffline, setQueuedOffline] = useState(false);
-  const [facturePdfLoading, setFacturePdfLoading] = useState(false);
+  const [bonPdfLoading, setBonPdfLoading] = useState(false);
+  const [bonRef, setBonRef] = useState<{ reference: string; date: Date } | null>(null);
 
   useEffect(() => {
     chargerReferentiels()
       .then((d) => {
         setProduits(d.produits ?? []);
         setPrixParType(d.prixParType ?? []);
+        setPaliers(d.paliers ?? []);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Données indisponibles."));
     chargerMe()
@@ -85,7 +68,6 @@ function ReassortContent() {
       .catch(() => {});
 
     if (pointVenteIdPrefill) {
-      // En ligne : fiche du serveur ; sinon (ou en cas d'échec) copie locale.
       const depuisServeur = navigator.onLine
         ? fetch(`/api/points-vente/${pointVenteIdPrefill}`)
             .then((r) => (r.ok ? r.json() : null))
@@ -121,56 +103,21 @@ function ReassortContent() {
     });
   }
 
-  const lignes = produits
-    .map((p) => {
-      const q = quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
-      if (q.sachets === 0 && q.filets === 0 && q.cartons === 0) return null;
-      return { produit: p, ...q };
-    })
-    .filter(Boolean) as { produit: Produit; sachets: number; filets: number; cartons: number }[];
+  // Prix : base → type de boutique du point de vente → grille tarifaire.
+  const commande = preparerCommande(produits, quantites, {
+    typeId: pointVente?.typeId ?? null,
+    prixParType,
+    paliers,
+  });
+  const lignes = commande.lignes;
+  const montantCalcule = commande.total;
 
-  // Le type de boutique du point de vente est déjà connu (il a été
-  // renseigné à sa création) — pas besoin de le redemander ici, le prix
-  // spécifique s'applique automatiquement s'il existe, sinon repli sur le
-  // prix de base du produit.
-  function prixEffectif(p: Produit): Produit {
-    if (!pointVente?.typeId) return p;
-    const surcharge = prixParType.find(
-      (pt) => pt.produitId === p.id && pt.typeId === pointVente.typeId
-    );
-    if (!surcharge) return p;
-    return { ...p, prixSachet: surcharge.prixSachet, prixFilet: surcharge.prixFilet, prixCarton: surcharge.prixCarton };
-  }
-
-  const sousTotal = (l: { produit: Produit; sachets: number; filets: number; cartons: number }) => {
-    const prix = prixEffectif(l.produit);
-    return l.sachets * prix.prixSachet + l.filets * (prix.prixFilet ?? 0) + l.cartons * prix.prixCarton;
-  };
-
-  const montantCalcule = lignes.reduce((s, l) => s + sousTotal(l), 0);
-
-  const resteAPayer =
+  const montantAnnonce =
     modePaiement === "CREDIT_PARTIEL"
-      ? Math.max(0, montantCalcule - montantRecu)
+      ? Math.min(Math.max(0, acompte), montantCalcule)
       : modePaiement === "CREDIT_TOTAL"
-      ? montantCalcule
-      : 0;
-
-  const montantEffectivementRecu =
-    modePaiement === "ESPECES"
-      ? montantCalcule
-      : modePaiement === "MOBILE_MONEY"
-      ? mobileMoneyConfirme
-        ? montantCalcule
-        : 0
-      : modePaiement === "CREDIT_PARTIEL"
-      ? montantRecu
-      : 0;
-
-  useEffect(() => {
-    setMontantEncaisse(montantEffectivementRecu);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [montantEffectivementRecu]);
+      ? 0
+      : montantCalcule;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -179,23 +126,21 @@ function ReassortContent() {
     setSubmitting(true);
 
     const visiteUuid = uuid();
+    const maintenant = new Date();
+    setBonRef({ reference: referenceBonCommande(maintenant, visiteUuid), date: maintenant });
     const payload = {
       uuidClient: visiteUuid,
-      dateVisite: new Date().toISOString(),
+      dateVisite: maintenant.toISOString(),
       pointVenteId: pointVente.id,
       ...(lignes.length > 0
         ? {
             commande: {
               uuidClient: uuid(),
-              lignes: lignes.map((l) => ({
-                produitCode: l.produit.code,
-                nbSachets: l.sachets,
-                nbFilets: l.filets,
-                nbCartons: l.cartons,
-              })),
-              dateLivraisonPrevue: dateLivraison
-                ? new Date(dateLivraison).toISOString()
-                : undefined,
+              lignes,
+              montantTotal: montantCalcule,
+              modePaiement,
+              montantAnnonce,
+              dateLivraisonPrevue: dateLivraison ? new Date(dateLivraison).toISOString() : undefined,
             },
           }
         : {}),
@@ -233,28 +178,30 @@ function ReassortContent() {
     }
   }
 
-  async function telechargerFacture() {
-    if (!pointVente) return;
-    setFacturePdfLoading(true);
+  async function telechargerBonCommande() {
+    if (!pointVente || !bonRef) return;
+    setBonPdfLoading(true);
     try {
-      await genererFacturePdf({
-        numero: new Date().toISOString().slice(0, 10).replace(/-/g, ""),
-        date: new Date(),
-        pointVenteNom: pointVente.nom,
-        villeNom: pointVente.villeNom,
+      await genererBonCommandePdf({
+        reference: bonRef.reference,
+        date: bonRef.date,
         commercialNom: session ? `${session.prenom} ${session.nom}` : "—",
-        lignes: lignes.map((l) => ({
-          produitCode: l.produit.code,
-          nbSachets: l.sachets,
-          nbFilets: l.filets,
-          nbCartons: l.cartons,
-        })),
-        montantTotal: montantCalcule,
-        montantRecu: montantEffectivementRecu,
-        resteAPayer: resteAPayer > 0 ? resteAPayer : undefined,
+        client: {
+          nom: pointVente.nom,
+          ville: pointVente.villeNom,
+          quartier: pointVente.quartierNom,
+          repere: null,
+          telephone: pointVente.telephoneVendeur,
+        },
+        sections: [
+          {
+            lignes: lignesDocument(commande.sources),
+            livraisonPrevue: dateLivraison ? new Date(dateLivraison) : null,
+          },
+        ],
       });
     } finally {
-      setFacturePdfLoading(false);
+      setBonPdfLoading(false);
     }
   }
 
@@ -273,11 +220,11 @@ function ReassortContent() {
             {queuedOffline ? "Données en attente de synchronisation" : "Réassort enregistré"}
           </p>
           <div className="space-y-2">
-            {success && lignes.length > 0 && (
-              <BoutonPrincipal type="button" onClick={telechargerFacture} disabled={facturePdfLoading}>
+            {success && bonRef && lignes.length > 0 && (
+              <BoutonPrincipal type="button" onClick={telechargerBonCommande} disabled={bonPdfLoading}>
                 <span className="flex items-center justify-center gap-2">
                   <Download size={16} />
-                  {facturePdfLoading ? "Génération..." : "Télécharger la facture"}
+                  {bonPdfLoading ? "Génération..." : "Télécharger le bon de commande"}
                 </span>
               </BoutonPrincipal>
             )}
@@ -323,10 +270,7 @@ function ReassortContent() {
                       avecFilets={p.prixFilet !== null}
                       valeur={quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }}
                       onChange={(champ, v) => updateQty(p.code, champ, v)}
-                      sousTotal={sousTotal({
-                        produit: p,
-                        ...(quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }),
-                      })}
+                      sousTotal={commande.sousTotaux.get(p.code) ?? 0}
                     />
                   ))}
                 </div>
@@ -336,73 +280,14 @@ function ReassortContent() {
               </Carte>
 
               <Carte titre="Mode de paiement" icone={Wallet} accent="orange">
-                <Choix<typeof modePaiement>
-                  colonnes={2}
-                  value={modePaiement}
-                  onChange={setModePaiement}
-                  options={[
-                    { value: "ESPECES", label: "Espèces" },
-                    { value: "MOBILE_MONEY", label: "Mobile Money" },
-                    { value: "CREDIT_PARTIEL", label: "Crédit partiel" },
-                    { value: "CREDIT_TOTAL", label: "Crédit total" },
-                  ]}
+                <BlocPaiement
+                  mode={modePaiement}
+                  onMode={setModePaiement}
+                  montant={montantCalcule}
+                  acompte={acompte}
+                  onAcompte={setAcompte}
+                  libelle="Paiement prévu"
                 />
-
-                {modePaiement === "ESPECES" && (
-                  <Encart>
-                    Montant à percevoir :{" "}
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {montantCalcule.toLocaleString("fr-FR")} FCFA
-                    </span>
-                  </Encart>
-                )}
-                {modePaiement === "MOBILE_MONEY" && (
-                  <Encart>
-                    <p className="mb-3">
-                      Montant :{" "}
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">
-                        {montantCalcule.toLocaleString("fr-FR")} FCFA
-                      </span>
-                    </p>
-                    <label className="flex items-center gap-3 font-medium">
-                      <input
-                        type="checkbox"
-                        checked={mobileMoneyConfirme}
-                        onChange={(e) => setMobileMoneyConfirme(e.target.checked)}
-                        className="h-5 w-5 accent-[#1e3a8a]"
-                      />
-                      Paiement reçu par Mobile Money
-                    </label>
-                  </Encart>
-                )}
-                {modePaiement === "CREDIT_PARTIEL" && (
-                  <div className="space-y-3">
-                    <Encart>
-                      Total dû :{" "}
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">
-                        {montantCalcule.toLocaleString("fr-FR")} FCFA
-                      </span>
-                    </Encart>
-                    <Champ label="Montant reçu du client (FCFA)">
-                      <Saisie
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        placeholder="0"
-                        value={montantRecu || ""}
-                        onChange={(e) => setMontantRecu(Number(e.target.value) || 0)}
-                      />
-                    </Champ>
-                    {resteAPayer > 0 && (
-                      <Encart ton="attention">Reste à payer : {resteAPayer.toLocaleString("fr-FR")} FCFA</Encart>
-                    )}
-                  </div>
-                )}
-                {modePaiement === "CREDIT_TOTAL" && (
-                  <Encart ton="attention">
-                    Intégralement à crédit : {montantCalcule.toLocaleString("fr-FR")} FCFA
-                  </Encart>
-                )}
               </Carte>
 
               <Carte titre="Rapport de réassort" icone={MessageSquareText} accent="violet">

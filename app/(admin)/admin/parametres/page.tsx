@@ -15,6 +15,8 @@ import {
   BellRing,
   ChevronDown,
 } from "lucide-react";
+import { ObjectifsTerritoireManager } from "@/components/admin/parametres/ObjectifsTerritoireManager";
+import { TarifsManager } from "@/components/admin/parametres/TarifsManager";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { apiFetch, ApiError } from "@/lib/client/apiFetch";
 
@@ -32,12 +34,14 @@ function SimpleEntityManager({
   icon: Icon,
   color,
   avecOrdre = false,
+  labelPluriel,
 }: {
   apiBase: string;
   labelSingulier: string;
   icon: React.ElementType;
   color: string;
   avecOrdre?: boolean;
+  labelPluriel?: string;
 }) {
   const [items, setItems] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,7 +134,7 @@ function SimpleEntityManager({
           >
             <Icon size={16} />
           </span>
-          <h2 className="font-bold text-slate-800 dark:text-slate-100">{labelSingulier}s</h2>
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">{labelPluriel ?? `${labelSingulier}s`}</h2>
           <ChevronDown
             size={16}
             className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`}
@@ -274,6 +278,7 @@ type Produit = {
   prixFilet: number | null;
   prixCarton: number;
   gamme?: string | null;
+  designation?: string | null;
   actif: boolean;
 };
 
@@ -281,7 +286,7 @@ function ProduitsManager() {
   const [produits, setProduits] = useState<Produit[]>([]);
   const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<Produit | null>(null);
-  const [form, setForm] = useState({ prixSachet: 0, prixFilet: 0, prixCarton: 0, gamme: "" });
+  const [form, setForm] = useState({ prixSachet: 0, prixFilet: 0, prixCarton: 0, gamme: "", designation: "" });
   const [saving, setSaving] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -386,6 +391,7 @@ function ProduitsManager() {
       prixFilet: p.prixFilet ?? 0,
       prixCarton: p.prixCarton,
       gamme: p.gamme ?? "",
+      designation: p.designation ?? "",
     });
   }
 
@@ -398,6 +404,7 @@ function ProduitsManager() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         gamme: form.gamme.trim() || null,
+        designation: form.designation.trim() || null,
         prixSachet: form.prixSachet,
         prixCarton: form.prixCarton,
         ...(editTarget.prixFilet !== null ? { prixFilet: form.prixFilet } : {}),
@@ -486,6 +493,16 @@ function ProduitsManager() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={handleSave} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
             <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Prix {editTarget.code}</h3>
+
+            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Désignation (factures et bons)</label>
+            <input
+              type="text"
+              maxLength={160}
+              placeholder="Ex : HYPO eau de Javel carton de 112 sachets de 75ml"
+              value={form.designation}
+              onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))}
+              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
+            />
 
             <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Gamme (rapports)</label>
             <input
@@ -835,348 +852,6 @@ function ObjectifInput({
   );
 }
 
-// --- Quartiers, groupés par ville, avec fusion -----------------------
-
-type Quartier = {
-  id: string;
-  nom: string;
-  actif: boolean;
-  villeId: string;
-  ville: { nom: string };
-  _count: { pointsVente: number };
-};
-
-function QuartiersManager() {
-  const [villes, setVilles] = useState<Entity[]>([]);
-  const [quartiers, setQuartiers] = useState<Quartier[]>([]);
-  const [villeFiltre, setVilleFiltre] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [showCreate, setShowCreate] = useState(false);
-  const [newNom, setNewNom] = useState("");
-  const [newVilleId, setNewVilleId] = useState("");
-
-  const [editTarget, setEditTarget] = useState<Quartier | null>(null);
-  const [editNom, setEditNom] = useState("");
-
-  const [fusionTarget, setFusionTarget] = useState<Quartier | null>(null);
-  const [fusionVersId, setFusionVersId] = useState("");
-
-  const [saving, setSaving] = useState(false);
-  const [ouvert, setOuvert] = useState(true);
-
-  function load() {
-    setLoading(true);
-    Promise.all([
-      apiFetch<{ data: Entity[] }>("/api/parametres/villes"),
-      apiFetch<{ data: Quartier[] }>(
-        `/api/parametres/quartiers${villeFiltre ? `?villeId=${villeFiltre}` : ""}`
-      ),
-    ])
-      .then(([v, q]) => {
-        setVilles(v.data ?? []);
-        setQuartiers(q.data ?? []);
-      })
-      .catch((e: ApiError) => {
-        if (e.status !== 401) console.error(e);
-      })
-      .finally(() => setLoading(false));
-  }
-
-  useEffect(load, [villeFiltre]);
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
-    const res = await fetch("/api/parametres/quartiers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nom: newNom, villeId: newVilleId }),
-    });
-    if (res.ok) {
-      setShowCreate(false);
-      setNewNom("");
-      setNewVilleId("");
-      load();
-    } else {
-      const d = await res.json().catch(() => ({}));
-      setError(d.error ?? "Échec de la création.");
-    }
-    setSaving(false);
-  }
-
-  async function handleEdit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editTarget) return;
-    setSaving(true);
-    setError(null);
-    const res = await fetch(`/api/parametres/quartiers/${editTarget.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nom: editNom }),
-    });
-    if (res.ok) {
-      setEditTarget(null);
-      load();
-    } else {
-      const d = await res.json().catch(() => ({}));
-      setError(d.error ?? "Échec de la mise à jour.");
-    }
-    setSaving(false);
-  }
-
-  async function toggleActif(q: Quartier) {
-    setError(null);
-    const res = await fetch(`/api/parametres/quartiers/${q.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ actif: !q.actif }),
-    });
-    if (res.ok) {
-      load();
-    } else {
-      const d = await res.json().catch(() => ({}));
-      setError(d.error ?? "Échec de la mise à jour.");
-    }
-  }
-
-  async function handleFusion(e: React.FormEvent) {
-    e.preventDefault();
-    if (!fusionTarget || !fusionVersId) return;
-    setSaving(true);
-    setError(null);
-    const res = await fetch(`/api/parametres/quartiers/${fusionTarget.id}/fusionner`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ versQuartierId: fusionVersId }),
-    });
-    if (res.ok) {
-      setFusionTarget(null);
-      setFusionVersId("");
-      load();
-    } else {
-      const d = await res.json().catch(() => ({}));
-      setError(d.error ?? "Échec de la fusion.");
-    }
-    setSaving(false);
-  }
-
-  // Groupés par ville pour un affichage lisible
-  const parVille = new Map<string, Quartier[]>();
-  for (const q of quartiers) {
-    const liste = parVille.get(q.ville.nom) ?? [];
-    liste.push(q);
-    parVille.set(q.ville.nom, liste);
-  }
-
-  return (
-    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-      <div className="mb-3 flex items-center justify-between">
-        <button onClick={() => setOuvert((v) => !v)} className="flex flex-1 items-center gap-2 text-left">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
-            <MapPin size={16} />
-          </span>
-          <h2 className="font-bold text-slate-800 dark:text-slate-100">Quartiers</h2>
-          <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
-        </button>
-        <button
-          onClick={() => {
-            setShowCreate(true);
-            setError(null);
-          }}
-          className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300"
-        >
-          <Plus size={14} />
-          Ajouter
-        </button>
-      </div>
-
-      {ouvert && (
-        <>
-      <select
-        value={villeFiltre}
-        onChange={(e) => setVilleFiltre(e.target.value)}
-        className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
-      >
-        <option value="">Toutes les villes</option>
-        {villes.map((v) => (
-          <option key={v.id} value={v.id}>{v.nom}</option>
-        ))}
-      </select>
-
-      {error && (
-        <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>
-      )}
-
-      {loading ? (
-        <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
-      ) : (
-        <div className="space-y-4">
-          {[...parVille.entries()].map(([villeNom, liste]) => (
-            <div key={villeNom}>
-              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                {villeNom}
-              </p>
-              <div className="space-y-1.5">
-                {liste.map((q) => (
-                  <div key={q.id} className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950 px-3 py-2">
-                    <div>
-                      <span className={`text-sm font-medium ${q.actif ? "text-slate-700 dark:text-slate-300" : "text-slate-400 dark:text-slate-500 line-through"}`}>
-                        {q.nom}
-                      </span>
-                      <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">
-                        {q._count.pointsVente} point(s) de vente
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setEditTarget(q);
-                          setEditNom(q.nom);
-                          setError(null);
-                        }}
-                        className="text-slate-400 dark:text-slate-500"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      {q._count.pointsVente > 0 && (
-                        <button
-                          onClick={() => {
-                            setFusionTarget(q);
-                            setFusionVersId("");
-                            setError(null);
-                          }}
-                          className="text-indigo-600"
-                          title="Fusionner avec un autre quartier"
-                        >
-                          <Merge size={14} />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => toggleActif(q)}
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          q.actif ? "bg-green-50 text-green-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
-                        }`}
-                      >
-                        {q.actif ? "Actif" : "Inactif"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-          {quartiers.length === 0 && (
-            <p className="text-sm text-slate-400 dark:text-slate-500">Aucun quartier.</p>
-          )}
-        </div>
-      )}
-        </>
-      )}
-
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={handleCreate} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
-            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Nouveau quartier</h3>
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Ville</label>
-            <select
-              value={newVilleId}
-              onChange={(e) => setNewVilleId(e.target.value)}
-              required
-              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
-            >
-              <option value="">Choisir...</option>
-              {villes.map((v) => (
-                <option key={v.id} value={v.id}>{v.nom}</option>
-              ))}
-            </select>
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Nom du quartier</label>
-            <input
-              type="text"
-              value={newNom}
-              onChange={(e) => setNewNom(e.target.value)}
-              required
-              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
-            />
-            {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setShowCreate(false)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
-                Annuler
-              </button>
-              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
-                {saving ? "..." : "Créer"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {editTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={handleEdit} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
-            <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Renommer le quartier</h3>
-            <input
-              type="text"
-              value={editNom}
-              onChange={(e) => setEditNom(e.target.value)}
-              required
-              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
-            />
-            {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setEditTarget(null)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
-                Annuler
-              </button>
-              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-blue-700 py-2 text-sm font-medium text-white disabled:opacity-60">
-                {saving ? "..." : "Enregistrer"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {fusionTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={handleFusion} className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-lg">
-            <h3 className="mb-1 font-semibold text-slate-800 dark:text-slate-100">
-              Fusionner "{fusionTarget.nom}"
-            </h3>
-            <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
-              Les {fusionTarget._count.pointsVente} point(s) de vente de ce quartier seront
-              déplacés vers le quartier choisi, puis "{fusionTarget.nom}" sera désactivé.
-            </p>
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Fusionner vers</label>
-            <select
-              value={fusionVersId}
-              onChange={(e) => setFusionVersId(e.target.value)}
-              required
-              className="mb-3 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
-            >
-              <option value="">Choisir...</option>
-              {quartiers
-                .filter((q) => q.villeId === fusionTarget.villeId && q.id !== fusionTarget.id)
-                .map((q) => (
-                  <option key={q.id} value={q.id}>{q.nom}</option>
-                ))}
-            </select>
-            {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-alert">{error}</p>}
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setFusionTarget(null)} className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 py-2 text-sm font-medium text-slate-600 dark:text-slate-300">
-                Annuler
-              </button>
-              <button type="submit" disabled={saving} className="flex-1 rounded-lg bg-indigo-600 py-2 text-sm font-medium text-white disabled:opacity-60">
-                {saving ? "..." : "Fusionner"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // --- Objectifs individuels (par commercial, pas par binôme) --------------
 
 type ObjectifIndividuel = { periode: "JOURNALIER" | "HEBDOMADAIRE" | "MENSUEL"; valeurCartons: number };
@@ -1447,250 +1122,6 @@ function SessionDureeManager() {
   );
 }
 
-// --- Prix par type de boutique --------------------------------------------
-
-type ProduitBase = { id: string; code: string; nom: string; prixFilet: number | null };
-type TypeBase = { id: string; nom: string };
-type OverridePrix = {
-  id: string;
-  produitId: string;
-  typeId: string;
-  prixSachet: number;
-  prixFilet: number | null;
-  prixCarton: number;
-};
-
-function LignePrixParType({
-  produit,
-  type,
-  produitBase,
-  override,
-  onSaved,
-}: {
-  produit: ProduitBase;
-  type: TypeBase;
-  produitBase: { prixSachet: number; prixFilet: number | null; prixCarton: number };
-  override: OverridePrix | undefined;
-  onSaved: () => void;
-}) {
-  const [personnalise, setPersonnalise] = useState(Boolean(override));
-  const [form, setForm] = useState({
-    prixSachet: override?.prixSachet ?? produitBase.prixSachet,
-    prixFilet: override?.prixFilet ?? produitBase.prixFilet ?? 0,
-    prixCarton: override?.prixCarton ?? produitBase.prixCarton,
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function enregistrer() {
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/parametres/prix-par-type", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          produitId: produit.id,
-          typeId: type.id,
-          prixSachet: form.prixSachet,
-          prixCarton: form.prixCarton,
-          ...(produit.prixFilet !== null ? { prixFilet: form.prixFilet } : {}),
-        }),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        setError(d.error ?? `Échec de l'enregistrement (${res.status}).`);
-        return;
-      }
-      onSaved();
-    } catch {
-      setError("Erreur réseau — la sauvegarde a échoué.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function reinitialiser() {
-    if (!override) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/parametres/prix-par-type/${override.id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        setError(d.error ?? "Échec de la réinitialisation.");
-        return;
-      }
-      setPersonnalise(false);
-      setForm({
-        prixSachet: produitBase.prixSachet,
-        prixFilet: produitBase.prixFilet ?? 0,
-        prixCarton: produitBase.prixCarton,
-      });
-      onSaved();
-    } catch {
-      setError("Erreur réseau.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (!personnalise) {
-    return (
-      <div className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-950 px-3 py-2">
-        <span className="text-sm text-slate-600 dark:text-slate-300">{type.nom}</span>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400 dark:text-slate-500">Prix de base</span>
-          <button
-            onClick={() => setPersonnalise(true)}
-            className="rounded-md bg-slate-200 dark:bg-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300"
-          >
-            Personnaliser
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-lg bg-blue-50/50 p-2.5">
-      <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{type.nom}</span>
-        {override && (
-          <button onClick={reinitialiser} disabled={saving} className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 underline">
-            Réinitialiser au prix de base
-          </button>
-        )}
-      </div>
-      <div className={`grid gap-1.5 ${produit.prixFilet !== null ? "grid-cols-3" : "grid-cols-2"}`}>
-        <input
-          type="number"
-          min={0}
-          value={form.prixSachet}
-          onChange={(e) => setForm((f) => ({ ...f, prixSachet: Number(e.target.value) || 0 }))}
-          placeholder="Sachet"
-          className="rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs"
-        />
-        {produit.prixFilet !== null && (
-          <input
-            type="number"
-            min={0}
-            value={form.prixFilet}
-            onChange={(e) => setForm((f) => ({ ...f, prixFilet: Number(e.target.value) || 0 }))}
-            placeholder="Filet"
-            className="rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs"
-          />
-        )}
-        <input
-          type="number"
-          min={0}
-          value={form.prixCarton}
-          onChange={(e) => setForm((f) => ({ ...f, prixCarton: Number(e.target.value) || 0 }))}
-          placeholder="Carton"
-          className="rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs"
-        />
-      </div>
-      <button
-        onClick={enregistrer}
-        disabled={saving}
-        className="mt-1.5 w-full rounded-md bg-blue-700 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-      >
-        {saving ? "..." : "Enregistrer"}
-      </button>
-      {error && <p className="mt-1.5 text-[11px] text-alert">{error}</p>}
-    </div>
-  );
-}
-
-function PrixParTypeManager() {
-  const [produits, setProduits] = useState<ProduitBase[]>([]);
-  const [types, setTypes] = useState<TypeBase[]>([]);
-  const [overrides, setOverrides] = useState<OverridePrix[]>([]);
-  const [basesParProduit, setBasesParProduit] = useState<Record<string, { prixSachet: number; prixFilet: number | null; prixCarton: number }>>({});
-  const [loading, setLoading] = useState(true);
-  const [ouvert, setOuvert] = useState(true);
-
-  function load() {
-    setLoading(true);
-    Promise.all([
-      apiFetch<{
-        data: (ProduitBase & { prixSachet: number; prixCarton: number })[];
-      }>("/api/parametres/produits"),
-      apiFetch<{ data: (TypeBase & { actif: boolean })[] }>("/api/parametres/types"),
-      apiFetch<{ data: OverridePrix[] }>("/api/parametres/prix-par-type"),
-    ])
-      .then(([p, t, o]) => {
-        setProduits(p.data ?? []);
-        setTypes((t.data ?? []).filter((x) => x.actif));
-        setOverrides(o.data ?? []);
-        const bases: Record<string, any> = {};
-        for (const prod of p.data ?? []) {
-          bases[prod.id] = { prixSachet: prod.prixSachet, prixFilet: prod.prixFilet, prixCarton: prod.prixCarton };
-        }
-        setBasesParProduit(bases);
-      })
-      .catch((e: ApiError) => {
-        if (e.status !== 401) console.error(e);
-      })
-      .finally(() => setLoading(false));
-  }
-
-  useEffect(load, []);
-
-  return (
-    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-      <button onClick={() => setOuvert((v) => !v)} className="mb-1 flex w-full items-center gap-2 text-left">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-700 text-white">
-          <Package size={16} />
-        </span>
-        <h2 className="font-bold text-slate-800 dark:text-slate-100">Prix par type de boutique</h2>
-        <ChevronDown size={16} className={`text-slate-400 transition-transform ${ouvert ? "" : "-rotate-90"}`} />
-      </button>
-      <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
-        Personnalise le prix d'un produit pour un type de boutique précis — le
-        formulaire terrain l'applique automatiquement dès que le type est
-        choisi. Sans personnalisation, le prix de base du produit s'applique.
-      </p>
-
-      {ouvert && (
-        loading ? (
-          <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
-        ) : produits.length === 0 || types.length === 0 ? (
-          <p className="text-sm text-slate-400 dark:text-slate-500">
-            {produits.length === 0
-              ? "Aucun produit — ajoute un produit dans la section ci-contre d'abord."
-              : "Aucun type de boutique actif."}
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {produits.map((p) => {
-              const base = basesParProduit[p.id];
-              if (!base) return null; // sécurité : évite un plantage si pas encore synchronisé
-              return (
-                <div key={p.id}>
-                  <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{p.code}</p>
-                  <div className="space-y-1.5">
-                    {types.map((t) => (
-                      <LignePrixParType
-                        key={t.id}
-                        produit={p}
-                        type={t}
-                        produitBase={base}
-                        override={overrides.find((o) => o.produitId === p.id && o.typeId === t.id)}
-                        onSaved={load}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )
-      )}
-    </div>
-  );
-}
-
 // --- Page principale -----------------------------------------------------
 
 export default function ParametresPage() {
@@ -1698,14 +1129,13 @@ export default function ParametresPage() {
     <main>
       <AdminPageHeader
         title="Paramètres"
-        subtitle="Villes, types de boutique, produits, binômes, objectifs — utilisés dans le formulaire terrain"
+        subtitle="Types de boutique, produits, binômes, objectifs — utilisés dans le formulaire terrain"
       />
 
       <div className="grid gap-4 p-4 md:grid-cols-2 md:p-6">
-        <SimpleEntityManager apiBase="/api/parametres/villes" labelSingulier="Ville" icon={MapPin} color="#4338ca" />
-        <QuartiersManager />
         <SimpleEntityManager apiBase="/api/parametres/types" labelSingulier="Type de boutique" icon={Store} color="#1e40af" avecOrdre />
         <SimpleEntityManager apiBase="/api/parametres/binomes" labelSingulier="Binôme" icon={Users2} color="#0f766e" />
+        <SimpleEntityManager apiBase="/api/parametres/agents-facturation" labelSingulier="Agent de facturation" labelPluriel="Agents de facturation" icon={Users2} color="#b45309" />
         <ProduitsManager />
         <div className="md:col-span-2">
           <ObjectifsManager />
@@ -1714,7 +1144,8 @@ export default function ParametresPage() {
         <SessionDureeManager />
         <SeuilsAlertesManager />
         <div className="md:col-span-2">
-          <PrixParTypeManager />
+          <TarifsManager />
+        <ObjectifsTerritoireManager />
         </div>
       </div>
     </main>

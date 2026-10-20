@@ -9,6 +9,7 @@ import { getCaisseResume } from "@/lib/queries/caisse";
 import { debutJour, finJour, jourDouala } from "@/lib/utils/periode";
 import { Suspense } from "react";
 import { peutAcceder } from "@/lib/auth/permissions";
+import { TerritoiresSection, TerritoiresSkeleton } from "@/components/admin/TerritoiresSection";
 import { DashboardView } from "@/components/admin/DashboardView";
 import { VentesParProduitSection, VentesParProduitSkeleton } from "@/components/admin/VentesParProduitSection";
 
@@ -49,6 +50,11 @@ export default async function AdminDashboardPage() {
       parBinome={parBinome}
       parVendeur={parVendeur}
       observations={observations}
+      territoiresSlot={
+        <Suspense fallback={<TerritoiresSkeleton />}>
+          <TerritoiresSection />
+        </Suspense>
+      }
       ventesSlot={
         <Suspense fallback={<VentesParProduitSkeleton />}>
           <VentesParProduitSection />

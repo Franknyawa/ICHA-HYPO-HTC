@@ -363,3 +363,81 @@ export function BoutonPrincipal({
     </button>
   );
 }
+
+/** Mode de paiement annoncé par le client — l'argent est encaissé plus tard par le superviseur. */
+export type ModePaiementTerrain = "ESPECES" | "MOBILE_MONEY" | "CREDIT_PARTIEL" | "CREDIT_TOTAL";
+
+export const OPTIONS_PAIEMENT: { value: ModePaiementTerrain; label: string }[] = [
+  { value: "ESPECES", label: "Espèces" },
+  { value: "MOBILE_MONEY", label: "OM/MOMO" },
+  { value: "CREDIT_PARTIEL", label: "Crédit partiel" },
+  { value: "CREDIT_TOTAL", label: "Crédit total" },
+];
+
+/**
+ * Bloc « mode de paiement » commun à tous les formulaires de commande.
+ * Le commercial n'encaisse rien : il indique seulement le mode choisi et le
+ * montant à encaisser ; le superviseur encaisse plus tard et l'admin valide.
+ */
+export function BlocPaiement({
+  mode,
+  onMode,
+  montant,
+  acompte,
+  onAcompte,
+  libelle = "Mode de paiement",
+}: {
+  mode: ModePaiementTerrain;
+  onMode: (m: ModePaiementTerrain) => void;
+  montant: number;
+  acompte: number;
+  onAcompte: (v: number) => void;
+  libelle?: string;
+}) {
+  const fmt = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} FCFA`;
+  const reste = mode === "CREDIT_PARTIEL" ? Math.max(0, montant - acompte) : mode === "CREDIT_TOTAL" ? montant : 0;
+  return (
+    <>
+      <Champ label={libelle}>
+        <Choix<ModePaiementTerrain> colonnes={2} value={mode} onChange={onMode} options={OPTIONS_PAIEMENT} />
+      </Champ>
+
+      {mode === "ESPECES" && (
+        <Encart>
+          Montant à encaisser en espèces :{" "}
+          <span className="font-semibold text-slate-900 dark:text-slate-100">{fmt(montant)}</span>
+        </Encart>
+      )}
+
+      {mode === "MOBILE_MONEY" && (
+        <Encart>
+          Montant à encaisser par OM/MOMO :{" "}
+          <span className="font-semibold text-slate-900 dark:text-slate-100">{fmt(montant)}</span>
+        </Encart>
+      )}
+
+      {mode === "CREDIT_PARTIEL" && (
+        <div className="space-y-3">
+          <Encart>
+            Total de la commande : <span className="font-semibold text-slate-900 dark:text-slate-100">{fmt(montant)}</span>
+          </Encart>
+          <Champ label="Acompte annoncé par le client (FCFA)">
+            <Saisie
+              type="number"
+              inputMode="numeric"
+              min={0}
+              placeholder="0"
+              value={acompte || ""}
+              onChange={(e) => onAcompte(Number(e.target.value) || 0)}
+            />
+          </Champ>
+          {reste > 0 && <Encart ton="attention">Reste à payer : {fmt(reste)}</Encart>}
+        </div>
+      )}
+
+      {mode === "CREDIT_TOTAL" && (
+        <Encart ton="attention">Montant entièrement à crédit : {fmt(montant)}</Encart>
+      )}
+    </>
+  );
+}

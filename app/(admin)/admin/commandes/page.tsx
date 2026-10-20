@@ -1,11 +1,14 @@
+import { listerVilles } from "@/lib/geo/synchro-villes";
 import Link from "next/link";
-import { Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { listCommandes, countCommandesParStatut, type StatutCommandeFiltre } from "@/lib/queries/commandes";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CommandeStatusActions } from "@/components/admin/CommandeStatusActions";
 import { ArchiveButton, ArchiverAnciennesButton } from "@/components/admin/ArchiveButton";
 import { BonLivraisonButton } from "@/components/admin/BonLivraisonButton";
+import { FactureButton } from "@/components/admin/FactureButton";
+import { ModePaiementSelect } from "@/components/admin/ModePaiementSelect";
 import { requireAdminPage } from "@/lib/auth/rbac";
 import { peutAcceder, peutModifier } from "@/lib/auth/permissions";
 
@@ -66,22 +69,32 @@ export default async function CommandesPage({
 
   const filtresSansStatut = { villeId, commercialId, dateFrom, dateTo };
 
-  const [{ data, pagination }, { parStatut, total: totalToutStatut }, villes, commerciaux] = await Promise.all([
+  const [{ data, pagination }, { parStatut, total: totalToutStatut }, villes, commerciaux, agents] = await Promise.all([
     listCommandes({ page, statut, ...filtresSansStatut }),
     countCommandesParStatut(filtresSansStatut),
-    prisma.ville.findMany({ orderBy: { nom: "asc" } }),
+    listerVilles(),
     prisma.user.findMany({
       where: { role: "COMMERCIAL" },
       orderBy: { nom: "asc" },
       select: { id: true, nom: true, prenom: true },
     }),
+    prisma.agentFacturation.findMany({ where: { actif: true }, orderBy: { nom: "asc" }, select: { id: true, nom: true } }),
   ]);
 
   const baseQuery = { statut, villeId, commercialId, dateFrom, dateTo };
 
   return (
     <main>
-      <AdminPageHeader title="Commandes" subtitle={`${pagination.total} au total`} action={peutArchiver ? <ArchiverAnciennesButton jours={30} /> : undefined} />
+      <AdminPageHeader title="Commandes" subtitle={`${pagination.total} au total`} action={
+          <div className="flex items-center gap-2">
+            {peutModifier(session.role) && (
+              <Link href="/admin/commandes/nouvelle" className="flex items-center gap-1.5 rounded-xl bg-white/20 px-3.5 py-2 text-sm font-semibold text-white hover:bg-white/30">
+                <Plus size={15} /> Nouvelle commande
+              </Link>
+            )}
+            {peutArchiver ? <ArchiverAnciennesButton jours={30} /> : null}
+          </div>
+        } />
 
       <div className="p-4 md:p-6">
         {/* Pastilles de filtre rapide par statut */}
@@ -170,6 +183,18 @@ export default async function CommandesPage({
                   ))}
                 </div>
 
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-bold tabular-nums text-slate-800 dark:text-slate-100">
+                    {Number(c.montantTotal).toLocaleString("fr-FR")} FCFA
+                  </span>
+                  <ModePaiementSelect
+                    type="COMMANDE"
+                    id={c.id}
+                    valeur={c.modePaiement}
+                    modifiable={peutModifier(session.role)}
+                  />
+                </div>
+
                 <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
                   <div>
                     <p>Commandée le {new Date(c.dateCommande).toLocaleDateString("fr-FR")}</p>
@@ -183,8 +208,11 @@ export default async function CommandesPage({
                         <Phone size={15} />
                       </a>
                     )}
-                    {(c.statut === "EN_LIVRAISON" || c.statut === "LIVREE") && (
-                      <BonLivraisonButton commande={c as any} />
+                    {c.statut !== "ANNULEE" && peutModifier(session.role) && (
+                      <>
+                        <BonLivraisonButton commandeId={c.id} />
+                        <FactureButton type="COMMANDE" id={c.id} agents={agents} />
+                      </>
                     )}
                     {peutModifier(session.role) && <CommandeStatusActions id={c.id} statut={c.statut} />}
                     {peutArchiver && (c.statut === "LIVREE" || c.statut === "ANNULEE") && (

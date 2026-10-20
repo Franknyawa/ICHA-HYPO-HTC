@@ -1,15 +1,25 @@
 import { prisma } from "@/lib/prisma";
 
-export type Canal = "ESPECES" | "MOBILE_MONEY";
+export type Canal = "ESPECES" | "MOBILE_MONEY" | "BANQUE";
 
+/**
+ * Toute commande enregistrée (vente du jour ou commande à livrer) est une
+ * créance : elle reste « à encaisser » tant que l'admin n'a pas validé
+ * l'argent rapporté par le superviseur.
+ */
 export type CreditAEncaisser = {
-  venteId: string;
+  /** Clé unique « VENTE:uuid » ou « COMMANDE:uuid ». */
+  cle: string;
+  type: "VENTE" | "COMMANDE";
+  id: string;
   pointVenteNom: string;
   commercialNom: string;
-  dateVente: Date;
+  date: Date;
   montantTotal: number;
   paye: number;
   du: number;
+  /** Mode annoncé par le commercial sur le terrain (indicatif). */
+  modeAnnonce: string | null;
 };
 
 export type LigneJournal = {
@@ -42,46 +52,66 @@ function canalDe(mode: string): Canal {
 
 const num = (x: unknown) => Number(x ?? 0);
 
-/** Crédits restant dus (ventes avec crédit non soldées, hors règlements déjà validés par un admin). */
+/** Créances : toutes les ventes et commandes non annulées dont le reste dû est > 0. */
 export async function getCreditsAEncaisser(): Promise<CreditAEncaisser[]> {
-  const ventes = await prisma.vente.findMany({
-    where: { paiements: { some: { estCredit: true } } },
-    select: {
-      id: true,
-      montantTotal: true,
-      createdAt: true,
-      pointVente: { select: { nom: true } },
-      commercial: { select: { prenom: true, nom: true } },
-      paiements: { select: { montant: true } },
-    },
-    orderBy: { createdAt: "asc" },
-  });
-  if (ventes.length === 0) return [];
+  const [ventes, commandes] = await Promise.all([
+    prisma.vente.findMany({
+      where: { montantTotal: { gt: 0 } },
+      select: {
+        id: true,
+        montantTotal: true,
+        modePaiement: true,
+        createdAt: true,
+        pointVente: { select: { nom: true } },
+        commercial: { select: { prenom: true, nom: true } },
+        paiements: { select: { montant: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.commande.findMany({
+      where: { montantTotal: { gt: 0 }, statut: { not: "ANNULEE" } },
+      select: {
+        id: true,
+        montantTotal: true,
+        modePaiement: true,
+        createdAt: true,
+        pointVente: { select: { nom: true } },
+        commercial: { select: { prenom: true, nom: true } },
+        paiements: { select: { montant: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
 
-  const alertes = await prisma.alerte.findMany({
-    where: { type: "CREDIT_RETARD", entiteType: "Vente", entiteId: { in: ventes.map((v) => v.id) }, statut: "RESOLUE" },
-    select: { entiteId: true },
-  });
+  const alertes = ventes.length
+    ? await prisma.alerte.findMany({
+        where: { type: "CREDIT_RETARD", entiteType: "Vente", entiteId: { in: ventes.map((v) => v.id) }, statut: "RESOLUE" },
+        select: { entiteId: true },
+      })
+    : [];
   const resolues = new Set(alertes.map((a) => a.entiteId));
 
   const liste: CreditAEncaisser[] = [];
-  for (const v of ventes) {
-    if (resolues.has(v.id)) continue;
-    const paye = v.paiements.reduce((s, p) => s + num(p.montant), 0);
-    const du = num(v.montantTotal) - paye;
-    if (du > 0) {
-      liste.push({
-        venteId: v.id,
-        pointVenteNom: v.pointVente.nom,
-        commercialNom: `${v.commercial.prenom} ${v.commercial.nom}`,
-        dateVente: v.createdAt,
-        montantTotal: num(v.montantTotal),
-        paye,
-        du,
-      });
-    }
-  }
-  return liste;
+  const ajouter = (type: "VENTE" | "COMMANDE", o: (typeof ventes)[number]) => {
+    const paye = o.paiements.reduce((s, p) => s + num(p.montant), 0);
+    const du = num(o.montantTotal) - paye;
+    if (du <= 0.5) return;
+    liste.push({
+      cle: `${type}:${o.id}`,
+      type,
+      id: o.id,
+      pointVenteNom: o.pointVente.nom,
+      commercialNom: `${o.commercial.prenom} ${o.commercial.nom}`,
+      date: o.createdAt,
+      montantTotal: num(o.montantTotal),
+      paye,
+      du,
+      modeAnnonce: o.modePaiement,
+    });
+  };
+  for (const v of ventes) if (!resolues.has(v.id)) ajouter("VENTE", v);
+  for (const c of commandes) ajouter("COMMANDE", c);
+  return liste.sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
 /** Stock présent valorisé au prix de vente et au coût d'achat moyen. */
@@ -121,6 +151,7 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
         estCredit: true,
         datePaiement: true,
         vente: { select: { pointVente: { select: { nom: true } } } },
+        commande: { select: { pointVente: { select: { nom: true } } } },
       },
       orderBy: { datePaiement: "desc" },
     }),
@@ -143,6 +174,7 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
   const parCanalPeriode: Record<Canal, { entrees: number; sorties: number }> = {
     ESPECES: { entrees: 0, sorties: 0 },
     MOBILE_MONEY: { entrees: 0, sorties: 0 },
+    BANQUE: { entrees: 0, sorties: 0 },
   };
   let encaissementsVentes = 0;
   for (const p of paiementsPeriode) {
@@ -165,13 +197,13 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
   const recettes = encaissementsVentes + autresRecettes;
 
   // --- Cumul depuis le début (solde de caisse) -------------------------
-  const solde: Record<Canal, number> = { ESPECES: 0, MOBILE_MONEY: 0 };
+  const solde: Record<Canal, number> = { ESPECES: 0, MOBILE_MONEY: 0, BANQUE: 0 };
   for (const g of paiementsTotal) solde[canalDe(g.modePaiement)] += num(g._sum.montant);
   for (const g of opsTotal) {
     const m = num(g._sum.montant);
     solde[g.canal] += g.type === "RECETTE" ? m : -m;
   }
-  const soldeTotal = solde.ESPECES + solde.MOBILE_MONEY;
+  const soldeTotal = solde.ESPECES + solde.MOBILE_MONEY + solde.BANQUE;
 
   const journal: LigneJournal[] = [
     ...paiementsPeriode
@@ -180,8 +212,8 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
         id: `p-${p.id}`,
         date: p.datePaiement,
         sens: "ENTREE",
-        libelle: p.estCredit ? "Acompte de vente" : "Encaissement",
-        detail: p.vente?.pointVente.nom ?? "—",
+        libelle: p.estCredit ? "Acompte" : "Encaissement validé",
+        detail: p.vente?.pointVente.nom ?? p.commande?.pointVente.nom ?? "—",
         canal: canalDe(p.modePaiement),
         montant: num(p.montant),
         supprimable: false,

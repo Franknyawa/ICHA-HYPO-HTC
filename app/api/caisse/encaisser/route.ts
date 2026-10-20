@@ -7,13 +7,14 @@ import { handleApiError } from "@/lib/api-errors";
 export const runtime = "nodejs";
 
 const schema = z.object({
-  venteId: z.string().uuid(),
+  type: z.enum(["VENTE", "COMMANDE"]).default("VENTE"),
+  id: z.string().uuid(),
   montant: z.number().positive().max(1_000_000_000),
   canal: z.enum(["ESPECES", "MOBILE_MONEY"]).default("ESPECES"),
 });
 
 /**
- * Encaisse tout ou partie d'un crédit : crée un vrai paiement sur la vente.
+ * Valide l'argent reçu (espèces ou OM/MOMO) pour une vente ou une commande : crée un vrai paiement.
  * Le reste dû diminue ; quand il atteint zéro, l'alerte de retard liée est
  * résolue. L'argent entre en caisse automatiquement (la caisse additionne
  * tous les paiements).
@@ -23,32 +24,50 @@ export async function POST(req: NextRequest) {
     const session = await requireModule("caisse");
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Données invalides." }, { status: 400 });
-    const { venteId, montant, canal } = parsed.data;
+    const { type, id, montant, canal } = parsed.data;
 
     const resultat = await prisma.$transaction(async (tx) => {
-      const vente = await tx.vente.findUnique({
-        where: { id: venteId },
-        select: { montantTotal: true, paiements: { select: { montant: true } } },
-      });
-      if (!vente) return { erreur: "Vente introuvable.", statut: 404 } as const;
+      const doc =
+        type === "VENTE"
+          ? await tx.vente.findUnique({
+              where: { id },
+              select: { montantTotal: true, paiements: { select: { montant: true } } },
+            })
+          : await tx.commande.findUnique({
+              where: { id },
+              select: { montantTotal: true, paiements: { select: { montant: true } } },
+            });
+      if (!doc) return { erreur: "Commande introuvable.", statut: 404 } as const;
 
-      const paye = vente.paiements.reduce((s, p) => s + Number(p.montant), 0);
-      const du = Number(vente.montantTotal) - paye;
-      if (du <= 0) return { erreur: "Ce crédit est déjà soldé.", statut: 409 } as const;
-      if (montant > du) {
+      const paye = doc.paiements.reduce((s, p) => s + Number(p.montant), 0);
+      const du = Number(doc.montantTotal) - paye;
+      if (du <= 0.5) return { erreur: "Cette commande est déjà soldée.", statut: 409 } as const;
+      if (montant > du + 0.01) {
         return { erreur: `Le montant dépasse le reste dû (${Math.round(du)} FCFA).`, statut: 400 } as const;
       }
 
       await tx.paiement.create({
-        data: { uuidClient: crypto.randomUUID(), venteId, montant, modePaiement: canal, estCredit: false },
+        data: {
+          uuidClient: crypto.randomUUID(),
+          ...(type === "VENTE" ? { venteId: id } : { commandeId: id }),
+          montant,
+          modePaiement: canal,
+          estCredit: false,
+          encaisseParId: session.userId,
+        },
       });
 
       const reste = du - montant;
-      if (reste <= 0) {
-        await tx.alerte.updateMany({
-          where: { type: "CREDIT_RETARD", entiteType: "Vente", entiteId: venteId, statut: { not: "RESOLUE" } },
-          data: { statut: "RESOLUE", verifieeParId: session.userId, verifieeAt: new Date() },
-        });
+      if (reste <= 0.5) {
+        // Soldée : le mode réellement utilisé devient celui de la commande.
+        if (type === "VENTE") await tx.vente.update({ where: { id }, data: { modePaiement: canal } });
+        else await tx.commande.update({ where: { id }, data: { modePaiement: canal } });
+        if (type === "VENTE") {
+          await tx.alerte.updateMany({
+            where: { type: "CREDIT_RETARD", entiteType: "Vente", entiteId: id, statut: { not: "RESOLUE" } },
+            data: { statut: "RESOLUE", verifieeParId: session.userId, verifieeAt: new Date() },
+          });
+        }
       }
       return { reste } as const;
     });

@@ -7,7 +7,11 @@ import { queuePendingVisite } from "@/lib/offline/db";
 import { chargerReferentiels, chargerMe } from "@/lib/offline/referentiels";
 import { syncPendingVisites } from "@/lib/offline/sync";
 import { compressImage } from "@/lib/utils/image";
-import { genererFacturePdf } from "@/lib/utils/facture-pdf";
+import { genererBonCommandePdf, referenceBonCommande } from "@/lib/utils/bon-commande-pdf";
+import { lignesDocument } from "@/lib/utils/documents";
+import { preparerCommande, type ProduitForm } from "@/lib/utils/commande-terrain";
+import type { PalierTarif } from "@/lib/utils/tarifs";
+import { COORDONNEES_VILLES } from "@/lib/geo/cameroun";
 import {
   EnTeteFormulaire,
   Carte,
@@ -23,18 +27,13 @@ import {
   Encart,
   BarreAction,
   BoutonPrincipal,
+  BlocPaiement,
+  type ModePaiementTerrain,
 } from "@/components/commercial/form-ui";
 
 type Ville = { id: string; nom: string };
 type TypePV = { id: string; nom: string };
-type Produit = {
-  id: string;
-  code: string;
-  nom: string;
-  prixSachet: number;
-  prixFilet: number | null;
-  prixCarton: number;
-};
+type Produit = ProduitForm;
 type Session = { nom: string; prenom: string; binomeId: string | null; binomeNom: string | null };
 type PrixParType = {
   produitId: string;
@@ -65,20 +64,6 @@ function updateQuantite(
   });
 }
 
-// Coordonnées approximatives des 7 villes couvertes (§25 CDC — cartographie).
-// Utilisées pour déduire automatiquement la ville depuis le GPS du
-// commercial, sans dépendre d'un service de géocodage externe (aucune clé
-// MAP_API_KEY n'est configurée pour l'instant).
-const VILLE_COORDS: Record<string, { lat: number; lng: number }> = {
-  Douala: { lat: 4.0483, lng: 9.7043 },
-  Yaoundé: { lat: 3.848, lng: 11.5021 },
-  Bafoussam: { lat: 5.4737, lng: 10.4176 },
-  Edéa: { lat: 3.8, lng: 10.1333 },
-  Kribi: { lat: 2.9394, lng: 9.9095 },
-  Limbé: { lat: 4.0227, lng: 9.2042 },
-  Buea: { lat: 4.156, lng: 9.2632 },
-};
-
 function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const R = 6371;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
@@ -98,7 +83,7 @@ function nearestVille(
   let best: Ville | null = null;
   let bestDist = Infinity;
   for (const v of villes) {
-    const coords = VILLE_COORDS[v.nom];
+    const coords = COORDONNEES_VILLES[v.nom];
     if (!coords) continue;
     const d = haversineKm(point, coords);
     if (d < bestDist) {
@@ -124,14 +109,10 @@ export default function NouvelleVisitePage() {
 
   const [session, setSession] = useState<Session | null>(null);
   const [villes, setVilles] = useState<Ville[]>([]);
-  const [quartiers, setQuartiers] = useState<{ id: string; nom: string }[]>([]);
-  // Tous les quartiers, gardés en mémoire : le filtrage par ville se fait en
-  // local, donc le choix du quartier fonctionne aussi sans réseau.
-  const [tousQuartiers, setTousQuartiers] = useState<{ id: string; nom: string; villeId: string }[]>([]);
-  const [quartierModeLibre, setQuartierModeLibre] = useState(false);
   const [types, setTypes] = useState<TypePV[]>([]);
   const [produits, setProduits] = useState<Produit[]>([]);
   const [prixParType, setPrixParType] = useState<PrixParType[]>([]);
+  const [paliers, setPaliers] = useState<PalierTarif[]>([]);
 
   const [now] = useState(() => new Date());
 
@@ -186,15 +167,14 @@ export default function NouvelleVisitePage() {
   >({});
   const [commandeDateLivraison, setCommandeDateLivraison] = useState("");
 
-  const [montantEncaisse, setMontantEncaisse] = useState(0);
   // Montant effectivement reçu en cas de crédit partiel — distinct du
   // montant calculé (valeur catalogue), qui sert alors de référence pour
   // calculer le reste à payer.
   const [montantRecu, setMontantRecu] = useState(0);
-  const [mobileMoneyConfirme, setMobileMoneyConfirme] = useState(false);
-  const [modePaiement, setModePaiement] = useState<
-    "ESPECES" | "MOBILE_MONEY" | "CREDIT_PARTIEL" | "CREDIT_TOTAL"
-  >("ESPECES");
+  const [modePaiement, setModePaiement] = useState<ModePaiementTerrain>("ESPECES");
+  // Mode annoncé pour la commande à livrer plus tard (même choix, indépendant de l'achat du jour).
+  const [modePaiementCommande, setModePaiementCommande] = useState<ModePaiementTerrain>("ESPECES");
+  const [acompteCommande, setAcompteCommande] = useState(0);
 
   const [submitting, setSubmitting] = useState(false);
   const [observation, setObservation] = useState("");
@@ -212,22 +192,10 @@ export default function NouvelleVisitePage() {
         setTypes(d.types ?? []);
         setProduits(d.produits ?? []);
         setPrixParType(d.prixParType ?? []);
-        setTousQuartiers(d.quartiers ?? []);
+        setPaliers(d.paliers ?? []);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Données indisponibles."));
   }, []);
-
-  // Quartiers rechargés dès que la ville change — le quartier n'est plus un
-  // champ texte libre mais une liste contrainte à ceux déjà connus pour la
-  // ville (limitation assumée : sans coordonnées GPS par quartier, une
-  // vraie détection automatique du quartier n'est pas fiable — voir README).
-  useEffect(() => {
-    if (!villeId) {
-      setQuartiers([]);
-      return;
-    }
-    setQuartiers(tousQuartiers.filter((q) => q.villeId === villeId));
-  }, [villeId, tousQuartiers]);
 
   function captureGps() {
     setGpsError(null);
@@ -291,91 +259,27 @@ export default function NouvelleVisitePage() {
     }
   }
 
-  // Une ligne par produit ayant une quantité saisie — généralisé à
-  // n'importe quel nombre de produits actifs (plus limité à HYPO/HTC).
   const achatActif = veutCommander === true;
   const commandeActive = commanderPlusTard === true;
-  const lignesVente = (!achatActif ? [] : produits)
-    .map((p) => {
-      const q = quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
-      if (q.sachets === 0 && q.filets === 0 && q.cartons === 0) return null;
-      return { produitCode: p.code, nbSachets: q.sachets, nbFilets: q.filets, nbCartons: q.cartons };
-    })
-    .filter(Boolean) as { produitCode: string; nbSachets: number; nbFilets: number; nbCartons: number }[];
 
-  // Calcul automatique à partir des quantités saisies et des prix produits
-  // (chargés dynamiquement depuis /api/referentiels, jamais codés en dur).
-  // Dès qu'un type de boutique est choisi, on applique son prix spécifique
-  // s'il existe (défini en back office) ; sinon, repli sur le prix de base
-  // du produit.
-  function prixEffectif(p: Produit): Produit {
-    if (!typeId) return p;
-    const surcharge = prixParType.find((pt) => pt.produitId === p.id && pt.typeId === typeId);
-    if (!surcharge) return p;
-    return {
-      ...p,
-      prixSachet: surcharge.prixSachet,
-      prixFilet: surcharge.prixFilet,
-      prixCarton: surcharge.prixCarton,
-    };
-  }
+  // Prix : base → type de boutique → grille tarifaire (selon les cartons
+  // commandés). Les prix appliqués sont figés sur chaque ligne et servent à
+  // la facture. Toutes les valeurs viennent des référentiels (jamais codées).
+  const ctxPrix = { typeId, prixParType, paliers };
+  const achat = preparerCommande(achatActif ? produits : [], quantites, ctxPrix);
+  const commandeFuture = preparerCommande(commandeActive ? produits : [], quantitesCommande, ctxPrix);
+  // Sous-totaux affichés sous chaque produit (même quand le bloc est replié).
+  const sousTotauxParProduit = preparerCommande(produits, quantites, ctxPrix).sousTotaux;
+  const sousTotauxCommandeParProduit = preparerCommande(produits, quantitesCommande, ctxPrix).sousTotaux;
+  const lignesVente = achat.lignes;
+  const commandeLignes = commandeFuture.lignes;
+  const montantCalcule = achat.total;
+  const montantCommandeCalcule = commandeFuture.total;
 
-  function sousTotalProduit(p: Produit, q: { sachets: number; filets: number; cartons: number }) {
-    const prix = prixEffectif(p);
-    return q.sachets * prix.prixSachet + q.filets * (prix.prixFilet ?? 0) + q.cartons * prix.prixCarton;
-  }
-
-  const sousTotauxParProduit = new Map(
-    produits.map((p) => [p.code, sousTotalProduit(p, quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 })])
-  );
-  const montantCalcule = achatActif ? [...sousTotauxParProduit.values()].reduce((s, v) => s + v, 0) : 0;
-
-  // Sous-totaux de la commande à livrer plus tard (mêmes prix, calcul
-  // identique à la vente immédiate) — §2 demande de Victor.
-  const sousTotauxCommandeParProduit = new Map(
-    produits.map((p) => [
-      p.code,
-      sousTotalProduit(p, quantitesCommande[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }),
-    ])
-  );
-  const montantCommandeCalcule = [...sousTotauxCommandeParProduit.values()].reduce((s, v) => s + v, 0);
-
-  const commandeLignes = (!commandeActive ? [] : produits)
-    .map((p) => {
-      const q = quantitesCommande[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
-      if (q.sachets === 0 && q.filets === 0 && q.cartons === 0) return null;
-      return { produitCode: p.code, nbSachets: q.sachets, nbFilets: q.filets, nbCartons: q.cartons };
-    })
-    .filter(Boolean) as { produitCode: string; nbSachets: number; nbFilets: number; nbCartons: number }[];
-
-  // Logique par mode de paiement (§1 demande de Victor) :
-  // - Espèces : le montant calculé est versé intégralement, encaissé tout
-  //   de suite.
-  // - Mobile Money : pas de saisie manuelle, juste une confirmation que le
-  //   montant calculé a bien été reçu par OM/MoMo.
-  // - Crédit partiel : le commercial saisit ce qu'il a réellement reçu ;
-  //   le reste dû est calculé automatiquement.
-  // - Crédit total : rien n'est perçu maintenant, tout reste dû.
-  const resteAPayer =
-    modePaiement === "CREDIT_PARTIEL"
-      ? Math.max(0, montantCalcule - montantRecu)
-      : modePaiement === "CREDIT_TOTAL"
-      ? montantCalcule
-      : 0;
-
-  const montantEffectivementRecu =
-    modePaiement === "ESPECES"
-      ? montantCalcule
-      : modePaiement === "MOBILE_MONEY"
-      ? (mobileMoneyConfirme ? montantCalcule : 0)
-      : modePaiement === "CREDIT_PARTIEL"
-      ? montantRecu
-      : 0; // CREDIT_TOTAL
-
-  useEffect(() => {
-    setMontantEncaisse(montantEffectivementRecu);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [montantEffectivementRecu]);
+  // Le commercial n'encaisse rien : il annonce le mode de paiement et le
+  // montant à encaisser. Le superviseur encaisse plus tard, l'admin valide.
+  const montantAnnonce =
+    modePaiement === "CREDIT_PARTIEL" ? montantRecu : modePaiement === "CREDIT_TOTAL" ? 0 : montantCalcule;
 
   // Auto-détection du présentoir (demande de Victor) : si les sachets
   // dépassent 30 ET les cartons dépassent 1 pour l'un des produits actifs
@@ -398,6 +302,8 @@ export default function NouvelleVisitePage() {
     setSubmitting(true);
 
     const visiteUuid = uuid();
+    const maintenant = new Date();
+    setBonRef({ reference: referenceBonCommande(maintenant, visiteUuid), date: maintenant });
     const photosPayload = photoUrls
       .map((url, i) => {
         const finalUrl = url ?? photoPreviews[i];
@@ -446,7 +352,7 @@ export default function NouvelleVisitePage() {
               montantTotal: montantCalcule,
               paiement: {
                 uuidClient: uuid(),
-                montant: montantEffectivementRecu,
+                montant: montantAnnonce,
                 modePaiement,
               },
             },
@@ -457,6 +363,8 @@ export default function NouvelleVisitePage() {
             commande: {
               uuidClient: uuid(),
               lignes: commandeLignes,
+              montantTotal: montantCommandeCalcule,
+              modePaiement: modePaiementCommande,
               dateLivraisonPrevue: commandeDateLivraison
                 ? new Date(commandeDateLivraison).toISOString()
                 : undefined,
@@ -488,7 +396,7 @@ export default function NouvelleVisitePage() {
       }
 
       setSuccess(true);
-      if (lignesVente.length === 0) {
+      if (!aUneCommande) {
         setTimeout(() => router.push("/dashboard"), 1200);
       }
     } catch {
@@ -500,34 +408,56 @@ export default function NouvelleVisitePage() {
     }
   }
 
-  const [facturePdfLoading, setFacturePdfLoading] = useState(false);
+  const [bonPdfLoading, setBonPdfLoading] = useState(false);
+  const [bonPdfError, setBonPdfError] = useState<string | null>(null);
+  // Référence et date du bon de commande, fixées au moment de la validation.
+  const [bonRef, setBonRef] = useState<{ reference: string; date: Date } | null>(null);
+  const aUneCommande = lignesVente.length > 0 || commandeLignes.length > 0;
 
-  async function telechargerFacture() {
-    setFacturePdfLoading(true);
+  async function telechargerBonCommande() {
+    if (!bonRef) return;
+    setBonPdfLoading(true);
+    setBonPdfError(null);
     try {
-      const modeLabel = {
-        ESPECES: "Espèces",
-        MOBILE_MONEY: "Mobile Money",
-        CREDIT_PARTIEL: "Crédit partiel",
-        CREDIT_TOTAL: "Crédit total",
-      }[modePaiement];
-
-      await genererFacturePdf({
-        numero: new Date().toISOString().slice(0, 10).replace(/-/g, ""),
-        date: new Date(),
-        pointVenteNom: nom || "—",
-        villeNom: villes.find((v) => v.id === villeId)?.nom ?? null,
+      const ville = villes.find((v) => v.id === villeId)?.nom ?? null;
+      await genererBonCommandePdf({
+        reference: bonRef.reference,
+        date: bonRef.date,
         commercialNom: session ? `${session.prenom} ${session.nom}` : "—",
-        lignes: lignesVente,
-        montantTotal: montantCalcule,
-        modePaiementLabel: modeLabel,
-        montantRecu: montantEffectivementRecu,
-        resteAPayer: resteAPayer > 0 ? resteAPayer : undefined,
+        client: {
+          nom: nom || "—",
+          ville,
+          quartier: quartierNom.trim() || null,
+          repere: repere.trim() || null,
+          telephone: (repondantTel || patronTel).trim() || null,
+        },
+        sections: [
+          { titre: commandeLignes.length > 0 ? "Commande du jour" : undefined, lignes: lignesDocument(achat.sources) },
+          {
+            titre: "Commande à livrer",
+            livraisonPrevue: commandeDateLivraison ? new Date(commandeDateLivraison) : null,
+            lignes: lignesDocument(commandeFuture.sources),
+          },
+        ],
       });
+    } catch {
+      setBonPdfError("Impossible de générer le bon de commande pour le moment.");
     } finally {
-      setFacturePdfLoading(false);
+      setBonPdfLoading(false);
     }
   }
+
+  const boutonBonCommande = aUneCommande && bonRef && (
+    <div className="space-y-2">
+      <BoutonPrincipal type="button" onClick={telechargerBonCommande} disabled={bonPdfLoading}>
+        <span className="flex items-center justify-center gap-2">
+          <Download size={16} />
+          {bonPdfLoading ? "Génération..." : "Télécharger le bon de commande"}
+        </span>
+      </BoutonPrincipal>
+      {bonPdfError && <p className="text-xs text-alert">{bonPdfError}</p>}
+    </div>
+  );
 
   if (success) {
     return (
@@ -537,14 +467,9 @@ export default function NouvelleVisitePage() {
             <CheckCircle2 size={30} />
           </div>
           <p className="mb-5 font-semibold text-slate-900 dark:text-slate-100">Visite enregistrée avec succès</p>
-          {lignesVente.length > 0 && (
+          {aUneCommande && (
             <div className="space-y-2">
-              <BoutonPrincipal type="button" onClick={telechargerFacture} disabled={facturePdfLoading}>
-                <span className="flex items-center justify-center gap-2">
-                  <Download size={16} />
-                  {facturePdfLoading ? "Génération..." : "Télécharger la facture"}
-                </span>
-              </BoutonPrincipal>
+              {boutonBonCommande}
               <button
                 onClick={() => router.push("/dashboard")}
                 className="w-full rounded-xl border border-slate-300 py-3 text-sm font-medium text-slate-700 dark:border-slate-700 dark:text-slate-300"
@@ -570,9 +495,12 @@ export default function NouvelleVisitePage() {
             La visite a été enregistrée sur ton téléphone et sera envoyée automatiquement dès que la connexion
             reviendra.
           </p>
-          <BoutonPrincipal type="button" onClick={() => router.push("/dashboard")}>
-            Retour à l&apos;accueil
-          </BoutonPrincipal>
+          <div className="space-y-2">
+            {boutonBonCommande}
+            <BoutonPrincipal type="button" onClick={() => router.push("/dashboard")}>
+              Retour à l&apos;accueil
+            </BoutonPrincipal>
+          </div>
         </div>
       </main>
     );
@@ -701,8 +629,6 @@ export default function NouvelleVisitePage() {
                 onChange={(v) => {
                   setVilleId(v);
                   setVilleAuto(false);
-                  setQuartierNom("");
-                  setQuartierModeLibre(false);
                 }}
                 required
               >
@@ -715,29 +641,7 @@ export default function NouvelleVisitePage() {
               </Liste>
             </Champ>
             <Champ label="Quartier">
-              {quartierModeLibre || quartiers.length === 0 ? (
-                <Saisie placeholder="Ex : Akwa" value={quartierNom} onChange={(e) => setQuartierNom(e.target.value)} />
-              ) : (
-                <Liste
-                  value={quartierNom}
-                  onChange={(v) => {
-                    if (v === "__autre__") {
-                      setQuartierModeLibre(true);
-                      setQuartierNom("");
-                    } else {
-                      setQuartierNom(v);
-                    }
-                  }}
-                >
-                  <option value="">Choisir...</option>
-                  {quartiers.map((q) => (
-                    <option key={q.id} value={q.nom}>
-                      {q.nom}
-                    </option>
-                  ))}
-                  <option value="__autre__">+ Autre quartier</option>
-                </Liste>
-              )}
+              <Saisie placeholder="Ex : Akwa" value={quartierNom} onChange={(e) => setQuartierNom(e.target.value)} />
             </Champ>
           </div>
 
@@ -833,80 +737,13 @@ export default function NouvelleVisitePage() {
                 ))}
               </div>
 
-              <Champ label="Mode de paiement">
-                <Choix<typeof modePaiement>
-                  colonnes={2}
-                  value={modePaiement}
-                  onChange={setModePaiement}
-                  options={[
-                    { value: "ESPECES", label: "Espèces" },
-                    { value: "MOBILE_MONEY", label: "Mobile Money" },
-                    { value: "CREDIT_PARTIEL", label: "Crédit partiel" },
-                    { value: "CREDIT_TOTAL", label: "Crédit total" },
-                  ]}
-                />
-              </Champ>
-
-              {modePaiement === "ESPECES" && (
-                <Encart>
-                  Montant à percevoir :{" "}
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">
-                    {montantCalcule.toLocaleString("fr-FR")} FCFA
-                  </span>
-                </Encart>
-              )}
-
-              {modePaiement === "MOBILE_MONEY" && (
-                <Encart>
-                  <p className="mb-3">
-                    Montant à percevoir :{" "}
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {montantCalcule.toLocaleString("fr-FR")} FCFA
-                    </span>
-                  </p>
-                  <label className="flex items-center gap-3 font-medium">
-                    <input
-                      type="checkbox"
-                      checked={mobileMoneyConfirme}
-                      onChange={(e) => setMobileMoneyConfirme(e.target.checked)}
-                      className="h-5 w-5 accent-[#1e3a8a]"
-                    />
-                    Paiement reçu par Mobile Money
-                  </label>
-                </Encart>
-              )}
-
-              {modePaiement === "CREDIT_PARTIEL" && (
-                <div className="space-y-3">
-                  <Encart>
-                    Total dû :{" "}
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {montantCalcule.toLocaleString("fr-FR")} FCFA
-                    </span>
-                  </Encart>
-                  <Champ label="Montant reçu du client (FCFA)">
-                    <Saisie
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      placeholder="0"
-                      value={montantRecu || ""}
-                      onChange={(e) => setMontantRecu(Number(e.target.value) || 0)}
-                    />
-                  </Champ>
-                  {resteAPayer > 0 && (
-                    <Encart ton="attention">
-                      Reste à payer : {resteAPayer.toLocaleString("fr-FR")} FCFA — suivi sur ton profil
-                    </Encart>
-                  )}
-                </div>
-              )}
-
-              {modePaiement === "CREDIT_TOTAL" && (
-                <Encart ton="attention">
-                  Montant intégralement à crédit : {montantCalcule.toLocaleString("fr-FR")} FCFA — suivi sur ton profil
-                </Encart>
-              )}
+              <BlocPaiement
+                mode={modePaiement}
+                onMode={setModePaiement}
+                montant={montantCalcule}
+                acompte={montantRecu}
+                onAcompte={setMontantRecu}
+              />
             </>
           )}
 
@@ -932,12 +769,14 @@ export default function NouvelleVisitePage() {
                 <Saisie type="date" value={commandeDateLivraison} onChange={(e) => setCommandeDateLivraison(e.target.value)} />
               </Champ>
               {montantCommandeCalcule > 0 && (
-                <Encart>
-                  À percevoir à la livraison :{" "}
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">
-                    {montantCommandeCalcule.toLocaleString("fr-FR")} FCFA
-                  </span>
-                </Encart>
+                <BlocPaiement
+                  libelle="Mode de paiement à la livraison"
+                  mode={modePaiementCommande}
+                  onMode={setModePaiementCommande}
+                  montant={montantCommandeCalcule}
+                  acompte={acompteCommande}
+                  onAcompte={setAcompteCommande}
+                />
               )}
             </>
           )}

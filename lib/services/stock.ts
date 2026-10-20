@@ -28,9 +28,11 @@ export async function applyStockMovement(
     quantiteSachets: number;
     referenceType?: string;
     referenceId?: string;
+    /** Précision libre : motif d'une avarie, bénéficiaire d'un gift… */
+    note?: string;
   }
 ) {
-  const { uuidClient, produitId, type, quantiteSachets, referenceType, referenceId } =
+  const { uuidClient, produitId, type, quantiteSachets, referenceType, referenceId, note } =
     params;
 
   const stock = await tx.stock.findUnique({ where: { produitId } });
@@ -64,6 +66,7 @@ export async function applyStockMovement(
       quantiteSachets,
       referenceType,
       referenceId,
+      note,
     },
   });
 }

@@ -17,6 +17,11 @@ const venteLigneSchema = z.object({
   nbSachets: z.number().int().min(0).max(MAX_QUANTITE).default(0),
   nbFilets: z.number().int().min(0).max(MAX_QUANTITE).default(0),
   nbCartons: z.number().int().min(0).max(MAX_QUANTITE).default(0),
+  // Prix figés au moment de la saisie (base → type de boutique → grille).
+  prixSachet: z.number().min(0).max(MAX_MONTANT).optional(),
+  prixFilet: z.number().min(0).max(MAX_MONTANT).optional(),
+  prixCarton: z.number().min(0).max(MAX_MONTANT).optional(),
+  montant: z.number().min(0).max(MAX_MONTANT).optional(),
 });
 
 // Modes de paiement réels du terrain (Victor) : le crédit fait directement
@@ -44,12 +49,19 @@ const commandeLigneSchema = z.object({
   nbSachets: z.number().int().min(0).max(MAX_QUANTITE).default(0),
   nbFilets: z.number().int().min(0).max(MAX_QUANTITE).default(0),
   nbCartons: z.number().int().min(0).max(MAX_QUANTITE).default(0),
+  // Prix figés au moment de la saisie (base → type de boutique → grille).
+  prixSachet: z.number().min(0).max(MAX_MONTANT).optional(),
+  prixFilet: z.number().min(0).max(MAX_MONTANT).optional(),
+  prixCarton: z.number().min(0).max(MAX_MONTANT).optional(),
+  montant: z.number().min(0).max(MAX_MONTANT).optional(),
 });
 
 const commandeSchema = z.object({
   uuidClient: z.string().uuid(),
   clientId: z.string().uuid().optional().nullable(),
   lignes: z.array(commandeLigneSchema).min(1),
+  montantTotal: z.number().min(0).max(MAX_MONTANT).optional(),
+  modePaiement: z.enum(["ESPECES", "MOBILE_MONEY", "CREDIT_PARTIEL", "CREDIT_TOTAL"]).optional(),
   dateLivraisonPrevue: z.string().datetime().optional(),
 });
 

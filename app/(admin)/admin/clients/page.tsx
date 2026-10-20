@@ -1,491 +1,162 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, MapPin, Phone } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import { requireAdminPage } from "@/lib/auth/rbac";
+import { listerVilles } from "@/lib/geo/synchro-villes";
+import { getClientsAcheteurs } from "@/lib/queries/clients-acheteurs";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
-import { apiFetch, ApiError } from "@/lib/client/apiFetch";
-import {
-  Search,
-  Phone,
-  MapPin,
-  X,
-  AlertTriangle,
-  RefreshCw,
-  Pencil,
-  UserCheck,
-  UserX,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { ClientsActions } from "@/components/admin/ClientsActions";
+import { formatFcfa } from "@/lib/utils/format";
 
-type ClientRow = {
-  id: string;
-  nom: string;
-  telephone: string | null;
-  statut: "ACTIF" | "INACTIF";
-  pointVente: { id: string; nom: string };
-};
+export const dynamic = "force-dynamic";
 
-type ClientDetail = {
-  id: string;
-  nom: string;
-  telephone: string | null;
-  statut: "ACTIF" | "INACTIF";
-  createdAt: string;
-  pointVente: {
-    nom: string;
-    vendeur: string | null;
-    ville: { nom: string } | null;
-    quartier: { nom: string } | null;
-    type: { nom: string } | null;
+const PAR_PAGE = 30;
+const champ =
+  "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
+
+function lien(params: Record<string, string | undefined>) {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v) sp.set(k, v);
+  return `/admin/clients?${sp.toString()}`;
+}
+
+export default async function ClientsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string; search?: string; villeId?: string; quartier?: string; typeId?: string; du?: string; au?: string };
+}) {
+  await requireAdminPage("clients");
+  const f = {
+    search: searchParams.search ?? "",
+    villeId: searchParams.villeId ?? "",
+    quartier: searchParams.quartier ?? "",
+    typeId: searchParams.typeId ?? "",
+    du: searchParams.du ?? "",
+    au: searchParams.au ?? "",
   };
-  creditTotal: number;
-  ventes: {
-    id: string;
-    montantTotal: number;
-    montantPaye: number;
-    montantDu: number;
-    createdAt: string;
-    commercial: { nom: string; prenom: string };
-  }[];
-  commandes: {
-    id: string;
-    statut: "EN_ATTENTE" | "EN_LIVRAISON" | "LIVREE" | "ANNULEE";
-    dateCommande: string;
-    dateLivraisonPrevue: string | null;
-  }[];
-};
 
-const LABEL_STATUT_COMMANDE: Record<string, string> = {
-  EN_ATTENTE: "En attente",
-  EN_LIVRAISON: "En livraison",
-  LIVREE: "Livrée",
-  ANNULEE: "Annulée",
-};
+  const [clients, villes, types] = await Promise.all([
+    getClientsAcheteurs(f),
+    listerVilles(),
+    prisma.typePointVente.findMany({ where: { actif: true }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
+  ]);
 
-export default function ClientsPage() {
-  const [clients, setClients] = useState<ClientRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const totalPages = Math.max(1, Math.ceil(clients.length / PAR_PAGE));
+  const visibles = clients.slice((page - 1) * PAR_PAGE, page * PAR_PAGE);
 
-  const [search, setSearch] = useState("");
-  const [statutFiltre, setStatutFiltre] = useState<"" | "ACTIF" | "INACTIF">("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const criteres = [
+    f.du || f.au ? `Achats du ${f.du || "…"} au ${f.au || "…"}` : "Toute la période",
+    villes.find((v) => v.id === f.villeId)?.nom,
+    f.quartier && `Quartier : ${f.quartier}`,
+    types.find((t) => t.id === f.typeId)?.nom,
+    f.search && `Recherche : ${f.search}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  function load() {
-    setLoading(true);
-    setLoadError(null);
-    const params = new URLSearchParams({ page: String(page), pageSize: "20" });
-    if (search.trim()) params.set("search", search.trim());
-    if (statutFiltre) params.set("statut", statutFiltre);
-
-    apiFetch<{ data: ClientRow[]; pagination: { totalPages: number } }>(
-      `/api/clients?${params.toString()}`
-    )
-      .then((d) => {
-        setClients(d.data ?? []);
-        setTotalPages(d.pagination?.totalPages ?? 1);
-      })
-      .catch((e: ApiError) => {
-        if (e.status !== 401) setLoadError(e.message);
-      })
-      .finally(() => setLoading(false));
-  }
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(load, [page, statutFiltre]);
-
-  // Recherche : on repart en page 1 et on relance manuellement (pas de
-  // debounce serveur — évite une requête par frappe, l'utilisateur valide
-  // avec Entrée ou le bouton).
-  function onSearchSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setPage(1);
-    load();
-  }
+  const filtreActif = Boolean(f.search || f.villeId || f.quartier || f.typeId || f.du || f.au);
 
   return (
     <main>
-      <AdminPageHeader title="Clients" subtitle="Recherche, fiche détaillée et suivi des crédits" />
+      <AdminPageHeader title="Clients" subtitle={`${clients.length} point${clients.length > 1 ? "s" : ""} de vente ayant déjà acheté`} />
 
-      <div className="p-4 md:p-6">
-        <form onSubmit={onSearchSubmit} className="mb-4 flex flex-wrap gap-2">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher par nom ou téléphone..."
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-2.5 pl-9 pr-3 text-sm"
-            />
-          </div>
-          <select
-            value={statutFiltre}
-            onChange={(e) => {
-              setStatutFiltre(e.target.value as "" | "ACTIF" | "INACTIF");
-              setPage(1);
-            }}
-            className="rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm"
-          >
-            <option value="">Tous statuts</option>
-            <option value="ACTIF">Actifs</option>
-            <option value="INACTIF">Inactifs</option>
+      <div className="space-y-4 p-4 md:p-6">
+        <form action="/admin/clients" className="grid grid-cols-2 gap-2 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 md:grid-cols-4">
+          <input name="search" defaultValue={f.search} placeholder="Nom, contact ou téléphone" className={`${champ} col-span-2 md:col-span-2`} />
+          <select name="villeId" defaultValue={f.villeId} className={champ}>
+            <option value="">Toutes les villes</option>
+            {villes.map((v) => (
+              <option key={v.id} value={v.id}>{v.nom}</option>
+            ))}
           </select>
-          <button
-            type="submit"
-            className="rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-medium text-white"
-          >
-            Rechercher
-          </button>
+          <input name="quartier" defaultValue={f.quartier} placeholder="Quartier" className={champ} />
+          <select name="typeId" defaultValue={f.typeId} className={champ}>
+            <option value="">Tous les types de point de vente</option>
+            {types.map((t) => (
+              <option key={t.id} value={t.id}>{t.nom}</option>
+            ))}
+          </select>
+          <label className="flex items-center gap-2 text-xs text-slate-500">
+            Achats du
+            <input type="date" name="du" defaultValue={f.du} className={`${champ} min-w-0 flex-1`} />
+          </label>
+          <label className="flex items-center gap-2 text-xs text-slate-500">
+            au
+            <input type="date" name="au" defaultValue={f.au} className={`${champ} min-w-0 flex-1`} />
+          </label>
+          <div className="col-span-2 flex gap-2 md:col-span-1">
+            <button type="submit" className="flex-1 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">Filtrer</button>
+            {filtreActif && (
+              <Link href="/admin/clients" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                Effacer
+              </Link>
+            )}
+          </div>
         </form>
 
-        {loading ? (
-          <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
-        ) : loadError ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white dark:bg-slate-900 p-8 text-center shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-            <AlertTriangle size={22} className="text-alert" />
-            <p className="text-sm text-slate-600 dark:text-slate-300">{loadError}</p>
-            <button
-              onClick={load}
-              className="flex items-center gap-1.5 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white"
-            >
-              <RefreshCw size={14} />
-              Réessayer
-            </button>
-          </div>
-        ) : clients.length === 0 ? (
-          <p className="text-sm text-slate-400 dark:text-slate-500">Aucun client trouvé.</p>
-        ) : (
-          <>
-            <div className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-              {clients.map((c, i) => (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedId(c.id)}
-                  className={`flex w-full items-center justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 ${
-                    i > 0 ? "border-t border-slate-100 dark:border-slate-800" : ""
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-slate-800 dark:text-slate-100">{c.nom}</p>
-                      {c.statut === "INACTIF" && (
-                        <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                          Inactif
-                        </span>
-                      )}
-                    </div>
-                    <p className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
-                      <MapPin size={11} />
-                      {c.pointVente.nom}
-                    </p>
-                  </div>
-                  {c.telephone && (
-                    <span className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
-                      <Phone size={12} />
-                      {c.telephone}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+        <ClientsActions clients={clients} sousTitre={criteres} />
 
-            {totalPages > 1 && (
-              <div className="mt-3 flex items-center justify-center gap-3">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700 disabled:opacity-40"
-                >
-                  <ChevronLeft size={15} />
-                </button>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  Page {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700 disabled:opacity-40"
-                >
-                  <ChevronRight size={15} />
-                </button>
-              </div>
-            )}
-          </>
+        <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">
+                <th className="px-4 py-3">Client</th>
+                <th className="px-4 py-3">Localisation</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3 text-right">Achats</th>
+                <th className="px-4 py-3 text-right">Montant</th>
+                <th className="px-4 py-3">Dernier achat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibles.map((c) => (
+                <tr key={c.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70 dark:border-slate-800 dark:hover:bg-slate-800/40">
+                  <td className="px-4 py-3">
+                    <Link href={`/admin/points-vente/${c.id}`} className="font-semibold text-slate-800 hover:text-brand dark:text-slate-100">
+                      {c.nom}
+                    </Link>
+                    <p className="flex items-center gap-1 text-xs text-slate-400">
+                      {c.contact}
+                      {c.telephone && (
+                        <span className="flex items-center gap-0.5"><Phone size={11} />{c.telephone}</span>
+                      )}
+                    </p>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                    <span className="flex items-center gap-1"><MapPin size={12} className="text-slate-400" />{[c.quartier, c.ville].filter(Boolean).join(", ") || "—"}</span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{c.type ?? "—"}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{c.nbAchats}</td>
+                  <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatFcfa(c.montant)}</td>
+                  <td className="px-4 py-3 text-slate-500">{new Date(c.dernierAchat).toLocaleDateString("fr-FR")}</td>
+                </tr>
+              ))}
+              {visibles.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">
+                    Aucun client ne correspond à ces critères.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
+            <span>Page {page} / {totalPages}</span>
+            <div className="flex gap-2">
+              <Link href={lien({ ...f, page: String(page - 1) })} aria-disabled={page <= 1} className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 font-medium ${page <= 1 ? "pointer-events-none border-slate-100 text-slate-300" : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"}`}>
+                <ChevronLeft size={15} /> Précédent
+              </Link>
+              <Link href={lien({ ...f, page: String(page + 1) })} aria-disabled={page >= totalPages} className={`flex items-center gap-1 rounded-xl border px-3 py-1.5 font-medium ${page >= totalPages ? "pointer-events-none border-slate-100 text-slate-300" : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"}`}>
+                Suivant <ChevronRight size={15} />
+              </Link>
+            </div>
+          </div>
         )}
       </div>
-
-      {selectedId && (
-        <ClientDetailModal
-          id={selectedId}
-          onClose={() => setSelectedId(null)}
-          onUpdated={load}
-        />
-      )}
     </main>
-  );
-}
-
-function ClientDetailModal({
-  id,
-  onClose,
-  onUpdated,
-}: {
-  id: string;
-  onClose: () => void;
-  onUpdated: () => void;
-}) {
-  const [client, setClient] = useState<ClientDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [editing, setEditing] = useState(false);
-  const [nom, setNom] = useState("");
-  const [telephone, setTelephone] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-
-  function load() {
-    setLoading(true);
-    setError(null);
-    apiFetch<ClientDetail>(`/api/clients/${id}`)
-      .then((d) => {
-        setClient(d);
-        setNom(d.nom);
-        setTelephone(d.telephone ?? "");
-      })
-      .catch((e: ApiError) => {
-        if (e.status !== 401) setError(e.message);
-      })
-      .finally(() => setLoading(false));
-  }
-
-  useEffect(load, [id]);
-
-  async function enregistrer() {
-    setSaving(true);
-    setSaveError(null);
-    const res = await fetch(`/api/clients/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nom, telephone: telephone || null }),
-    });
-    setSaving(false);
-    if (res.ok) {
-      setEditing(false);
-      load();
-      onUpdated();
-    } else {
-      const d = await res.json().catch(() => ({}));
-      setSaveError(d.error ?? "Échec de l'enregistrement.");
-    }
-  }
-
-  async function toggleStatut() {
-    if (!client) return;
-    setSaving(true);
-    const nouveauStatut = client.statut === "ACTIF" ? "INACTIF" : "ACTIF";
-    const res = await fetch(`/api/clients/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ statut: nouveauStatut }),
-    });
-    setSaving(false);
-    if (res.ok) {
-      load();
-      onUpdated();
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 shadow-lg">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-4">
-          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Fiche client</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="p-5">
-          {loading ? (
-            <p className="text-sm text-slate-400 dark:text-slate-500">Chargement...</p>
-          ) : error ? (
-            <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <AlertTriangle size={20} className="text-alert" />
-              <p className="text-sm text-slate-600 dark:text-slate-300">{error}</p>
-              <button onClick={load} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white">
-                Réessayer
-              </button>
-            </div>
-          ) : client ? (
-            <>
-              {/* Identité + édition */}
-              <div className="mb-4 flex items-start justify-between">
-                <div className="flex-1">
-                  {editing ? (
-                    <div className="space-y-2">
-                      <input
-                        value={nom}
-                        onChange={(e) => setNom(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
-                        placeholder="Nom"
-                      />
-                      <input
-                        value={telephone}
-                        onChange={(e) => setTelephone(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm"
-                        placeholder="Téléphone"
-                      />
-                      {saveError && <p className="text-xs text-alert">{saveError}</p>}
-                      <div className="flex gap-2">
-                        <button
-                          onClick={enregistrer}
-                          disabled={saving}
-                          className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
-                        >
-                          {saving ? "..." : "Enregistrer"}
-                        </button>
-                        <button
-                          onClick={() => setEditing(false)}
-                          className="rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300"
-                        >
-                          Annuler
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{client.nom}</p>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                            client.statut === "ACTIF"
-                              ? "bg-green-50 text-green-700"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                          }`}
-                        >
-                          {client.statut === "ACTIF" ? "Actif" : "Inactif"}
-                        </span>
-                      </div>
-                      {client.telephone && (
-                        <a
-                          href={`https://wa.me/${client.telephone.replace(/[^\d]/g, "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-sm text-green-600"
-                        >
-                          <Phone size={13} />
-                          {client.telephone}
-                        </a>
-                      )}
-                      <p className="mt-1 flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
-                        <MapPin size={11} />
-                        {client.pointVente.nom}
-                        {client.pointVente.quartier ? ` — ${client.pointVente.quartier.nom}` : ""}
-                        {client.pointVente.ville ? `, ${client.pointVente.ville.nom}` : ""}
-                      </p>
-                    </>
-                  )}
-                </div>
-                {!editing && (
-                  <div className="flex shrink-0 gap-1.5">
-                    <button
-                      onClick={() => setEditing(true)}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                      title="Modifier"
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      onClick={toggleStatut}
-                      disabled={saving}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-50"
-                      title={client.statut === "ACTIF" ? "Désactiver" : "Réactiver"}
-                    >
-                      {client.statut === "ACTIF" ? <UserX size={14} /> : <UserCheck size={14} />}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Crédit en cours */}
-              {client.creditTotal > 0 && (
-                <div className="mb-4 rounded-xl bg-red-50 px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-alert">Crédit en cours</p>
-                  <p className="text-lg font-bold text-alert">{client.creditTotal.toLocaleString("fr-FR")} FCFA</p>
-                </div>
-              )}
-
-              {/* Ventes */}
-              <div className="mb-4">
-                <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Ventes ({client.ventes.length})
-                </h4>
-                {client.ventes.length === 0 ? (
-                  <p className="text-sm text-slate-400 dark:text-slate-500">Aucune vente.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {client.ventes.map((v) => (
-                      <div key={v.id} className="rounded-lg bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-700 dark:text-slate-300">
-                            {new Date(v.createdAt).toLocaleDateString("fr-FR")} — {v.commercial.prenom} {v.commercial.nom}
-                          </span>
-                          <span className="font-semibold text-slate-800 dark:text-slate-100">
-                            {v.montantTotal.toLocaleString("fr-FR")} FCFA
-                          </span>
-                        </div>
-                        {v.montantDu > 0 && (
-                          <span className="text-xs font-medium text-alert">
-                            {v.montantDu.toLocaleString("fr-FR")} FCFA dû
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Commandes */}
-              <div>
-                <h4 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Commandes ({client.commandes.length})
-                </h4>
-                {client.commandes.length === 0 ? (
-                  <p className="text-sm text-slate-400 dark:text-slate-500">Aucune commande.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {client.commandes.map((c) => (
-                      <div key={c.id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm">
-                        <span className="text-slate-700 dark:text-slate-300">
-                          {new Date(c.dateCommande).toLocaleDateString("fr-FR")}
-                        </span>
-                        <span
-                          className={`text-xs font-semibold ${
-                            c.statut === "LIVREE"
-                              ? "text-green-700"
-                              : c.statut === "ANNULEE"
-                              ? "text-slate-400"
-                              : c.statut === "EN_LIVRAISON"
-                              ? "text-brand"
-                              : "text-amber-700"
-                          }`}
-                        >
-                          {LABEL_STATUT_COMMANDE[c.statut]}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          ) : null}
-        </div>
-      </div>
-    </div>
   );
 }

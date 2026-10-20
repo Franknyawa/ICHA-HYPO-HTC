@@ -1,3 +1,4 @@
+import { listerVilles } from "@/lib/geo/synchro-villes";
 import { libelleRepondant } from "@/lib/utils/repondant";
 import Link from "next/link";
 import { MapPin, ImageOff, Phone, ChevronLeft, ChevronRight } from "lucide-react";
@@ -55,7 +56,7 @@ export default async function PointsVentePage({
 
   const [{ data, pagination }, villes, quartiers, types] = await Promise.all([
     listPointsVente({ page, search, villeId, quartierId, typeId, triCommandes }),
-    prisma.ville.findMany({ orderBy: { nom: "asc" } }),
+    listerVilles(),
     prisma.quartier.findMany({
       where: villeId ? { villeId } : undefined,
       orderBy: { nom: "asc" },
