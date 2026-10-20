@@ -69,17 +69,19 @@ async function creerAlerteSiAbsente(params: {
   });
 }
 
+const fmtCartons = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
+
 async function genererAlertesStock() {
   const stocks = await prisma.stock.findMany({
     where: { seuilAlerte: { gt: 0 } },
-    include: { produit: { select: { id: true, code: true, nom: true } } },
+    include: { produit: { select: { id: true, code: true, nom: true, sachetsParCarton: true } } },
   });
 
   for (const s of stocks) {
     if (s.quantiteSachets < s.seuilAlerte) {
       await creerAlerteSiAbsente({
         type: "STOCK_FAIBLE",
-        message: `Stock ${s.produit.code} faible : ${s.quantiteSachets} sachets restants (seuil : ${s.seuilAlerte}).`,
+        message: `Stock ${s.produit.code} faible : ${fmtCartons(s.quantiteSachets / s.produit.sachetsParCarton)} cartons restants (seuil : ${fmtCartons(s.seuilAlerte / s.produit.sachetsParCarton)}).`,
         entiteType: "Produit",
         entiteId: s.produit.id,
       });

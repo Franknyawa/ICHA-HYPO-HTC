@@ -57,8 +57,9 @@ async function construireLignes(commandeId: string, demandees: QuantitesLigne[])
       id: true,
       montantTotal: true,
       statut: true,
+      client: { select: { nom: true } },
       pointVente: {
-        select: { nom: true, repere: true, telephoneVendeur: true, ville: { select: { nom: true } }, quartier: { select: { nom: true } } },
+        select: { nom: true, vendeur: true, repere: true, telephoneVendeur: true, ville: { select: { nom: true } }, quartier: { select: { nom: true } } },
       },
       lignes: {
         select: {
@@ -69,7 +70,7 @@ async function construireLignes(commandeId: string, demandees: QuantitesLigne[])
       },
     },
   }) as unknown as {
-    id: string; montantTotal: unknown; statut: string;
+    id: string; montantTotal: unknown; statut: string; client: { nom: string } | null;
     pointVente: { nom: string; repere: string | null; telephoneVendeur: string | null; ville: { nom: string } | null; quartier: { nom: string } | null };
     lignes: { id: string; produitId: string; nbSachets: number; nbFilets: number; nbCartons: number; prixSachet: unknown; prixFilet: unknown; prixCarton: unknown; montant: unknown; produit: { code: string; nom: string; designation: string | null; sachetsParCarton: number; volumeMl: number | null; sachetsParFilet: number | null } }[];
   } | null;
@@ -109,6 +110,7 @@ async function construireLignes(commandeId: string, demandees: QuantitesLigne[])
         produitNom: l.produit.nom,
         designation: l.produit.designation,
         sachetsParCarton: l.produit.sachetsParCarton,
+        sachetsParFilet: l.produit.sachetsParFilet,
         volumeMl: l.produit.volumeMl,
         nbCartons: d.nbCartons, nbFilets: d.nbFilets, nbSachets: d.nbSachets,
         prixCarton: pc || null, prixFilet: pf || null, prixSachet: ps || null,
@@ -119,8 +121,8 @@ async function construireLignes(commandeId: string, demandees: QuantitesLigne[])
   return { commande, lignes: sortie, montant: Math.round(montant) };
 }
 
-function versClient(pv: { nom: string; repere: string | null; telephoneVendeur: string | null; ville: { nom: string } | null; quartier: { nom: string } | null }): AdresseClient {
-  return { nom: pv.nom, ville: pv.ville?.nom ?? null, quartier: pv.quartier?.nom ?? null, repere: pv.repere, telephone: pv.telephoneVendeur };
+function versClient(pv: { nom: string; vendeur?: string | null; repere: string | null; telephoneVendeur: string | null; ville: { nom: string } | null; quartier: { nom: string } | null }, clientNom?: string | null): AdresseClient {
+  return { signataire: clientNom || pv.vendeur || pv.nom, nom: pv.nom, ville: pv.ville?.nom ?? null, quartier: pv.quartier?.nom ?? null, repere: pv.repere, telephone: pv.telephoneVendeur };
 }
 
 async function numeroFactureOrigine(commandeId: string) {
@@ -154,7 +156,7 @@ export async function creerAvoir(params: {
   return {
     id: avoir.id, type: "AVOIR", numero: numeroAvoir(avoir.numero), date: avoir.createdAt.toISOString(),
     commandeId: params.commandeId, factureOrigine: await numeroFactureOrigine(params.commandeId),
-    client: versClient(commande.pointVente), motif: avoir.motif, montant: final,
+    client: versClient(commande.pointVente, commande.client?.nom), motif: avoir.motif, montant: final,
     sources: lignes.map((l) => l.source),
   };
 }
@@ -221,7 +223,7 @@ export async function creerRetour(params: {
   });
 
   const origine = await numeroFactureOrigine(params.commandeId);
-  const client = versClient(commande.pointVente);
+  const client = versClient(commande.pointVente, commande.client?.nom);
   const sources = lignes.map((l) => l.source);
   return {
     retour: {
@@ -242,7 +244,7 @@ export async function creerRetour(params: {
 export { InsufficientStockError };
 
 const selectPv = {
-  nom: true, repere: true, telephoneVendeur: true,
+  nom: true, vendeur: true, repere: true, telephoneVendeur: true,
   ville: { select: { nom: true } }, quartier: { select: { nom: true } },
 } as const;
 
@@ -256,7 +258,7 @@ export async function listerCorrections(type: "AVOIR" | "RETOUR", limite = 100):
 
   const ids = Array.from(new Set(rows.map((r) => r.commandeId)));
   const [commandes, factures] = await Promise.all([
-    prisma.commande.findMany({ where: { id: { in: ids } }, select: { id: true, pointVente: { select: selectPv } } }),
+    prisma.commande.findMany({ where: { id: { in: ids } }, select: { id: true, client: { select: { nom: true } }, pointVente: { select: selectPv } } }),
     prisma.facture.findMany({ where: { commandeId: { in: ids } }, select: { commandeId: true, numero: true } }),
   ]);
   const { numeroFacture } = await import("@/lib/utils/documents");
@@ -272,7 +274,7 @@ export async function listerCorrections(type: "AVOIR" | "RETOUR", limite = 100):
       date: r.createdAt.toISOString(),
       commandeId: r.commandeId,
       factureOrigine: f ? numeroFacture(f.numero) : null,
-      client: c ? versClient(c.pointVente) : { nom: "—", ville: null, quartier: null, repere: null, telephone: null },
+      client: c ? versClient(c.pointVente, c.client?.nom) : { nom: "—", ville: null, quartier: null, repere: null, telephone: null },
       motif: r.motif,
       destination: "destination" in r ? (r as { destination: string }).destination : undefined,
       montant: num(r.montant),

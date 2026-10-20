@@ -3,7 +3,7 @@
 
 import { formatFcfa, formatMontant } from "./format";
 import { montantEnLettres } from "./nombre-en-lettres";
-import { lignesDocument } from "./documents";
+import { lignesCartons } from "./documents";
 import type { CorrectionJson } from "@/lib/services/corrections";
 import {
   assurerPlace,
@@ -48,12 +48,12 @@ export async function genererCorrectionPdf(data: CorrectionJson) {
     ].filter(Boolean),
   });
 
-  const lignes = lignesDocument(data.sources);
+  const lignes = lignesCartons(data.sources);
   if (lignes.length > 0) {
     autoTable(doc, {
       ...STYLE_TABLE,
       startY: yBlocs + 42,
-      head: [["Code / Référence", "Désignation", "Quantité", "Prix unitaire", "Prix total"]],
+      head: [["Code / Référence", "Désignation", "Quantité (cartons)", "Prix unitaire", "Prix total"]],
       body: lignes.map((l) => [
         l.reference, l.designation, l.quantiteTexte,
         l.prixUnitaire === null ? "—" : formatMontant(l.prixUnitaire),
@@ -61,7 +61,7 @@ export async function genererCorrectionPdf(data: CorrectionJson) {
       ]),
       columnStyles: {
         0: { cellWidth: 28, fontStyle: "bold" },
-        2: { halign: "center", cellWidth: 24 },
+        2: { halign: "center", cellWidth: 30 },
         3: { halign: "right", cellWidth: 28 },
         4: { halign: "right", cellWidth: 30, fontStyle: "bold" },
       },
@@ -86,7 +86,7 @@ export async function genererCorrectionPdf(data: CorrectionJson) {
   y += l.length * 5 + 16;
 
   y = assurerPlace(doc, y, 22);
-  dessinerSignatures(doc, y + 10, ["Signature ETS ICHA IMPORT", "Signature (Nom du client)"]);
+  dessinerSignatures(doc, y + 10, ["Signature ETS ICHA IMPORT", `Signature ${data.client.signataire || data.client.nom}`]);
 
   dessinerPieds(doc);
   doc.save(nomFichier(estAvoir ? "avoir" : "retour", data.numero, data.client.nom));

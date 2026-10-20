@@ -1619,3 +1619,8 @@ Objectifs : une seule carte « Objectif binôme » appliquée à tous les binôm
 - Seuils d'alerte de stock : modifiés dans Paramètres (cartons) ; la rubrique Stock les affiche en lecture seule.
 - Performance : relations chargées en une requête SQL (`relationJoins`), requêtes en parallèle, photos en data URL servies à part, images en chargement différé.
 - SQL : `docs/migration-2026-10-20.sql`, BLOC 8.
+
+## Lot 3 bis
+- Facture, avoir, retour : quantités converties en cartons (colonne « Quantité (cartons) », une ligne par produit, ex. 2 cartons + 1 filet de 6 + 12 sachets = 2,75).
+- Signature : « Signature <nom du client> » (client de la commande, sinon vendeur, sinon point de vente).
+- Seuils de stock affichés en cartons (page Stock et messages d'alerte).

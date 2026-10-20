@@ -58,6 +58,7 @@ export type LigneSource = {
   produitNom: string;
   designation?: string | null;
   sachetsParCarton?: number | null;
+  sachetsParFilet?: number | null;
   volumeMl?: number | null;
   nbSachets: number;
   nbFilets: number;
@@ -131,8 +132,58 @@ export type AdresseClient = {
   quartier?: string | null;
   repere?: string | null;
   telephone?: string | null;
+  /** Nom affiché sur la ligne de signature : « Signature Dora ». */
+  signataire?: string | null;
 };
 
 export function adresseTexte(a: AdresseClient): string {
   return [a.quartier, a.repere, a.ville].filter(Boolean).join(", ");
+}
+
+/** « 2 », « 2,5 », « 0,25 » : au plus 2 décimales, virgule française. */
+export function formaterCartons(n: number): string {
+  const r = Math.round(n * 100) / 100;
+  return r.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
+}
+
+/**
+ * Lignes de facture avec un seul référentiel : le carton. Les filets et les
+ * sachets sont convertis en équivalent carton (ex. 12 sachets d'un carton de
+ * 24 = 0,5 carton). Une ligne par produit ; le total reste la somme exacte
+ * des montants d'origine, le prix unitaire est le prix du carton équivalent.
+ */
+export function lignesCartons(sources: LigneSource[]): LigneDocument[] {
+  const parProduit = new Map<string, { source: LigneSource; cartons: number; total: number | null }>();
+  for (const s of sources) {
+    const parCarton = s.sachetsParCarton && s.sachetsParCarton > 0 ? s.sachetsParCarton : 1;
+    const parFilet = s.sachetsParFilet && s.sachetsParFilet > 0 ? s.sachetsParFilet : 1;
+    const cartons = s.nbCartons + (s.nbFilets * parFilet) / parCarton + s.nbSachets / parCarton;
+    if (cartons <= 0) continue;
+    // Total de la ligne : montant enregistré, sinon somme des prix unitaires.
+    const calcule =
+      s.nbCartons * (s.prixCarton ?? 0) + s.nbFilets * (s.prixFilet ?? 0) + s.nbSachets * (s.prixSachet ?? 0);
+    const total = s.montant && s.montant > 0 ? s.montant : calcule > 0 ? calcule : null;
+    const cle = s.produitCode;
+    const cur = parProduit.get(cle);
+    if (cur) {
+      cur.cartons += cartons;
+      cur.total = cur.total === null || total === null ? null : cur.total + total;
+    } else {
+      parProduit.set(cle, { source: s, cartons, total });
+    }
+  }
+  return Array.from(parProduit.values()).map(({ source, cartons, total }) => ({
+    reference: source.produitCode,
+    designation: designationProduit({
+      nom: source.produitNom,
+      designation: source.designation,
+      sachetsParCarton: source.sachetsParCarton,
+      volumeMl: source.volumeMl,
+    }),
+    quantite: cartons,
+    quantiteTexte: formaterCartons(cartons),
+    unite: "carton" as const,
+    prixUnitaire: total === null ? null : Math.round(total / cartons),
+    total: total === null ? null : Math.round(total),
+  }));
 }

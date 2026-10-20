@@ -69,7 +69,7 @@ export async function genererFacturePdf(data: FactureData) {
   autoTable(doc, {
     ...STYLE_TABLE,
     startY: yBlocs + 42,
-    head: [["Code / Référence", "Désignation", "Quantité", "Prix unitaire", "Prix total"]],
+    head: [["Code / Référence", "Désignation", "Quantité (cartons)", "Prix unitaire", "Prix total"]],
     body: data.lignes.map((l) => [
       l.reference,
       l.designation,
@@ -79,7 +79,7 @@ export async function genererFacturePdf(data: FactureData) {
     ]),
     columnStyles: {
       0: { cellWidth: 28, fontStyle: "bold" },
-      2: { halign: "center", cellWidth: 24 },
+      2: { halign: "center", cellWidth: 30 },
       3: { halign: "right", cellWidth: 28 },
       4: { halign: "right", cellWidth: 30, fontStyle: "bold" },
     },
@@ -126,7 +126,7 @@ export async function genererFacturePdf(data: FactureData) {
 
   // --- Signatures --------------------------------------------------------------
   y = assurerPlace(doc, y, 22);
-  dessinerSignatures(doc, y + 10, ["Signature ETS ICHA IMPORT", "Signature (Nom du client)"]);
+  dessinerSignatures(doc, y + 10, ["Signature ETS ICHA IMPORT", `Signature ${data.client.signataire || data.client.nom}`]);
 
   dessinerPieds(doc);
   doc.save(nomFichier("facture", data.numero, data.client.nom));

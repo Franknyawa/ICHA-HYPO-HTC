@@ -417,7 +417,9 @@ export default function StockView({ lectureSeule = false }: { lectureSeule?: boo
                       {s.coutCarton === null ? <span className="text-slate-300 dark:text-slate-600">—</span> : formatFcfa(s.coutCarton)}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-slate-600 dark:text-slate-300">{s.seuilAlerte} sachets</span>
+                      <span className="text-slate-600 dark:text-slate-300">
+                        {Math.round((s.seuilAlerte / s.sachetsParCarton) * 100) / 100} cartons
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       {s.enAlerte ? (

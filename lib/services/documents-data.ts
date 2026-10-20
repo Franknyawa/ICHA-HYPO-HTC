@@ -45,7 +45,7 @@ const selectLigne = {
   prixFilet: true,
   prixCarton: true,
   montant: true,
-  produit: { select: { code: true, nom: true, designation: true, sachetsParCarton: true, volumeMl: true } },
+  produit: { select: { code: true, nom: true, designation: true, sachetsParCarton: true, sachetsParFilet: true, volumeMl: true } },
 } as const;
 
 const selectPointVente = {
@@ -65,7 +65,7 @@ type LigneBrute = {
   prixFilet: unknown;
   prixCarton: unknown;
   montant: unknown;
-  produit: { code: string; nom: string; designation: string | null; sachetsParCarton: number; volumeMl: number | null };
+  produit: { code: string; nom: string; designation: string | null; sachetsParCarton: number; sachetsParFilet: number | null; volumeMl: number | null };
 };
 
 function versSources(lignes: LigneBrute[]): LigneSource[] {
@@ -74,6 +74,7 @@ function versSources(lignes: LigneBrute[]): LigneSource[] {
     produitNom: l.produit.nom,
     designation: l.produit.designation,
     sachetsParCarton: l.produit.sachetsParCarton,
+    sachetsParFilet: l.produit.sachetsParFilet,
     volumeMl: l.produit.volumeMl,
     nbSachets: l.nbSachets,
     nbFilets: l.nbFilets,
@@ -87,14 +88,16 @@ function versSources(lignes: LigneBrute[]): LigneSource[] {
 
 type PointVenteBrut = {
   nom: string;
+  vendeur?: string | null;
   repere: string | null;
   telephoneVendeur: string | null;
   ville: { nom: string } | null;
   quartier: { nom: string } | null;
 };
 
-function versClient(pv: PointVenteBrut): AdresseClient {
+function versClient(pv: PointVenteBrut, clientNom?: string | null): AdresseClient {
   return {
+    signataire: clientNom || pv.vendeur || pv.nom,
     nom: pv.nom,
     ville: pv.ville?.nom ?? null,
     quartier: pv.quartier?.nom ?? null,
@@ -113,6 +116,7 @@ export async function obtenirFacture(type: TypeDocument, id: string, agentId?: s
   let doc: {
     montantTotal: unknown;
     modePaiement: string | null;
+    client: { nom: string } | null;
     pointVente: PointVenteBrut;
     lignes: LigneBrute[];
     paiements: { montant: unknown; modePaiement: string }[];
@@ -124,6 +128,7 @@ export async function obtenirFacture(type: TypeDocument, id: string, agentId?: s
       select: {
         montantTotal: true,
         modePaiement: true,
+        client: { select: { nom: true } },
         pointVente: { select: selectPointVente },
         lignes: { select: selectLigne },
         paiements: { select: { montant: true, modePaiement: true }, orderBy: { datePaiement: "desc" } },
@@ -135,6 +140,7 @@ export async function obtenirFacture(type: TypeDocument, id: string, agentId?: s
       select: {
         montantTotal: true,
         modePaiement: true,
+        client: { select: { nom: true } },
         pointVente: { select: selectPointVente },
         lignes: { select: selectLigne },
         paiements: { select: { montant: true, modePaiement: true }, orderBy: { datePaiement: "desc" } },
@@ -171,7 +177,7 @@ export async function obtenirFacture(type: TypeDocument, id: string, agentId?: s
     date: facture.createdAt.toISOString(),
     agentId: facture.agentId,
     agentNom: facture.agent?.nom ?? null,
-    client: versClient(doc.pointVente),
+    client: versClient(doc.pointVente, doc.client?.nom),
     sources,
     montantTotal,
     modePaiement: mode,
@@ -184,6 +190,7 @@ export async function obtenirBonLivraison(commandeId: string): Promise<BonLivrai
   const c = await prisma.commande.findUnique({
     where: { id: commandeId },
     select: {
+      client: { select: { nom: true } },
       pointVente: { select: selectPointVente },
       lignes: { select: selectLigne },
     },
@@ -204,7 +211,7 @@ export async function obtenirBonLivraison(commandeId: string): Promise<BonLivrai
     numero: numeroBonLivraison(bon.numero),
     date: bon.createdAt.toISOString(),
     agentNom: agent?.nom ?? null,
-    client: versClient(c.pointVente),
+    client: versClient(c.pointVente, c.client?.nom),
     sources: versSources(c.lignes),
   };
 }
@@ -224,6 +231,7 @@ export async function obtenirBonCommande(commandeId: string): Promise<BonCommand
     where: { id: commandeId },
     select: {
       dateLivraisonPrevue: true,
+      client: { select: { nom: true } },
       commercial: { select: { nom: true, prenom: true } },
       pointVente: { select: selectPointVente },
       lignes: { select: selectLigne },
@@ -244,7 +252,7 @@ export async function obtenirBonCommande(commandeId: string): Promise<BonCommand
     numero: numeroBonCommande(bon.numero),
     date: bon.createdAt.toISOString(),
     commercialNom: `${c.commercial.prenom} ${c.commercial.nom}`.trim(),
-    client: versClient(c.pointVente),
+    client: versClient(c.pointVente, c.client?.nom),
     sources: versSources(c.lignes),
     livraisonPrevue: c.dateLivraisonPrevue ? c.dateLivraisonPrevue.toISOString() : null,
   };

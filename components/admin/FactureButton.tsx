@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/client/apiFetch";
 import { genererFacturePdf } from "@/lib/utils/facture-pdf";
-import { lignesDocument } from "@/lib/utils/documents";
+import { lignesCartons } from "@/lib/utils/documents";
 import type { FactureJson } from "@/lib/services/documents-data";
 
 export type AgentOption = { id: string; nom: string };
@@ -39,7 +39,7 @@ export function FactureButton({
         date: new Date(f.date),
         agentNom: f.agentNom,
         client: f.client,
-        lignes: lignesDocument(f.sources),
+        lignes: lignesCartons(f.sources),
         montantTotal: f.montantTotal,
         modePaiementLabel: f.modePaiementLabel,
         dejaRegle: f.dejaRegle,

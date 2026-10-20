@@ -4,5 +4,8 @@
       "path": "/api/cron/aggregate",
       "schedule": "0 1 * * *"
     }
+  ],
+  "regions": [
+    "dub1"
   ]
 }
