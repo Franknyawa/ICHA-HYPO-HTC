@@ -1,7 +1,5 @@
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAdminPage } from "@/lib/auth/rbac";
-import { peutModifier } from "@/lib/auth/permissions";
 import { listerVilles } from "@/lib/geo/synchro-villes";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { NouvelleCommandeForm } from "@/components/admin/NouvelleCommandeForm";
@@ -9,8 +7,8 @@ import { NouvelleCommandeForm } from "@/components/admin/NouvelleCommandeForm";
 export const dynamic = "force-dynamic";
 
 export default async function NouvelleCommandePage() {
-  const session = await requireAdminPage("commandes");
-  if (!peutModifier(session.role)) redirect("/admin/commandes");
+  // Le superviseur peut passer une commande depuis son ordinateur (mais pas la valider).
+  await requireAdminPage("commandes");
 
   const [villes, types, produits, prixParType, paliers, commerciaux] = await Promise.all([
     listerVilles(),

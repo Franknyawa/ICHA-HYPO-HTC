@@ -10,7 +10,10 @@ export async function middleware(req: NextRequest) {
   // Le Superviseur consulte seulement : toute écriture (POST, PATCH, PUT,
   // DELETE) sur une rubrique d'administration est refusée côté serveur.
   if (pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(req.method)) {
-    if (moduleDePath(pathname)) {
+    // Exception : le superviseur peut enregistrer une nouvelle commande (POST /api/commandes),
+    // mais ni la valider, ni la modifier, ni l'annuler.
+    const creationCommande = req.method === "POST" && pathname.replace(/\/$/, "") === "/api/commandes";
+    if (moduleDePath(pathname) && !creationCommande) {
       const tk = req.cookies.get(COOKIE_NAME)?.value;
       const sess = tk ? await verifySessionToken(tk) : null;
       if (sess && estPersonnel(sess.role) && !peutModifier(sess.role)) {

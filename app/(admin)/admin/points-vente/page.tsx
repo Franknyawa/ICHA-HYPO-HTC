@@ -9,6 +9,7 @@ import { libelleTypes } from "@/lib/utils/types-boutique";
 import { PdfExportButton } from "@/components/admin/PdfExportButton";
 import { ImprimerButton } from "@/components/admin/ImprimerButton";
 import { requireAdminPage } from "@/lib/auth/rbac";
+import { peutModifier } from "@/lib/auth/permissions";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
 // (évite d'épuiser le pool de connexions Prisma pendant `next build`, et
@@ -46,7 +47,8 @@ export default async function PointsVentePage({
     triCommandes?: string;
   };
 }) {
-  await requireAdminPage("points-vente");
+  const session = await requireAdminPage("points-vente");
+  const voirDetail = peutModifier(session.role);
   const page = Number(searchParams.page ?? "1") || 1;
   const search = searchParams.search ?? "";
   const villeId = searchParams.villeId ?? "";
@@ -212,9 +214,13 @@ export default async function PointsVentePage({
                       )}
                     </td>
                     <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-100">
-                      <Link href={`/admin/points-vente/${pv.id}`} className="hover:underline">
-                        {pv.nom}
-                      </Link>
+                      {voirDetail ? (
+                        <Link href={`/admin/points-vente/${pv.id}`} className="hover:underline">
+                          {pv.nom}
+                        </Link>
+                      ) : (
+                        <span>{pv.nom}</span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5">
                       <p className="text-slate-700 dark:text-slate-300">{pv.vendeur ?? "—"}</p>
@@ -301,12 +307,16 @@ export default async function PointsVentePage({
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <Link
-                      href={`/admin/points-vente/${pv.id}`}
-                      className="truncate font-medium text-slate-800 dark:text-slate-100 hover:underline"
-                    >
-                      {pv.nom}
-                    </Link>
+                    {voirDetail ? (
+                      <Link
+                        href={`/admin/points-vente/${pv.id}`}
+                        className="truncate font-medium text-slate-800 dark:text-slate-100 hover:underline"
+                      >
+                        {pv.nom}
+                      </Link>
+                    ) : (
+                      <span className="truncate font-medium text-slate-800 dark:text-slate-100">{pv.nom}</span>
+                    )}
                     <span className="shrink-0 rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700">
                       {pv._count.commandes} cmd.
                     </span>

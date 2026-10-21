@@ -87,7 +87,7 @@ export default async function CommandesPage({
     <main>
       <AdminPageHeader title="Commandes" subtitle={`${pagination.total} au total`} action={
           <div className="flex items-center gap-2">
-            {peutModifier(session.role) && (
+            {(
               <Link href="/admin/commandes/nouvelle" className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#2563eb]">
                 <Plus size={15} /> Nouvelle commande
               </Link>
@@ -97,7 +97,7 @@ export default async function CommandesPage({
         } />
 
       <div className="p-4 md:p-6">
-        {peutModifier(session.role) && (
+        {(
           <Link
             href="/admin/commandes/nouvelle"
             className="mb-4 flex w-fit items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#2563eb] md:hidden"

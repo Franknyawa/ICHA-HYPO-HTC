@@ -45,7 +45,7 @@ export const ACCES: Record<Module, RoleId[]> = {
 export const LIBELLES_ROLES: Record<RoleId, { nom: string; description: string }> = {
   SUPER_ADMIN: { nom: "Super Admin", description: "Gère tout, y compris les utilisateurs et les paramètres." },
   ADMIN: { nom: "Administrateur", description: "Accès à tout sauf les paramètres et les utilisateurs." },
-  SUPERVISEUR: { nom: "Superviseur", description: "Alertes, points de vente, commandes, stock et rapports (consultation seule)." },
+  SUPERVISEUR: { nom: "Superviseur", description: "Consultation : alertes, liste des points de vente, commandes (peut en saisir), état du stock et rapports. Pas de fiche client ni de mouvements de stock." },
   COMMERCIAL: { nom: "Commercial", description: "Application mobile terrain uniquement." },
 };
 

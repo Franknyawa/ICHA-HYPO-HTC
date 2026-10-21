@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
   MapPin,
@@ -14,12 +14,13 @@ import {
 import { getPointVenteDetail } from "@/lib/queries/points-vente";
 import { getCompteClient, type TypeEcriture } from "@/lib/queries/compte-client";
 import { CorrectionButton } from "@/components/admin/CorrectionButton";
+import { FicheClientButton } from "@/components/admin/FicheClientButton";
 import { libelleRepondant } from "@/lib/utils/repondant";
 import { formatMontant } from "@/lib/utils/format";
 import { ArchiveButton } from "@/components/admin/ArchiveButton";
 import { ImprimerButton } from "@/components/admin/ImprimerButton";
 import { requireAdminPage } from "@/lib/auth/rbac";
-import { peutAcceder } from "@/lib/auth/permissions";
+import { peutAcceder, peutModifier } from "@/lib/auth/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,8 @@ function Tuile({ icone, titre, valeur, sous, couleur }: { icone: React.ReactNode
 
 export default async function PointVenteDetailPage({ params }: { params: { id: string } }) {
   const session = await requireAdminPage("points-vente");
+  // Le superviseur ne consulte pas la fiche détaillée d'un point de vente ou d'un client.
+  if (!peutModifier(session.role)) redirect("/admin/points-vente");
   const [pv, compte] = await Promise.all([getPointVenteDetail(params.id), getCompteClient(params.id)]);
   if (!pv) {
     notFound();
@@ -106,6 +109,27 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
               confirmation={pv.archivedAt ? undefined : "Archiver ce point de vente ? Il disparaîtra des listes et de la recherche des commerciaux ; son historique est conservé."}
             />
           )}
+          <FicheClientButton
+            data={{
+              nom: pv.nom,
+              interlocuteur: pv.vendeur,
+              telephone: pv.telephoneVendeur,
+              type: [...pv.typesNoms, ...(pv.typeAutre ? [pv.typeAutre] : [])].join(", ") || "—",
+              adresse: [pv.quartier?.nom, pv.ville?.nom, pv.repere].filter(Boolean).join(", ") || "—",
+              synthese: {
+                facture: compte.totalFacture,
+                encaisse: compte.totalPaye - compte.totalRembourse,
+                avoirs: compte.totalAvoirs,
+                retours: compte.totalRetours,
+                reste: compte.soldeDu,
+              },
+              factures: compte.factures
+                .slice()
+                .reverse()
+                .map((f) => ({ piece: f.piece, date: f.date.toISOString(), produits: f.produits, montant: f.montant, avoirs: f.avoirs, retours: f.retours, paye: f.paye - f.rembourse, reste: f.reste })),
+              ecritures: compte.ecritures.map((e) => ({ date: e.date.toISOString(), piece: e.piece, libelle: e.libelle, debit: e.debit, credit: e.credit, solde: e.solde })),
+            }}
+          />
           <ImprimerButton />
         </div>
       </div>

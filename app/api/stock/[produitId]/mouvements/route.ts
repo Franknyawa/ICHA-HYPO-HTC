@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireModule } from "@/lib/auth/rbac";
+import { peutModifier } from "@/lib/auth/permissions";
 import { handleApiError } from "@/lib/api-errors";
 import { getMouvementsRecents } from "@/lib/queries/stock";
 
@@ -10,7 +11,9 @@ export async function GET(
   { params }: { params: { produitId: string } }
 ) {
   try {
-    await requireModule("stock");
+    const session = await requireModule("stock");
+    // Le superviseur voit l'état du stock uniquement, pas les mouvements.
+    if (!peutModifier(session.role)) return NextResponse.json({ error: "Accès réservé aux administrateurs." }, { status: 403 });
     const data = await getMouvementsRecents(params.produitId);
     return NextResponse.json({ data });
   } catch (error) {

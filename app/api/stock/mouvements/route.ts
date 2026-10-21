@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireModule } from "@/lib/auth/rbac";
+import { peutModifier } from "@/lib/auth/permissions";
 import { handleApiError } from "@/lib/api-errors";
 import { getMouvements, type CategorieMouvement } from "@/lib/queries/stock";
 
@@ -10,7 +11,9 @@ const JOUR = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function GET(req: NextRequest) {
   try {
-    await requireModule("stock");
+    const session = await requireModule("stock");
+    // Le superviseur voit l'état du stock uniquement, pas les mouvements.
+    if (!peutModifier(session.role)) return NextResponse.json({ error: "Accès réservé aux administrateurs." }, { status: 403 });
     const sp = req.nextUrl.searchParams;
     const du = sp.get("du") ?? undefined;
     const au = sp.get("au") ?? undefined;

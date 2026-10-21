@@ -12,7 +12,7 @@ export async function GET(
 ) {
   try {
     const session = await requireAuth();
-    const estAdmin = session.role !== "COMMERCIAL";
+    const estAdmin = session.role === "SUPER_ADMIN" || session.role === "ADMIN";
 
     const pointVente = await prisma.pointVente.findUnique({
       where: { id: params.id },

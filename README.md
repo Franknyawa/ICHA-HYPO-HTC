@@ -1652,3 +1652,10 @@ Règle unique (`lib/services/compte.ts`) : **Solde dû = facturé − avoirs −
 - Caisse « À encaisser », encaissement, alertes de crédit, profil client : tous utilisent ce calcul.
 - Profil point de vente : synthèse Facturation (débit) / Caisse (crédit) / Reste, tableau par facture (avoirs, retours, encaissé, reste, bouton Avoir/Retour) et relevé de compte chronologique avec solde cumulé.
 - Une commande ayant des paiements, avoirs ou retours ne peut plus être annulée.
+
+- **Fiche client PDF** : bouton « Fiche PDF » sur le profil d'un point de vente (identité, situation du compte, factures, relevé débit/crédit).
+
+## Rôle Superviseur (précisé)
+- **Stock** : uniquement l'état du stock (stock initial = total entré, stock disponible). Pas de mouvements, d'entrées ni de sorties ; l'API des mouvements lui est refusée.
+- **Commandes** : consultation + il peut **saisir une nouvelle commande** depuis son ordinateur (POST /api/commandes autorisé). Validation, modification, annulation, bons et factures restent réservés aux admins.
+- **Points de vente** : liste seulement ; pas de fiche détaillée (redirection) ni de fiche client.
