@@ -49,6 +49,18 @@ export async function PATCH(
       return NextResponse.json({ error: "Commande introuvable." }, { status: 404 });
     }
 
+    // Une commande déjà (en partie) encaissée ne peut pas être annulée ni repasser en attente :
+    // l'argent resterait en caisse sans commande. Il faut passer par une facture d'avoir.
+    if (parsed.data.statut === "ANNULEE" || parsed.data.statut === "EN_ATTENTE") {
+      const nbPaiements = await prisma.paiement.count({ where: { commandeId: params.id } });
+      if (nbPaiements > 0) {
+        return NextResponse.json(
+          { error: "Cette commande a déjà des paiements enregistrés : établissez une facture d'avoir au lieu de l'annuler." },
+          { status: 409 }
+        );
+      }
+    }
+
     // Le stock est débité dès que l'admin valide (EN_LIVRAISON / LIVREE) et
     // remis en stock si la commande est annulée ou réactivée. On compare ce
     // qui est déjà sorti (mouvements de cette commande) à ce qui doit l'être :

@@ -66,6 +66,8 @@ export type LigneSource = {
   prixSachet?: number | null;
   prixFilet?: number | null;
   prixCarton?: number | null;
+  /** Prix catalogue du carton (sert à calculer la remise de palier). */
+  prixCartonBase?: number | null;
   /** Montant total enregistré pour la ligne produit (sert à retrouver un prix manquant). */
   montant?: number | null;
 };
@@ -79,6 +81,9 @@ export type LigneDocument = {
   unite: "carton" | "filet" | "sachet";
   prixUnitaire: number | null;
   total: number | null;
+  /** Remise de palier en % (produits HYPO uniquement) ; prixReference = prix catalogue avant remise. */
+  remisePct?: number | null;
+  prixReference?: number | null;
 };
 
 /**
@@ -172,18 +177,29 @@ export function lignesCartons(sources: LigneSource[]): LigneDocument[] {
       parProduit.set(cle, { source: s, cartons, total });
     }
   }
-  return Array.from(parProduit.values()).map(({ source, cartons, total }) => ({
-    reference: source.produitCode,
-    designation: designationProduit({
-      nom: source.produitNom,
-      designation: source.designation,
-      sachetsParCarton: source.sachetsParCarton,
-      volumeMl: source.volumeMl,
-    }),
-    quantite: cartons,
-    quantiteTexte: formaterCartons(cartons),
-    unite: "carton" as const,
-    prixUnitaire: total === null ? null : Math.round(total / cartons),
-    total: total === null ? null : Math.round(total),
-  }));
+  return Array.from(parProduit.values()).map(({ source, cartons, total }) => {
+    const prixUnitaire = total === null ? null : Math.round(total / cartons);
+    // Remise de palier : uniquement HYPO, quand le prix du carton tombe sous le prix catalogue.
+    const base = source.prixCartonBase ?? null;
+    const remise =
+      source.produitCode === "HYPO" && base && prixUnitaire !== null && prixUnitaire < base
+        ? Math.round((1 - prixUnitaire / base) * 10000) / 100
+        : null;
+    return {
+      reference: source.produitCode,
+      designation: designationProduit({
+        nom: source.produitNom,
+        designation: source.designation,
+        sachetsParCarton: source.sachetsParCarton,
+        volumeMl: source.volumeMl,
+      }),
+      quantite: cartons,
+      quantiteTexte: formaterCartons(cartons),
+      unite: "carton" as const,
+      prixUnitaire,
+      total: total === null ? null : Math.round(total),
+      remisePct: remise,
+      prixReference: remise !== null ? base : null,
+    };
+  });
 }

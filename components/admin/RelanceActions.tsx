@@ -14,9 +14,11 @@ function dansJours(n: number) {
 }
 
 /** Actions sur un prospect indécis : relancé (avec la prochaine date), converti, abandonné, rouvrir. */
-export function RelanceActions({ id, statut }: { id: string; statut: Statut }) {
+export function RelanceActions({ id, statut, produits, cartonsEstimes }: { id: string; statut: Statut; produits: { code: string; nom: string }[]; cartonsEstimes?: number | null }) {
   const router = useRouter();
   const [ouvert, setOuvert] = useState(false);
+  const [conversion, setConversion] = useState(false);
+  const [cartons, setCartons] = useState<Record<string, number>>(() => (produits[0] && cartonsEstimes ? { [produits[0].code]: cartonsEstimes } : {}));
   const [date, setDate] = useState(dansJours(3));
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -55,10 +57,10 @@ export function RelanceActions({ id, statut }: { id: string; statut: Statut }) {
   return (
     <div className="flex flex-col items-end gap-2">
       <div className="flex flex-wrap justify-end gap-1.5">
-        <button onClick={() => setOuvert((v) => !v)} className={`${bouton} bg-blue-50 text-brand`}>
+        <button onClick={() => { setOuvert((v) => !v); setConversion(false); }} className={`${bouton} bg-blue-50 text-brand`}>
           <PhoneCall size={13} /> Relancé
         </button>
-        <button onClick={() => envoyer({ action: "converti" })} disabled={saving} className={`${bouton} bg-green-50 text-green-700`}>
+        <button onClick={() => { setConversion((v) => !v); setOuvert(false); }} disabled={saving} className={`${bouton} bg-green-50 text-green-700`}>
           <CheckCircle2 size={13} /> Converti
         </button>
         <button onClick={() => envoyer({ action: "abandonne" })} disabled={saving} className={`${bouton} bg-red-50 text-alert`}>
@@ -78,6 +80,25 @@ export function RelanceActions({ id, statut }: { id: string; statut: Statut }) {
           <button onClick={() => envoyer({ action: "relance", dateRelance: iso(), note })} disabled={saving} className="w-full rounded-lg bg-[#1e3a8a] py-2 text-xs font-bold text-white disabled:opacity-50">
             Enregistrer la relance
           </button>
+        </div>
+      )}
+      {conversion && (
+        <div className="w-full min-w-[16rem] space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-left dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Cartons demandés</p>
+          {produits.map((p) => (
+            <label key={p.code} className="flex items-center justify-between gap-3 text-sm text-slate-700 dark:text-slate-200">
+              {p.nom}
+              <input type="number" min={0} inputMode="numeric" value={cartons[p.code] || ""} onChange={(e) => setCartons((c) => ({ ...c, [p.code]: Math.max(0, Math.floor(Number(e.target.value) || 0)) }))} className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right text-sm dark:border-slate-700 dark:bg-slate-950" />
+            </label>
+          ))}
+          <button
+            onClick={() => envoyer({ action: "converti", lignes: produits.map((p) => ({ produitCode: p.code, nbCartons: cartons[p.code] || 0 })) })}
+            disabled={saving || !Object.values(cartons).some((n) => n > 0)}
+            className="w-full rounded-lg bg-[#1e3a8a] py-2 text-xs font-bold text-white disabled:opacity-50"
+          >
+            Valider : créer la commande
+          </button>
+          <p className="text-[11px] text-slate-400">La commande part dans « Commandes » (en attente), aux prix du catalogue.</p>
         </div>
       )}
       {erreur && <p className="text-[11px] text-alert">{erreur}</p>}

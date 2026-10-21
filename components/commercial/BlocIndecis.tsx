@@ -47,7 +47,7 @@ export function BlocIndecis({ valeur, onChange }: { valeur: EtatIndecis; onChang
         Oui, à relancer plus tard
       </label>
       {valeur.actif && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 min-w-0 space-y-3">
           <Champ label="Date de relance">
             <Saisie type="date" value={valeur.dateRelance} min={new Date().toISOString().slice(0, 10)} onChange={(e) => onChange({ ...valeur, dateRelance: e.target.value })} />
           </Champ>

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { getCaisse } from "@/lib/queries/caisse";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,17 @@ export async function POST(req: NextRequest) {
     const session = await requireModule("caisse");
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Données invalides." }, { status: 400 });
+
+    if (parsed.data.type === "DEPENSE") {
+      const { solde } = await getCaisse(null, null);
+      const dispo = solde[parsed.data.canal];
+      if (parsed.data.montant > dispo + 0.01) {
+        return NextResponse.json(
+          { error: `Solde insuffisant sur ce canal (disponible : ${Math.round(dispo).toLocaleString("fr-FR")} FCFA).` },
+          { status: 409 }
+        );
+      }
+    }
 
     const operation = await prisma.operationCaisse.create({
       data: { ...parsed.data, createdById: session.userId },

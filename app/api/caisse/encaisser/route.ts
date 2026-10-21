@@ -27,6 +27,10 @@ export async function POST(req: NextRequest) {
     const { type, id, montant, canal } = parsed.data;
 
     const resultat = await prisma.$transaction(async (tx) => {
+      // Verrou de ligne : deux encaissements simultanés sur la même commande se font
+      // l'un après l'autre (sinon le client pourrait être encaissé deux fois).
+      if (type === "COMMANDE") await tx.$queryRaw`SELECT id FROM commandes WHERE id = ${id} FOR UPDATE`;
+      else await tx.$queryRaw`SELECT id FROM ventes WHERE id = ${id} FOR UPDATE`;
       const doc =
         type === "VENTE"
           ? await tx.vente.findUnique({
@@ -35,9 +39,12 @@ export async function POST(req: NextRequest) {
             })
           : await tx.commande.findUnique({
               where: { id },
-              select: { montantTotal: true, paiements: { select: { montant: true } } },
+              select: { montantTotal: true, statut: true, paiements: { select: { montant: true } } },
             });
       if (!doc) return { erreur: "Commande introuvable.", statut: 404 } as const;
+      if (type === "COMMANDE" && "statut" in doc && !["EN_LIVRAISON", "LIVREE"].includes(String(doc.statut))) {
+        return { erreur: "Cette commande n'est pas validée : validez-la avant d'encaisser.", statut: 409 } as const;
+      }
 
       const paye = doc.paiements.reduce((s, p) => s + Number(p.montant), 0);
       // Les factures d'avoir réduisent ce que le client doit encore payer.

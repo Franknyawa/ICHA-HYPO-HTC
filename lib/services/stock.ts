@@ -13,7 +13,7 @@ type TxClient = Omit<
 >;
 
 /**
- * Déduit (ou ajoute) du stock avec verrou optimiste (colonne `version`).
+ * Déduit (ou ajoute) du stock de façon atomique (la colonne `version` est conservée comme compteur de modifications).
  * Doit être appelé À L'INTÉRIEUR d'une transaction Prisma ($transaction) —
  * si la mise à jour touche 0 ligne (version déjà changée par une écriture
  * concurrente), on lève une erreur qui fait échouer toute la transaction :
@@ -40,22 +40,20 @@ export async function applyStockMovement(
     throw new Error(`Aucune fiche stock pour le produit ${produitId}.`);
   }
 
-  const delta = type === "SORTIE" ? -quantiteSachets : quantiteSachets;
-  const nouvelleQuantite = stock.quantiteSachets + delta;
-
-  if (nouvelleQuantite < 0) {
-    throw new InsufficientStockError(produitId);
-  }
-
-  const updated = await tx.stock.updateMany({
-    where: { produitId, version: stock.version },
-    data: { quantiteSachets: nouvelleQuantite, version: { increment: 1 } },
-  });
-
-  if (updated.count === 0) {
-    // Une autre transaction a modifié le stock entre notre lecture et notre
-    // écriture — on abandonne plutôt que de risquer une incohérence.
-    throw new InsufficientStockError(produitId);
+  // Mise à jour ATOMIQUE en base : pour une sortie, la condition « quantité suffisante »
+  // est vérifiée dans la même requête que le débit. Deux validations simultanées ne
+  // peuvent donc ni rendre le stock négatif ni se bloquer à tort l'une l'autre.
+  if (type === "SORTIE") {
+    const res = await tx.stock.updateMany({
+      where: { produitId, quantiteSachets: { gte: quantiteSachets } },
+      data: { quantiteSachets: { decrement: quantiteSachets }, version: { increment: 1 } },
+    });
+    if (res.count === 0) throw new InsufficientStockError(produitId);
+  } else {
+    await tx.stock.update({
+      where: { produitId },
+      data: { quantiteSachets: { increment: quantiteSachets }, version: { increment: 1 } },
+    });
   }
 
   await tx.mouvementStock.create({

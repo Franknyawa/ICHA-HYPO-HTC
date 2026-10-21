@@ -1635,3 +1635,11 @@ Côté administration uniquement : en-têtes de page blancs, menu latéral blanc
 - **Facture retour** : ne génère plus d'avoir automatiquement (action séparée).
 - **Prospects indécis** : le commercial coche « à relancer plus tard » (date, cartons envisagés, remarque) dans une visite/réassort. Section admin `/admin/relances` (À relancer, En retard, Convertis, Abandonnés). Rappel au commercial le jour de la relance + alerte admin.
 - **SQL** : exécuter BLOC 8 (si pas déjà fait) puis BLOC 9 de `docs/migration-2026-10-20.sql`.
+
+## Lot 5
+
+- **Prospect converti** : le bouton « Converti » demande les cartons par produit ; « Valider » crée une commande EN_ATTENTE (avec vente liée et bon de commande) aux prix du catalogue/paliers.
+- **Facture** : colonne « Remise » (produits HYPO uniquement) : prix catalogue en « Prix unitaire », remise de palier en %, total inchangé.
+- **Paramètres** : bouton supprimer sur types de boutique, binômes, agents de facturation (refusé avec message si déjà utilisé : désactiver à la place).
+- **Fiabilisation stock/caisse** : débit de stock atomique (plus de faux « stock insuffisant » en cas d'actions simultanées) ; encaissement verrouillé et réservé aux commandes validées ; dépense refusée si le solde du canal est insuffisant ; commande déjà encaissée non annulable (passer par un avoir).
+- `docs/reset-donnees-test.sql` : remise à zéro des données de test.

@@ -43,7 +43,8 @@ export default async function RelancesPage({ searchParams }: { searchParams: { o
     : onglet === "retard" ? { statut: "A_RELANCER", dateRelance: { lt: maintenant } }
     : { statut: "A_RELANCER" };
 
-  const [liste, groupes, enRetard] = await Promise.all([
+  const [produits, liste, groupes, enRetard] = await Promise.all([
+    prisma.produit.findMany({ where: { actif: true }, orderBy: { code: "asc" }, select: { code: true, nom: true } }),
     prisma.prospectIndecis.findMany({
       relationLoadStrategy: "join",
       where,
@@ -126,7 +127,7 @@ export default async function RelancesPage({ searchParams }: { searchParams: { o
                       </>
                     )}
                   </div>
-                  {editable && <RelanceActions id={p.id} statut={p.statut as "A_RELANCER" | "CONVERTI" | "ABANDONNE"} />}
+                  {editable && <RelanceActions id={p.id} statut={p.statut as "A_RELANCER" | "CONVERTI" | "ABANDONNE"} produits={produits} cartonsEstimes={p.cartonsEstimes} />}
                 </div>
               </div>
             );

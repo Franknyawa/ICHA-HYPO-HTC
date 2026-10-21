@@ -23,3 +23,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return handleApiError(error);
   }
 }
+
+/** Suppression réelle seulement si l'agent n'apparaît sur aucune facture ; sinon on propose de le désactiver. */
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    await requireModule("parametres");
+    const factures = await prisma.facture.count({ where: { agentId: params.id } });
+    if (factures > 0) {
+      return NextResponse.json(
+        { error: `Cet agent figure sur ${factures} facture(s). Désactive-le à la place pour garder l'historique.` },
+        { status: 409 }
+      );
+    }
+    await prisma.agentFacturation.delete({ where: { id: params.id } });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}

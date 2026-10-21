@@ -106,6 +106,18 @@ function SimpleEntityManager({
     setSaving(false);
   }
 
+  async function supprimer(item: Entity) {
+    if (!window.confirm(`Supprimer « ${item.nom} » définitivement ?`)) return;
+    setError(null);
+    const res = await fetch(`${apiBase}/${item.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? `Suppression impossible (${res.status}).`);
+      return;
+    }
+    load();
+  }
+
   async function toggleActif(item: Entity) {
     setError(null);
     const res = await fetch(`${apiBase}/${item.id}`, {
@@ -190,6 +202,9 @@ function SimpleEntityManager({
                   }`}
                 >
                   {item.actif ? "Actif" : "Inactif"}
+                </button>
+                <button onClick={() => supprimer(item)} className="text-red-500" aria-label={`Supprimer ${item.nom}`}>
+                  <Trash2 size={14} />
                 </button>
               </div>
             </div>

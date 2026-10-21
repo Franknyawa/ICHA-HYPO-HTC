@@ -69,19 +69,21 @@ export async function genererFacturePdf(data: FactureData) {
   autoTable(doc, {
     ...STYLE_TABLE,
     startY: yBlocs + 42,
-    head: [["Code / Référence", "Désignation", "Quantité (cartons)", "Prix unitaire", "Prix total"]],
+    head: [["Code / Référence", "Désignation", "Quantité (cartons)", "Prix unitaire", "Remise", "Prix total"]],
     body: data.lignes.map((l) => [
       l.reference,
       l.designation,
       l.quantiteTexte,
-      l.prixUnitaire === null ? "—" : formatMontant(l.prixUnitaire),
+      l.prixUnitaire === null ? "—" : formatMontant(l.prixReference ?? l.prixUnitaire),
+      l.remisePct ? `${l.remisePct.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} %` : "—",
       l.total === null ? "—" : formatMontant(l.total),
     ]),
     columnStyles: {
       0: { cellWidth: 28, fontStyle: "bold" },
-      2: { halign: "center", cellWidth: 30 },
+      2: { halign: "center", cellWidth: 28 },
       3: { halign: "right", cellWidth: 28 },
-      4: { halign: "right", cellWidth: 30, fontStyle: "bold" },
+      4: { halign: "center", cellWidth: 22 },
+      5: { halign: "right", cellWidth: 30, fontStyle: "bold" },
     },
   });
 
