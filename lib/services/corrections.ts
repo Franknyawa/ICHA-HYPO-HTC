@@ -137,9 +137,11 @@ async function totalAvoirs(commandeId: string) {
   return num(r._sum.montant);
 }
 
+export type AvoirResultat = CorrectionJson & { remboursement: number; canalRemboursement: string | null };
+
 export async function creerAvoir(params: {
-  commandeId: string; motif: string; lignes: QuantitesLigne[]; montantLibre?: number; userId: string;
-}): Promise<CorrectionJson> {
+  commandeId: string; motif: string; lignes: QuantitesLigne[]; montantLibre?: number; canal?: "ESPECES" | "MOBILE_MONEY" | "BANQUE"; userId: string;
+}): Promise<AvoirResultat> {
   const { commande, lignes, montant } = await construireLignes(params.commandeId, params.lignes);
   const final = lignes.length > 0 ? montant : Math.round(params.montantLibre ?? 0);
   if (final <= 0) throw new CorrectionError("Indiquez des quantités ou un montant à créditer.");
@@ -147,17 +149,61 @@ export async function creerAvoir(params: {
   if (deja + final > num(commande.montantTotal) + 0.5) {
     throw new CorrectionError("Le total des avoirs dépasserait le montant de la commande.");
   }
-  const avoir = await prisma.factureAvoir.create({
-    data: {
-      commandeId: params.commandeId, motif: params.motif, montant: final,
-      lignes: lignes as never, createdById: params.userId,
-    },
+
+  const { avoir, remboursement } = await prisma.$transaction(async (tx) => {
+    const avoir = await tx.factureAvoir.create({
+      data: {
+        commandeId: params.commandeId, motif: params.motif, montant: final,
+        lignes: lignes as never, createdById: params.userId,
+      },
+    });
+
+    // Effet sur la caisse : si le client avait déjà payé plus que ce qu'il doit
+    // après l'avoir, la différence lui est remboursée (sortie de caisse). S'il
+    // n'a pas (assez) payé, l'avoir réduit seulement ce qu'il reste à encaisser.
+    const [paiements, avoirs, anciensRemboursements] = await Promise.all([
+      tx.paiement.aggregate({ where: { commandeId: params.commandeId }, _sum: { montant: true } }),
+      tx.factureAvoir.findMany({ where: { commandeId: params.commandeId }, select: { id: true, montant: true } }),
+      tx.operationCaisse.aggregate({
+        where: {
+          referenceType: "AVOIR",
+          referenceId: { in: (await tx.factureAvoir.findMany({ where: { commandeId: params.commandeId }, select: { id: true } })).map((x) => x.id) },
+        },
+        _sum: { montant: true },
+      }),
+    ]);
+    const paye = num(paiements._sum.montant);
+    const credite = avoirs.reduce((sm, x) => sm + num(x.montant), 0);
+    const dejaRembourse = num(anciensRemboursements._sum.montant);
+    const dues = Math.max(0, num(commande.montantTotal) - credite);
+    const aRembourser = Math.round(paye - dejaRembourse - dues);
+
+    let remboursement = 0;
+    if (aRembourser > 0) {
+      remboursement = aRembourser;
+      await tx.operationCaisse.create({
+        data: {
+          type: "DEPENSE",
+          canal: params.canal ?? "ESPECES",
+          montant: remboursement,
+          categorie: "Remboursement avoir",
+          note: `${numeroAvoir(avoir.numero)} · ${commande.pointVente.nom}`,
+          referenceType: "AVOIR",
+          referenceId: avoir.id,
+          createdById: params.userId,
+        },
+      });
+    }
+    return { avoir, remboursement };
   });
+
   return {
     id: avoir.id, type: "AVOIR", numero: numeroAvoir(avoir.numero), date: avoir.createdAt.toISOString(),
     commandeId: params.commandeId, factureOrigine: await numeroFactureOrigine(params.commandeId),
     client: versClient(commande.pointVente, commande.client?.nom), motif: avoir.motif, montant: final,
     sources: lignes.map((l) => l.source),
+    remboursement,
+    canalRemboursement: remboursement > 0 ? params.canal ?? "ESPECES" : null,
   };
 }
 

@@ -356,6 +356,23 @@ export async function POST(req: NextRequest) {
         bonCommande = bon;
       }
 
+      // 7. Client indécis à relancer plus tard (idempotent par uuidClient).
+      if (input.indecis) {
+        await tx.prospectIndecis.upsert({
+          where: { uuidClient: input.indecis.uuidClient },
+          update: {},
+          create: {
+            uuidClient: input.indecis.uuidClient,
+            pointVenteId,
+            commercialId: session.userId,
+            visiteId: visite.id,
+            cartonsEstimes: input.indecis.cartonsEstimes,
+            note: input.indecis.note,
+            dateRelance: new Date(input.indecis.dateRelance),
+          },
+        });
+      }
+
       return { visite, vente, commande, bonCommande };
       },
       {

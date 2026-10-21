@@ -17,6 +17,8 @@ const schema = z.object({
   motif: z.string().trim().min(2).max(300),
   lignes: z.array(ligne).default([]),
   montantLibre: z.number().min(0).max(1_000_000_000).optional(),
+  // Canal du remboursement si le client avait déjà payé.
+  canal: z.enum(["ESPECES", "MOBILE_MONEY", "BANQUE"]).default("ESPECES"),
 });
 
 /** Émet une facture d'avoir (FA00001…). Réservé Admin / Super Admin (module « factures »). */

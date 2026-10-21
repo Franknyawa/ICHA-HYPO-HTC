@@ -10,6 +10,7 @@ export type Module =
   | "dashboard"
   | "alertes"
   | "points-vente"
+  | "relances"
   | "commandes"
   | "stock"
   | "caisse"
@@ -27,6 +28,7 @@ export const ACCES: Record<Module, RoleId[]> = {
   dashboard: ["SUPER_ADMIN", "ADMIN"],
   alertes: ["SUPER_ADMIN", "ADMIN", "SUPERVISEUR"],
   "points-vente": ["SUPER_ADMIN", "ADMIN", "SUPERVISEUR"],
+  relances: ["SUPER_ADMIN", "ADMIN", "SUPERVISEUR"],
   commandes: ["SUPER_ADMIN", "ADMIN", "SUPERVISEUR"],
   stock: ["SUPER_ADMIN", "ADMIN", "SUPERVISEUR"],
   caisse: ["SUPER_ADMIN", "ADMIN"],
@@ -63,6 +65,7 @@ const PAGES: Record<string, Module> = {
   dashboard: "dashboard",
   alertes: "alertes",
   "points-vente": "points-vente",
+  relances: "relances",
   commandes: "commandes",
   stock: "stock",
   caisse: "caisse",
@@ -81,6 +84,7 @@ const API: Record<string, Module> = {
   alertes: "alertes",
   prospects: "points-vente",
   "points-vente": "points-vente",
+  relances: "relances",
   commandes: "commandes",
   stock: "stock",
   caisse: "caisse",

@@ -158,3 +158,32 @@ CREATE INDEX IF NOT EXISTS "factures_retour_created_at_idx" ON "factures_retour"
 -- Index de performance (pages Commandes et Points de vente)
 CREATE INDEX IF NOT EXISTS "commandes_date_commande_idx" ON "commandes"("date_commande");
 CREATE INDEX IF NOT EXISTS "commandes_point_vente_id_idx" ON "commandes"("point_vente_id");
+
+
+-- ============================================================
+-- BLOC 9 (lot 4) : date de validation des commandes + prospects indécis
+-- ============================================================
+ALTER TABLE "commandes" ADD COLUMN IF NOT EXISTS "validee_at" TIMESTAMP(3);
+-- Les commandes déjà validées reçoivent leur date de commande comme date de validation.
+UPDATE "commandes" SET "validee_at" = "date_commande"
+ WHERE "validee_at" IS NULL AND "statut" IN ('EN_LIVRAISON', 'LIVREE');
+
+CREATE TABLE IF NOT EXISTS "prospects_indecis" (
+  "id" TEXT PRIMARY KEY,
+  "uuid_client" TEXT NOT NULL,
+  "point_vente_id" TEXT NOT NULL,
+  "commercial_id" TEXT NOT NULL,
+  "visite_id" TEXT,
+  "cartons_estimes" INTEGER,
+  "note" TEXT,
+  "date_relance" TIMESTAMP(3) NOT NULL,
+  "statut" TEXT NOT NULL DEFAULT 'A_RELANCER',
+  "nb_relances" INTEGER NOT NULL DEFAULT 0,
+  "derniere_relance_at" TIMESTAMP(3),
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "prospects_indecis_uuid_client_key" ON "prospects_indecis"("uuid_client");
+CREATE INDEX IF NOT EXISTS "prospects_indecis_statut_date_relance_idx" ON "prospects_indecis"("statut", "date_relance");
+CREATE INDEX IF NOT EXISTS "prospects_indecis_point_vente_id_idx" ON "prospects_indecis"("point_vente_id");
+CREATE INDEX IF NOT EXISTS "prospects_indecis_commercial_id_idx" ON "prospects_indecis"("commercial_id");

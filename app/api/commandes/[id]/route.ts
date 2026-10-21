@@ -32,6 +32,7 @@ export async function PATCH(
       select: {
         id: true,
         statut: true,
+        valideeAt: true,
         commercialId: true,
         pointVente: {
           select: {
@@ -102,7 +103,11 @@ export async function PATCH(
 
         return tx.commande.update({
           where: { id: params.id },
-          data: { statut: parsed.data.statut },
+          data: {
+            statut: parsed.data.statut,
+            // Date de la 1re validation ; effacée si la commande redevient « en attente » ou est annulée.
+            valideeAt: doitEtreSortie ? (existante.valideeAt ?? new Date()) : null,
+          },
           select: { id: true, statut: true },
         });
       });

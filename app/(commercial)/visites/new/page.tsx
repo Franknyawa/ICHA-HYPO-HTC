@@ -8,6 +8,7 @@ import { chargerReferentiels, chargerMe } from "@/lib/offline/referentiels";
 import { syncPendingVisites } from "@/lib/offline/sync";
 import { compressImage } from "@/lib/utils/image";
 import { genererBonCommandePdf, referenceBonCommande } from "@/lib/utils/bon-commande-pdf";
+import { BlocIndecis, ETAT_INDECIS_INITIAL, payloadIndecis, type EtatIndecis } from "@/components/commercial/BlocIndecis";
 import { lignesDocument, numeroBonCommande } from "@/lib/utils/documents";
 import { preparerCommande, type ProduitForm } from "@/lib/utils/commande-terrain";
 import type { PalierTarif } from "@/lib/utils/tarifs";
@@ -178,6 +179,7 @@ export default function NouvelleVisitePage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [observation, setObservation] = useState("");
+  const [indecis, setIndecis] = useState<EtatIndecis>(ETAT_INDECIS_INITIAL);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [queuedOffline, setQueuedOffline] = useState(false);
@@ -371,6 +373,7 @@ export default function NouvelleVisitePage() {
             },
           }
         : {}),
+      ...payloadIndecis(indecis),
       photos: photosPayload,
       observation: observation || undefined,
     };
@@ -803,6 +806,8 @@ export default function NouvelleVisitePage() {
         </Carte>
 
         {/* Observations */}
+        <BlocIndecis valeur={indecis} onChange={setIndecis} />
+
         <Carte titre="Observations" icone={MessageSquareText} accent="orange">
           <Champ label="Points importants à signaler (optionnel)">
             <ZoneTexte

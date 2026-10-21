@@ -158,6 +158,36 @@ async function genererAlertesCredits(joursCreditRetard: number) {
 }
 
 async function genererAlertesProspects(joursProspectARelancer: number) {
+  // Prospects indécis dont la date de relance est arrivée.
+  const finDeJournee = new Date();
+  finDeJournee.setHours(23, 59, 59, 999);
+  const debutDeJournee = new Date();
+  debutDeJournee.setHours(0, 0, 0, 0);
+  const indecis = await prisma.prospectIndecis.findMany({
+    where: { statut: "A_RELANCER", dateRelance: { lte: finDeJournee } },
+    select: { id: true, commercialId: true, dateRelance: true, pointVente: { select: { nom: true } } },
+  });
+  for (const p of indecis) {
+    await creerAlerteSiAbsente({
+      type: "PROSPECT_A_RELANCER",
+      message: `Prospect indécis à relancer : ${p.pointVente.nom}.`,
+      entiteType: "ProspectIndecis",
+      entiteId: p.id,
+    });
+    // Rappel au commercial uniquement le jour même (évite le spam quotidien).
+    if (p.dateRelance >= debutDeJournee) {
+      const deja = await prisma.notification.findFirst({
+        where: { userId: p.commercialId, message: { contains: p.pointVente.nom }, createdAt: { gte: debutDeJournee } },
+        select: { id: true },
+      });
+      if (!deja) {
+        await prisma.notification.create({
+          data: { userId: p.commercialId, message: `Relance prévue aujourd'hui : ${p.pointVente.nom} (prospect indécis).` },
+        });
+      }
+    }
+  }
+
   const seuil = new Date();
   seuil.setDate(seuil.getDate() - joursProspectARelancer);
 

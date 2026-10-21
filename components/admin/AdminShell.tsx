@@ -22,6 +22,7 @@ import {
   Target,
   Wallet,
   Archive,
+  CalendarClock,
   type LucideIcon,
 } from "lucide-react";
 import { peutAcceder, type Module } from "@/lib/auth/permissions";
@@ -33,6 +34,7 @@ const TOUS_LES_ITEMS: { href: string; label: string; icon: LucideIcon; module: M
   { href: "/admin/dashboard", label: "Tableau de bord", icon: LayoutDashboard, module: "dashboard" },
   { href: "/admin/alertes", label: "Alertes", icon: BellRing, module: "alertes" },
   { href: "/admin/points-vente", label: "Points de vente", icon: Store, module: "points-vente" },
+  { href: "/admin/relances", label: "Prospects indécis", icon: CalendarClock, module: "relances" },
   { href: "/admin/commandes", label: "Commandes", icon: Truck, module: "commandes" },
   { href: "/admin/stock", label: "Stock", icon: Package, module: "stock" },
   { href: "/admin/caisse", label: "Caisse", icon: Wallet, module: "caisse" },

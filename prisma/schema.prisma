@@ -181,6 +181,30 @@ model BonLivraison {
   @@map("bons_livraison")
 }
 
+/// Client indécis : le commercial l'a visité mais il n'est pas encore fixé sur le nombre de cartons. À relancer plus tard.
+model ProspectIndecis {
+  id              String    @id @default(uuid())
+  uuidClient      String    @unique @map("uuid_client")
+  pointVenteId    String    @map("point_vente_id")
+  pointVente      PointVente @relation(fields: [pointVenteId], references: [id])
+  commercialId    String    @map("commercial_id")
+  commercial      User      @relation(fields: [commercialId], references: [id])
+  visiteId        String?   @map("visite_id")
+  cartonsEstimes  Int?      @map("cartons_estimes")
+  note            String?
+  dateRelance     DateTime  @map("date_relance")
+  statut          String    @default("A_RELANCER") // A_RELANCER | RELANCE | CONVERTI | ABANDONNE
+  nbRelances      Int       @default(0) @map("nb_relances")
+  derniereRelanceAt DateTime? @map("derniere_relance_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([statut, dateRelance])
+  @@index([pointVenteId])
+  @@index([commercialId])
+  @@map("prospects_indecis")
+}
+
 /// Facture d'avoir « FA00001 » : annule tout ou partie d'une facture (erreur de prix, remise, produit abîmé…). Diminue la créance de la commande.
 model FactureAvoir {
   id          String   @id @default(uuid())
@@ -279,6 +303,7 @@ model User {
   visites          Visite[]
   ventes           Vente[]
   commandes        Commande[]
+  prospectsIndecis ProspectIndecis[]
   photos           Photo[]
   notifications    Notification[]
   loginAttempts    LoginAttempt[]
@@ -392,6 +417,7 @@ model PointVente {
   createdAt     DateTime  @default(now()) @map("created_at")
 
   prospects Prospect[]
+  prospectsIndecis ProspectIndecis[]
   clients   Client[]
   visites   Visite[]
   photos    Photo[]
@@ -561,6 +587,7 @@ model Commande {
   montantTotal        Decimal        @default(0) @map("montant_total") @db.Decimal(12, 2)
   modePaiement        ModePaiement?  @map("mode_paiement")
   // Vente terrain à l'origine de cette commande (statistiques) — null pour une commande « à livrer plus tard » ou saisie au bureau.
+  valideeAt           DateTime?      @map("validee_at") // 1re validation par l'admin (autorise la livraison)
   venteId             String?        @unique @map("vente_id")
   archivedAt          DateTime?      @map("archived_at")
   createdAt           DateTime       @default(now()) @map("created_at")

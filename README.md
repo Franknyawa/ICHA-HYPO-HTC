@@ -1627,3 +1627,11 @@ Objectifs : une seule carte « Objectif binôme » appliquée à tous les binôm
 
 ## Apparence admin sobre (20 octobre 2026)
 Côté administration uniquement : en-têtes de page blancs, menu latéral blanc avec icônes grises (seule la rubrique active est en bleu marine), pastilles et cartes en tons éteints, plus de dégradés vifs. Le côté commercial est inchangé.
+
+## Lot 4 — Caisse, avoirs/retours, prospects indécis
+
+- **Recettes (Caisse)** = encaissements validés + autres recettes − remboursements (avoirs). Le libellé « ventes » est remplacé par les commandes validées (par date de validation) ; le détail est affiché sous le KPI.
+- **Facture d'avoir** : réduit la créance du client ; si le client avait déjà trop payé, une sortie de caisse « remboursement » (canal au choix) est créée automatiquement (non supprimable, déduite des recettes).
+- **Facture retour** : ne génère plus d'avoir automatiquement (action séparée).
+- **Prospects indécis** : le commercial coche « à relancer plus tard » (date, cartons envisagés, remarque) dans une visite/réassort. Section admin `/admin/relances` (À relancer, En retard, Convertis, Abandonnés). Rappel au commercial le jour de la relance + alerte admin.
+- **SQL** : exécuter BLOC 8 (si pas déjà fait) puis BLOC 9 de `docs/migration-2026-10-20.sql`.

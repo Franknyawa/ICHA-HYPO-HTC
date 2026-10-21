@@ -143,7 +143,19 @@ export function CaisseView({
             <KpiCard
               label="Recettes"
               valeur={formatFcfa(c.recettes)}
-              sous={`${c.ventesNombre} vente${c.ventesNombre > 1 ? "s" : ""} pour ${formatFcfa(c.ventesMontant)}`}
+              sous={
+                <span className="block space-y-0.5">
+                  <span className="block">
+                    {c.nbEncaissements} encaissement{c.nbEncaissements > 1 ? "s" : ""} validé{c.nbEncaissements > 1 ? "s" : ""} : {formatFcfa(c.encaissementsVentes)}
+                  </span>
+                  {c.autresRecettes > 0 && <span className="block">Autres recettes : {formatFcfa(c.autresRecettes)}</span>}
+                  {c.remboursements > 0 && <span className="block">Remboursements (avoirs) : −{formatFcfa(c.remboursements)}</span>}
+                  <span className="block text-slate-400">
+                    Commandes validées : {c.commandesValideesNombre} pour {formatFcfa(c.commandesValideesMontant)}
+                    {c.avoirsNombre > 0 ? ` · avoirs : ${formatFcfa(c.avoirsMontant)}` : ""}
+                  </span>
+                </span>
+              }
               icone={TrendingUp}
               ton="vert"
             />

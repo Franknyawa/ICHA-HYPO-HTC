@@ -28,7 +28,7 @@ export function CorrectionButton({ commandeId }: { commandeId: string }) {
   const [motif, setMotif] = useState("");
   const [montantLibre, setMontantLibre] = useState(0);
   const [destination, setDestination] = useState<"STOCK" | "AVARIES">("STOCK");
-  const [creerAvoir, setCreerAvoir] = useState(true);
+  const [canal, setCanal] = useState<"ESPECES" | "MOBILE_MONEY" | "BANQUE">("ESPECES");
   const [erreur, setErreur] = useState<string | null>(null);
 
   async function ouvrir() {
@@ -57,20 +57,22 @@ export function CorrectionButton({ commandeId }: { commandeId: string }) {
     setLoading(true);
     try {
       if (mode === "AVOIR") {
-        const doc = await apiFetch<CorrectionJson>("/api/facturation/avoirs", {
+        const doc = await apiFetch<CorrectionJson & { remboursement: number }>("/api/facturation/avoirs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ commandeId, motif, lignes, montantLibre: lignes.length ? undefined : montantLibre }),
+          body: JSON.stringify({ commandeId, motif, lignes, canal, montantLibre: lignes.length ? undefined : montantLibre }),
         });
         await genererCorrectionPdf(doc);
+        if (doc.remboursement > 0) {
+          alert(`Le client avait déjà payé : un remboursement de ${doc.remboursement.toLocaleString("fr-FR")} FCFA a été enregistré en sortie de caisse.`);
+        }
       } else {
-        const res = await apiFetch<{ retour: CorrectionJson; avoir: CorrectionJson | null }>("/api/facturation/retours", {
+        const res = await apiFetch<{ retour: CorrectionJson }>("/api/facturation/retours", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ commandeId, motif, lignes, destination, creerAvoir }),
+          body: JSON.stringify({ commandeId, motif, lignes, destination }),
         });
         await genererCorrectionPdf(res.retour);
-        if (res.avoir) await genererCorrectionPdf(res.avoir);
       }
       setOuvert(false);
       setQtes({});
@@ -120,7 +122,7 @@ export function CorrectionButton({ commandeId }: { commandeId: string }) {
             </div>
             <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
               {mode === "RETOUR"
-                ? "Marchandise rendue par le client : elle est remise en stock ou en avaries."
+                ? "Marchandise rendue par le client : elle est remise en stock ou en avaries. Pour créditer le client, émets ensuite une facture d'avoir."
                 : "Correction du montant facturé : diminue ce que le client doit payer."}
             </p>
 
@@ -166,6 +168,19 @@ export function CorrectionButton({ commandeId }: { commandeId: string }) {
                     </span>
                   </label>
                 )}
+                {mode === "AVOIR" && (
+                  <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Si le client a déjà payé, le remboursement sort de la caisse par
+                    <select value={canal} onChange={(e) => setCanal(e.target.value as typeof canal)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
+                      <option value="ESPECES">Espèces</option>
+                      <option value="MOBILE_MONEY">OM/MOMO</option>
+                      <option value="BANQUE">Opération bancaire</option>
+                    </select>
+                    <span className="mt-1 block text-[11px] text-slate-400">
+                      Sinon, l&apos;avoir réduit seulement ce qu&apos;il reste à encaisser.
+                    </span>
+                  </label>
+                )}
 
                 {mode === "RETOUR" && (
                   <div className="space-y-2">
@@ -175,10 +190,6 @@ export function CorrectionButton({ commandeId }: { commandeId: string }) {
                         <option value="STOCK">Retour en stock (vendable)</option>
                         <option value="AVARIES">Avaries (abîmée, non vendable)</option>
                       </select>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                      <input type="checkbox" checked={creerAvoir} onChange={(e) => setCreerAvoir(e.target.checked)} />
-                      Créer aussi la facture d&apos;avoir correspondante
                     </label>
                   </div>
                 )}

@@ -104,6 +104,14 @@ const nouveauPointVenteSchema = z.object({
   presentoir: z.boolean().default(false),
 });
 
+// Client indécis : pas encore fixé sur le nombre de cartons, à relancer plus tard.
+const indecisSchema = z.object({
+  uuidClient: z.string().uuid(),
+  dateRelance: z.string().datetime(),
+  cartonsEstimes: z.number().int().min(0).max(MAX_QUANTITE).optional(),
+  note: z.string().max(500).optional(),
+});
+
 export const createVisiteSchema = z
   .object({
     uuidClient: z.string().uuid(),
@@ -116,6 +124,7 @@ export const createVisiteSchema = z
     nouveauPointVente: nouveauPointVenteSchema.optional(),
     vente: venteSchema.optional(),
     commande: commandeSchema.optional(),
+    indecis: indecisSchema.optional(),
     photos: z.array(photoSchema).default([]),
     observation: z.string().optional(),
   })

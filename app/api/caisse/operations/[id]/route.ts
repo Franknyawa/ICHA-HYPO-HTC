@@ -9,6 +9,13 @@ export const runtime = "nodejs";
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   try {
     await requireModule("caisse");
+    const op = await prisma.operationCaisse.findUnique({ where: { id: params.id }, select: { referenceType: true } });
+    if (op?.referenceType === "AVOIR") {
+      return NextResponse.json(
+        { error: "Ce remboursement est lié à une facture d'avoir : il ne peut pas être supprimé ici." },
+        { status: 409 }
+      );
+    }
     const res = await prisma.operationCaisse.deleteMany({ where: { id: params.id } });
     if (res.count === 0) return NextResponse.json({ error: "Opération introuvable." }, { status: 404 });
     return NextResponse.json({ ok: true });

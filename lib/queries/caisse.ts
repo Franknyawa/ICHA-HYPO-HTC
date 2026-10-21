@@ -139,7 +139,7 @@ export async function getStockValorise(): Promise<LigneStock[]> {
 export async function getCaisse(debut: Date | null, fin: Date | null) {
   const plage = debut && fin ? { gte: debut, lte: fin } : undefined;
 
-  const [paiementsPeriode, paiementsTotal, opsPeriode, opsTotal, ventesPeriode, credits, stock] = await Promise.all([
+  const [paiementsPeriode, paiementsTotal, opsPeriode, opsTotal, commandesValidees, avoirsPeriode, credits, stock] = await Promise.all([
     prisma.paiement.findMany({
       where: plage ? { datePaiement: plage } : {},
       select: {
@@ -159,9 +159,17 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
       orderBy: { dateOperation: "desc" },
     }),
     prisma.operationCaisse.groupBy({ by: ["type", "canal"], _sum: { montant: true } }),
-    prisma.vente.aggregate({
-      where: plage ? { dateVente: plage } : {},
+    // Commandes validées par l'admin sur la période (chiffre facturé), et non
+    // plus les « ventes » saisies par les commerciaux, qui incluent des
+    // commandes pas encore validées.
+    prisma.commande.aggregate({
+      where: { statut: { in: ["EN_LIVRAISON", "LIVREE"] }, ...(plage ? { valideeAt: plage } : {}) },
       _sum: { montantTotal: true },
+      _count: { _all: true },
+    }),
+    prisma.factureAvoir.aggregate({
+      where: plage ? { createdAt: plage } : {},
+      _sum: { montant: true },
       _count: { _all: true },
     }),
     getCreditsAEncaisser(),
@@ -175,24 +183,32 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
     BANQUE: { entrees: 0, sorties: 0 },
   };
   let encaissementsVentes = 0;
+  let nbEncaissements = 0;
   for (const p of paiementsPeriode) {
     const m = num(p.montant);
     encaissementsVentes += m;
+    if (m > 0) nbEncaissements += 1;
     parCanalPeriode[canalDe(p.modePaiement)].entrees += m;
   }
   let autresRecettes = 0;
   let depenses = 0;
+  // Remboursements de clients générés par une facture d'avoir : de l'argent
+  // qui sort, mais qui vient en déduction des recettes (pas une dépense).
+  let remboursements = 0;
   for (const o of opsPeriode) {
     const m = num(o.montant);
     if (o.type === "RECETTE") {
       autresRecettes += m;
       parCanalPeriode[o.canal].entrees += m;
+    } else if (o.referenceType === "AVOIR") {
+      remboursements += m;
+      parCanalPeriode[o.canal].sorties += m;
     } else {
       depenses += m;
       parCanalPeriode[o.canal].sorties += m;
     }
   }
-  const recettes = encaissementsVentes + autresRecettes;
+  const recettes = encaissementsVentes + autresRecettes - remboursements;
 
   // --- Cumul depuis le début (solde de caisse) -------------------------
   const solde: Record<Canal, number> = { ESPECES: 0, MOBILE_MONEY: 0, BANQUE: 0 };
@@ -224,7 +240,7 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
       detail: o.note ?? "",
       canal: o.canal,
       montant: num(o.montant),
-      supprimable: true,
+      supprimable: o.referenceType !== "AVOIR",
     })),
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -238,11 +254,15 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
   return {
     recettes,
     encaissementsVentes,
+    nbEncaissements,
     autresRecettes,
+    remboursements,
     depenses,
     resultat: recettes - depenses,
-    ventesMontant: num(ventesPeriode._sum.montantTotal),
-    ventesNombre: ventesPeriode._count._all,
+    commandesValideesMontant: num(commandesValidees._sum.montantTotal),
+    commandesValideesNombre: commandesValidees._count._all,
+    avoirsMontant: num(avoirsPeriode._sum.montant),
+    avoirsNombre: avoirsPeriode._count._all,
     parCanalPeriode,
     solde,
     soldeTotal,
@@ -266,16 +286,19 @@ export async function getCaisseResume(debut: Date, fin: Date) {
     prisma.paiement.aggregate({ _sum: { montant: true } }),
     prisma.operationCaisse.groupBy({ by: ["type"], _sum: { montant: true } }),
     prisma.paiement.aggregate({ where: { datePaiement: plage }, _sum: { montant: true } }),
-    prisma.operationCaisse.groupBy({ by: ["type"], where: { dateOperation: plage }, _sum: { montant: true } }),
+    prisma.operationCaisse.groupBy({ by: ["type", "referenceType"], where: { dateOperation: plage }, _sum: { montant: true } }),
     getCreditsAEncaisser(),
     getStockValorise(),
   ]);
   const somme = (g: { type: string; _sum: { montant: unknown } }[], t: string) =>
-    num(g.find((x) => x.type === t)?._sum.montant);
+    g.filter((x) => x.type === t).reduce((s, x) => s + num(x._sum.montant), 0);
+  const remboursementsJour = oJour
+    .filter((x) => x.type === "DEPENSE" && x.referenceType === "AVOIR")
+    .reduce((s, x) => s + num(x._sum.montant), 0);
   return {
     solde: num(pTotal._sum.montant) + somme(oTotal, "RECETTE") - somme(oTotal, "DEPENSE"),
-    recettesJour: num(pJour._sum.montant) + somme(oJour, "RECETTE"),
-    depensesJour: somme(oJour, "DEPENSE"),
+    recettesJour: num(pJour._sum.montant) + somme(oJour, "RECETTE") - remboursementsJour,
+    depensesJour: somme(oJour, "DEPENSE") - remboursementsJour,
     creditsTotal: credits.reduce((s, c) => s + c.du, 0),
     nbCredits: credits.length,
     stock,

@@ -16,6 +16,7 @@ import {
   Target,
   Wallet,
   Archive,
+  CalendarClock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -25,6 +26,7 @@ const RUBRIQUES: { prefixe: string; icone: LucideIcon; degrade: string }[] = [
   { prefixe: "/admin/dashboard", icone: LayoutDashboard, degrade: "from-slate-600 to-slate-500" },
   { prefixe: "/admin/alertes", icone: BellRing, degrade: "from-slate-600 to-slate-500" },
   { prefixe: "/admin/points-vente", icone: Store, degrade: "from-slate-600 to-slate-500" },
+  { prefixe: "/admin/relances", icone: CalendarClock, degrade: "from-slate-600 to-slate-500" },
   { prefixe: "/admin/commandes", icone: Truck, degrade: "from-slate-600 to-slate-500" },
   { prefixe: "/admin/stock", icone: Package, degrade: "from-slate-600 to-slate-500" },
   { prefixe: "/admin/caisse", icone: Wallet, degrade: "from-[#1e3a8a] to-[#359980]" },

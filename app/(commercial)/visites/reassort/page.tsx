@@ -8,6 +8,7 @@ import { queuePendingVisite } from "@/lib/offline/db";
 import { chargerReferentiels, chargerMe, pointVenteLocal } from "@/lib/offline/referentiels";
 import { syncPendingVisites } from "@/lib/offline/sync";
 import { genererBonCommandePdf, referenceBonCommande } from "@/lib/utils/bon-commande-pdf";
+import { BlocIndecis, ETAT_INDECIS_INITIAL, payloadIndecis, type EtatIndecis } from "@/components/commercial/BlocIndecis";
 import { lignesDocument, numeroBonCommande } from "@/lib/utils/documents";
 import { preparerCommande, type ProduitForm, type QuantitesParCode } from "@/lib/utils/commande-terrain";
 import type { PalierTarif, PrixTypeTarif } from "@/lib/utils/tarifs";
@@ -47,6 +48,7 @@ function ReassortContent() {
   const [modePaiement, setModePaiement] = useState<ModePaiementTerrain>("ESPECES");
   const [dateLivraison, setDateLivraison] = useState("");
   const [observation, setObservation] = useState("");
+  const [indecis, setIndecis] = useState<EtatIndecis>(ETAT_INDECIS_INITIAL);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,6 +146,7 @@ function ReassortContent() {
             },
           }
         : {}),
+      ...payloadIndecis(indecis),
       observation: observation || undefined,
       photos: [],
     };
@@ -294,6 +297,8 @@ function ReassortContent() {
                   libelle="Paiement prévu"
                 />
               </Carte>
+
+              <BlocIndecis valeur={indecis} onChange={setIndecis} />
 
               <Carte titre="Rapport de réassort" icone={MessageSquareText} accent="violet">
                 <ZoneTexte

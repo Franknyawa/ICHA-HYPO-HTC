@@ -17,7 +17,6 @@ const schema = z.object({
   motif: z.string().trim().min(2).max(300),
   lignes: z.array(ligne).min(1),
   destination: z.enum(["STOCK", "AVARIES"]),
-  creerAvoir: z.boolean().default(true),
 });
 
 /** Émet une facture retour (FR00001…), remet en stock ou en avaries, et crée l'avoir associé si demandé. */
@@ -26,7 +25,7 @@ export async function POST(req: NextRequest) {
     const session = await requireModule("factures");
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Données invalides." }, { status: 400 });
-    const res = await creerRetour({ ...parsed.data, userId: session.userId });
+    const res = await creerRetour({ ...parsed.data, creerAvoir: false, userId: session.userId });
     return NextResponse.json(res, { status: 201 });
   } catch (error) {
     if (error instanceof CorrectionError) return NextResponse.json({ error: error.message }, { status: 400 });
