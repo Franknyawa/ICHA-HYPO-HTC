@@ -73,7 +73,7 @@ export async function getCreditsAEncaisser(): Promise<CreditAEncaisser[]> {
   const rows = await prisma.$queryRaw<LigneCreance[]>`
     SELECT c.id,
            (c.montant_total - COALESCE(av.credit, 0))::float8 AS total,
-           COALESCE(p.paye, 0)::float8 AS paye,
+           (COALESCE(p.paye, 0) - COALESCE(rb.rembourse, 0))::float8 AS paye,
            c.mode_paiement::text AS mode,
            c.created_at AS date,
            pv.nom AS pv,
@@ -90,12 +90,29 @@ export async function getCreditsAEncaisser(): Promise<CreditAEncaisser[]> {
     ) p ON p.commande_id = c.id
     LEFT JOIN (
       SELECT commande_id, SUM(montant) AS credit
-      FROM factures_avoir
+      FROM (
+        SELECT commande_id, montant FROM factures_avoir
+        UNION ALL
+        -- un retour déjà accompagné d'un avoir ne compte qu'une fois
+        SELECT fr.commande_id, fr.montant FROM factures_retour fr
+        WHERE NOT EXISTS (SELECT 1 FROM factures_avoir fa WHERE fa.retour_id = fr.id)
+      ) x
       GROUP BY commande_id
     ) av ON av.commande_id = c.id
+    LEFT JOIN (
+      SELECT x.commande_id, SUM(oc.montant) AS rembourse
+      FROM operations_caisse oc
+      JOIN (
+        SELECT id, commande_id FROM factures_avoir
+        UNION ALL
+        SELECT id, commande_id FROM factures_retour
+      ) x ON x.id = oc.reference_id
+      WHERE oc.type::text = 'DEPENSE' AND oc.reference_type IN ('AVOIR', 'RETOUR')
+      GROUP BY x.commande_id
+    ) rb ON rb.commande_id = c.id
     WHERE c.statut IN ('EN_LIVRAISON', 'LIVREE')
       AND c.montant_total > 0
-      AND c.montant_total - COALESCE(av.credit, 0) - COALESCE(p.paye, 0) > 0.5
+      AND c.montant_total - COALESCE(av.credit, 0) - (COALESCE(p.paye, 0) - COALESCE(rb.rembourse, 0)) > 0.5
     ORDER BY c.created_at ASC`;
 
   return rows.map((r) => ({
@@ -139,7 +156,7 @@ export async function getStockValorise(): Promise<LigneStock[]> {
 export async function getCaisse(debut: Date | null, fin: Date | null) {
   const plage = debut && fin ? { gte: debut, lte: fin } : undefined;
 
-  const [paiementsPeriode, paiementsTotal, opsPeriode, opsTotal, commandesValidees, avoirsPeriode, credits, stock] = await Promise.all([
+  const [paiementsPeriode, paiementsTotal, opsPeriode, opsTotal, commandesValidees, avoirsPeriode, retoursPeriode, credits, stock] = await Promise.all([
     prisma.paiement.findMany({
       where: plage ? { datePaiement: plage } : {},
       select: {
@@ -172,6 +189,11 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
       _sum: { montant: true },
       _count: { _all: true },
     }),
+    prisma.factureRetour.aggregate({
+      where: plage ? { createdAt: plage } : {},
+      _sum: { montant: true },
+      _count: { _all: true },
+    }),
     getCreditsAEncaisser(),
     getStockValorise(),
   ]);
@@ -200,7 +222,7 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
     if (o.type === "RECETTE") {
       autresRecettes += m;
       parCanalPeriode[o.canal].entrees += m;
-    } else if (o.referenceType === "AVOIR") {
+    } else if (o.referenceType === "AVOIR" || o.referenceType === "RETOUR") {
       remboursements += m;
       parCanalPeriode[o.canal].sorties += m;
     } else {
@@ -240,7 +262,7 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
       detail: o.note ?? "",
       canal: o.canal,
       montant: num(o.montant),
-      supprimable: o.referenceType !== "AVOIR",
+      supprimable: o.referenceType !== "AVOIR" && o.referenceType !== "RETOUR",
     })),
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -261,8 +283,8 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
     resultat: recettes - depenses,
     commandesValideesMontant: num(commandesValidees._sum.montantTotal),
     commandesValideesNombre: commandesValidees._count._all,
-    avoirsMontant: num(avoirsPeriode._sum.montant),
-    avoirsNombre: avoirsPeriode._count._all,
+    avoirsMontant: num(avoirsPeriode._sum.montant) + num(retoursPeriode._sum.montant),
+    avoirsNombre: avoirsPeriode._count._all + retoursPeriode._count._all,
     parCanalPeriode,
     solde,
     soldeTotal,
@@ -293,7 +315,7 @@ export async function getCaisseResume(debut: Date, fin: Date) {
   const somme = (g: { type: string; _sum: { montant: unknown } }[], t: string) =>
     g.filter((x) => x.type === t).reduce((s, x) => s + num(x._sum.montant), 0);
   const remboursementsJour = oJour
-    .filter((x) => x.type === "DEPENSE" && x.referenceType === "AVOIR")
+    .filter((x) => x.type === "DEPENSE" && (x.referenceType === "AVOIR" || x.referenceType === "RETOUR"))
     .reduce((s, x) => s + num(x._sum.montant), 0);
   return {
     solde: num(pTotal._sum.montant) + somme(oTotal, "RECETTE") - somme(oTotal, "DEPENSE"),

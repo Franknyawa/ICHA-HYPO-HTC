@@ -1643,3 +1643,12 @@ Côté administration uniquement : en-têtes de page blancs, menu latéral blanc
 - **Paramètres** : bouton supprimer sur types de boutique, binômes, agents de facturation (refusé avec message si déjà utilisé : désactiver à la place).
 - **Fiabilisation stock/caisse** : débit de stock atomique (plus de faux « stock insuffisant » en cas d'actions simultanées) ; encaissement verrouillé et réservé aux commandes validées ; dépense refusée si le solde du canal est insuffisant ; commande déjà encaissée non annulable (passer par un avoir).
 - `docs/reset-donnees-test.sql` : remise à zéro des données de test.
+
+## Lot 6 — Compte client (logiciel comptable)
+
+Règle unique (`lib/services/compte.ts`) : **Solde dû = facturé − avoirs − retours − encaissements + remboursements**.
+- Facture retour : remet en stock/avaries, **réduit le dû** (valeur des cartons aux prix de la facture) ; si le client avait trop payé, remboursement automatique en caisse (canal au choix, non supprimable).
+- Facture d'avoir : idem, sans mouvement de stock.
+- Caisse « À encaisser », encaissement, alertes de crédit, profil client : tous utilisent ce calcul.
+- Profil point de vente : synthèse Facturation (débit) / Caisse (crédit) / Reste, tableau par facture (avoirs, retours, encaissé, reste, bouton Avoir/Retour) et relevé de compte chronologique avec solde cumulé.
+- Une commande ayant des paiements, avoirs ou retours ne peut plus être annulée.

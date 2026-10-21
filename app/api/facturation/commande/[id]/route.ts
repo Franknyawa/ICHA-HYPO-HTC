@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { creditsCommande } from "@/lib/services/compte";
 
 export const runtime = "nodejs";
 
@@ -23,7 +24,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         },
       }),
       prisma.factureRetour.findMany({ where: { commandeId: params.id }, select: { lignes: true } }),
-      prisma.factureAvoir.aggregate({ where: { commandeId: params.id }, _sum: { montant: true } }),
+      creditsCommande(prisma, params.id),
     ]);
     if (!commande) return NextResponse.json({ error: "Commande introuvable." }, { status: 404 });
 
@@ -37,7 +38,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     }
     return NextResponse.json({
       montantTotal: Number(commande.montantTotal),
-      dejaCredite: Number(avoirs._sum.montant ?? 0),
+      dejaCredite: avoirs.credits,
       lignes: commande.lignes.map((l) => {
         const r = rendu.get(l.id) ?? { c: 0, f: 0, s: 0 };
         return {

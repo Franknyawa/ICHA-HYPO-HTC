@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { creditsCommande } from "@/lib/services/compte";
 
 export const runtime = "nodejs";
 
@@ -47,12 +48,11 @@ export async function POST(req: NextRequest) {
       }
 
       const paye = doc.paiements.reduce((s, p) => s + Number(p.montant), 0);
-      // Les factures d'avoir réduisent ce que le client doit encore payer.
-      const avoirs =
+      // Avoirs et retours réduisent ce que le client doit encore payer (remboursements inclus).
+      const du =
         type === "COMMANDE"
-          ? Number((await tx.factureAvoir.aggregate({ where: { commandeId: id }, _sum: { montant: true } }))._sum.montant ?? 0)
-          : 0;
-      const du = Number(doc.montantTotal) - avoirs - paye;
+          ? (await creditsCommande(tx, id)).du
+          : Number(doc.montantTotal) - paye;
       if (du <= 0.5) return { erreur: "Cette commande est déjà soldée.", statut: 409 } as const;
       if (montant > du + 0.01) {
         return { erreur: `Le montant dépasse le reste dû (${Math.round(du)} FCFA).`, statut: 400 } as const;

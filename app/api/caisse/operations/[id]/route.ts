@@ -11,9 +11,9 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   try {
     await requireModule("caisse");
     const op = await prisma.operationCaisse.findUnique({ where: { id: params.id }, select: { referenceType: true, type: true, canal: true, montant: true } });
-    if (op?.referenceType === "AVOIR") {
+    if (op?.referenceType === "AVOIR" || op?.referenceType === "RETOUR") {
       return NextResponse.json(
-        { error: "Ce remboursement est lié à une facture d'avoir : il ne peut pas être supprimé ici." },
+        { error: "Ce remboursement est lié à une facture d'avoir ou de retour : il ne peut pas être supprimé ici." },
         { status: 409 }
       );
     }

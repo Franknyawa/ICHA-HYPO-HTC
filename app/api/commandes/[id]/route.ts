@@ -52,10 +52,14 @@ export async function PATCH(
     // Une commande déjà (en partie) encaissée ne peut pas être annulée ni repasser en attente :
     // l'argent resterait en caisse sans commande. Il faut passer par une facture d'avoir.
     if (parsed.data.statut === "ANNULEE" || parsed.data.statut === "EN_ATTENTE") {
-      const nbPaiements = await prisma.paiement.count({ where: { commandeId: params.id } });
-      if (nbPaiements > 0) {
+      const [nbPaiements, nbAvoirs, nbRetours] = await Promise.all([
+        prisma.paiement.count({ where: { commandeId: params.id } }),
+        prisma.factureAvoir.count({ where: { commandeId: params.id } }),
+        prisma.factureRetour.count({ where: { commandeId: params.id } }),
+      ]);
+      if (nbPaiements + nbAvoirs + nbRetours > 0) {
         return NextResponse.json(
-          { error: "Cette commande a déjà des paiements enregistrés : établissez une facture d'avoir au lieu de l'annuler." },
+          { error: "Cette commande a déjà des paiements, avoirs ou retours : elle ne peut plus être annulée. Établissez une facture d'avoir pour la corriger." },
           { status: 409 }
         );
       }

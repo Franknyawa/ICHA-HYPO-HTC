@@ -17,9 +17,10 @@ const schema = z.object({
   motif: z.string().trim().min(2).max(300),
   lignes: z.array(ligne).min(1),
   destination: z.enum(["STOCK", "AVARIES"]),
+  canal: z.enum(["ESPECES", "MOBILE_MONEY", "BANQUE"]).optional(),
 });
 
-/** Émet une facture retour (FR00001…), remet en stock ou en avaries, et crée l'avoir associé si demandé. */
+/** Émet une facture retour (FR00001…), remet en stock ou en avaries, et réduit le solde du client (remboursement en caisse si trop-perçu). */
 export async function POST(req: NextRequest) {
   try {
     const session = await requireModule("factures");

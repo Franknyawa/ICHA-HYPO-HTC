@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { dusParVente } from "@/lib/services/compte";
 import type { TypeAlerte } from "@prisma/client";
 
 // Seuils par défaut si jamais réglés en back office — voir
@@ -143,9 +144,10 @@ async function genererAlertesCredits(joursCreditRetard: number) {
     },
   });
 
+  const dus = await dusParVente(prisma, ventes.map((v) => v.id));
   for (const v of ventes) {
     const paye = v.paiements.reduce((s, p) => s + Number(p.montant), 0);
-    const du = Number(v.montantTotal) - paye;
+    const du = dus.get(v.id) ?? Number(v.montantTotal) - paye;
     if (du > 0) {
       await creerAlerteSiAbsente({
         type: "CREDIT_RETARD",

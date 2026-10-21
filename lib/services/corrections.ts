@@ -5,6 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import { applyStockMovement, InsufficientStockError } from "@/lib/services/stock";
 import { convertToSachets } from "@/lib/services/produits";
+import { creditsCommande, rembourserSiTropPercu } from "@/lib/services/compte";
 import {
   numeroAvoir,
   numeroRetour,
@@ -132,11 +133,6 @@ async function numeroFactureOrigine(commandeId: string) {
   return numeroFacture(f.numero);
 }
 
-async function totalAvoirs(commandeId: string) {
-  const r = await prisma.factureAvoir.aggregate({ where: { commandeId }, _sum: { montant: true } });
-  return num(r._sum.montant);
-}
-
 export type AvoirResultat = CorrectionJson & { remboursement: number; canalRemboursement: string | null };
 
 export async function creerAvoir(params: {
@@ -145,9 +141,9 @@ export async function creerAvoir(params: {
   const { commande, lignes, montant } = await construireLignes(params.commandeId, params.lignes);
   const final = lignes.length > 0 ? montant : Math.round(params.montantLibre ?? 0);
   if (final <= 0) throw new CorrectionError("Indiquez des quantités ou un montant à créditer.");
-  const deja = await totalAvoirs(params.commandeId);
-  if (deja + final > num(commande.montantTotal) + 0.5) {
-    throw new CorrectionError("Le total des avoirs dépasserait le montant de la commande.");
+  const avant = await creditsCommande(prisma, params.commandeId);
+  if (avant.credits + final > avant.total + 0.5) {
+    throw new CorrectionError("Le total des avoirs et des retours dépasserait le montant de la commande.");
   }
 
   const { avoir, remboursement } = await prisma.$transaction(async (tx) => {
@@ -159,41 +155,15 @@ export async function creerAvoir(params: {
     });
 
     // Effet sur la caisse : si le client avait déjà payé plus que ce qu'il doit
-    // après l'avoir, la différence lui est remboursée (sortie de caisse). S'il
-    // n'a pas (assez) payé, l'avoir réduit seulement ce qu'il reste à encaisser.
-    const [paiements, avoirs, anciensRemboursements] = await Promise.all([
-      tx.paiement.aggregate({ where: { commandeId: params.commandeId }, _sum: { montant: true } }),
-      tx.factureAvoir.findMany({ where: { commandeId: params.commandeId }, select: { id: true, montant: true } }),
-      tx.operationCaisse.aggregate({
-        where: {
-          referenceType: "AVOIR",
-          referenceId: { in: (await tx.factureAvoir.findMany({ where: { commandeId: params.commandeId }, select: { id: true } })).map((x) => x.id) },
-        },
-        _sum: { montant: true },
-      }),
-    ]);
-    const paye = num(paiements._sum.montant);
-    const credite = avoirs.reduce((sm, x) => sm + num(x.montant), 0);
-    const dejaRembourse = num(anciensRemboursements._sum.montant);
-    const dues = Math.max(0, num(commande.montantTotal) - credite);
-    const aRembourser = Math.round(paye - dejaRembourse - dues);
-
-    let remboursement = 0;
-    if (aRembourser > 0) {
-      remboursement = aRembourser;
-      await tx.operationCaisse.create({
-        data: {
-          type: "DEPENSE",
-          canal: params.canal ?? "ESPECES",
-          montant: remboursement,
-          categorie: "Remboursement avoir",
-          note: `${numeroAvoir(avoir.numero)} · ${commande.pointVente.nom}`,
-          referenceType: "AVOIR",
-          referenceId: avoir.id,
-          createdById: params.userId,
-        },
-      });
-    }
+    // après l'avoir, la différence lui est remboursée (sortie de caisse). Sinon,
+    // l'avoir réduit seulement ce qu'il reste à encaisser.
+    const remboursement = await rembourserSiTropPercu(tx, {
+      commandeId: params.commandeId,
+      canal: params.canal ?? "ESPECES",
+      userId: params.userId,
+      reference: { type: "AVOIR", id: avoir.id, libelle: numeroAvoir(avoir.numero) },
+      pointVenteNom: commande.pointVente.nom,
+    });
     return { avoir, remboursement };
   });
 
@@ -208,15 +178,14 @@ export async function creerAvoir(params: {
 }
 
 export async function creerRetour(params: {
-  commandeId: string; motif: string; lignes: QuantitesLigne[]; destination: "STOCK" | "AVARIES"; creerAvoir: boolean; userId: string;
-}): Promise<{ retour: CorrectionJson; avoir: CorrectionJson | null }> {
+  commandeId: string; motif: string; lignes: QuantitesLigne[]; destination: "STOCK" | "AVARIES"; creerAvoir: boolean; canal?: "ESPECES" | "MOBILE_MONEY" | "BANQUE"; userId: string;
+}): Promise<{ retour: CorrectionJson & { remboursement: number }; avoir: CorrectionJson | null }> {
   const { commande, lignes, montant } = await construireLignes(params.commandeId, params.lignes);
   if (lignes.length === 0) throw new CorrectionError("Indiquez au moins une quantité retournée.");
-  if (params.creerAvoir) {
-    const deja = await totalAvoirs(params.commandeId);
-    if (deja + montant > num(commande.montantTotal) + 0.5) {
-      throw new CorrectionError("Le total des avoirs dépasserait le montant de la commande.");
-    }
+  // Le retour est un crédit sur le compte du client : avoirs + retours ne peuvent pas dépasser la facture.
+  const avant = await creditsCommande(prisma, params.commandeId);
+  if (avant.credits + montant > avant.total + 0.5) {
+    throw new CorrectionError("Le total des avoirs et des retours dépasserait le montant de la commande.");
   }
 
   // Quantités à remettre en stock, par produit (en sachets).
@@ -265,7 +234,15 @@ export async function creerRetour(params: {
         },
       });
     }
-    return { retour, avoir };
+    // Le retour réduit ce que le client doit ; s'il avait déjà trop payé, la différence lui est remboursée.
+    const remboursement = await rembourserSiTropPercu(tx, {
+      commandeId: params.commandeId,
+      canal: params.canal ?? "ESPECES",
+      userId: params.userId,
+      reference: { type: "RETOUR", id: retour.id, libelle: numeroRetour(retour.numero) },
+      pointVenteNom: commande.pointVente.nom,
+    });
+    return { retour, avoir, remboursement };
   });
 
   const origine = await numeroFactureOrigine(params.commandeId);
@@ -276,6 +253,7 @@ export async function creerRetour(params: {
       id: resultat.retour.id, type: "RETOUR", numero: numeroRetour(resultat.retour.numero),
       date: resultat.retour.createdAt.toISOString(), commandeId: params.commandeId, factureOrigine: origine,
       client, motif: params.motif, destination: params.destination, montant, sources,
+      remboursement: resultat.remboursement,
     },
     avoir: resultat.avoir
       ? {

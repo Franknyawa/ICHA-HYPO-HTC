@@ -67,12 +67,15 @@ export function CorrectionButton({ commandeId }: { commandeId: string }) {
           alert(`Le client avait déjà payé : un remboursement de ${doc.remboursement.toLocaleString("fr-FR")} FCFA a été enregistré en sortie de caisse.`);
         }
       } else {
-        const res = await apiFetch<{ retour: CorrectionJson }>("/api/facturation/retours", {
+        const res = await apiFetch<{ retour: CorrectionJson & { remboursement: number } }>("/api/facturation/retours", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ commandeId, motif, lignes, destination }),
+          body: JSON.stringify({ commandeId, motif, lignes, destination, canal }),
         });
         await genererCorrectionPdf(res.retour);
+        if (res.retour.remboursement > 0) {
+          alert(`Le client avait déjà payé : un remboursement de ${res.retour.remboursement.toLocaleString("fr-FR")} FCFA a été enregistré en sortie de caisse.`);
+        }
       }
       setOuvert(false);
       setQtes({});
@@ -122,7 +125,7 @@ export function CorrectionButton({ commandeId }: { commandeId: string }) {
             </div>
             <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
               {mode === "RETOUR"
-                ? "Marchandise rendue par le client : elle est remise en stock ou en avaries. Pour créditer le client, émets ensuite une facture d'avoir."
+                ? "Marchandise rendue par le client : elle est remise en stock ou en avaries, et la valeur des cartons retournés est déduite de ce que le client doit (aux prix de sa facture)."
                 : "Correction du montant facturé : diminue ce que le client doit payer."}
             </p>
 
@@ -168,7 +171,7 @@ export function CorrectionButton({ commandeId }: { commandeId: string }) {
                     </span>
                   </label>
                 )}
-                {mode === "AVOIR" && (
+                {(
                   <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">
                     Si le client a déjà payé, le remboursement sort de la caisse par
                     <select value={canal} onChange={(e) => setCanal(e.target.value as typeof canal)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950">
@@ -177,7 +180,7 @@ export function CorrectionButton({ commandeId }: { commandeId: string }) {
                       <option value="BANQUE">Opération bancaire</option>
                     </select>
                     <span className="mt-1 block text-[11px] text-slate-400">
-                      Sinon, l&apos;avoir réduit seulement ce qu&apos;il reste à encaisser.
+                      Sinon, l&apos;opération réduit seulement ce qu&apos;il reste à encaisser.
                     </span>
                   </label>
                 )}

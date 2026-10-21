@@ -9,8 +9,11 @@ import {
   ShoppingBag,
   Wallet,
   ClipboardList,
+  BookOpen,
 } from "lucide-react";
 import { getPointVenteDetail } from "@/lib/queries/points-vente";
+import { getCompteClient, type TypeEcriture } from "@/lib/queries/compte-client";
+import { CorrectionButton } from "@/components/admin/CorrectionButton";
 import { libelleRepondant } from "@/lib/utils/repondant";
 import { formatMontant } from "@/lib/utils/format";
 import { ArchiveButton } from "@/components/admin/ArchiveButton";
@@ -46,9 +49,30 @@ const STATUT_STYLES: Record<string, string> = {
   ANNULEE: "bg-red-50 text-red-700",
 };
 
+const ETIQUETTE: Record<TypeEcriture, string> = {
+  FACTURE: "Facture",
+  PAIEMENT: "Encaissement",
+  AVOIR: "Avoir",
+  RETOUR: "Retour",
+  REMBOURSEMENT: "Remboursement",
+};
+
+function Tuile({ icone, titre, valeur, sous, couleur }: { icone: React.ReactNode; titre: string; valeur: string; sous?: string; couleur?: string }) {
+  return (
+    <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        {icone}
+        {titre}
+      </p>
+      <p className={`mt-1.5 text-xl font-bold ${couleur ?? "text-slate-800 dark:text-slate-100"}`}>{valeur}</p>
+      {sous && <p className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">{sous}</p>}
+    </div>
+  );
+}
+
 export default async function PointVenteDetailPage({ params }: { params: { id: string } }) {
   const session = await requireAdminPage("points-vente");
-  const pv = await getPointVenteDetail(params.id);
+  const [pv, compte] = await Promise.all([getPointVenteDetail(params.id), getCompteClient(params.id)]);
   if (!pv) {
     notFound();
     return null;
@@ -56,6 +80,7 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
 
   const maps = mapsUrl(pv.latitude, pv.longitude);
   const waVendeur = waUrl(pv.telephoneVendeur);
+  const peutCorriger = peutAcceder(session.role, "factures");
 
   return (
     <main>
@@ -175,31 +200,131 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
           </div>
         </div>
 
-        {/* Tuiles statistiques */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              <CalendarDays size={13} />
-              Visite(s)
-            </p>
-            <p className="mt-1.5 text-2xl font-bold text-slate-800 dark:text-slate-100">{pv.nbVisites}</p>
+        {/* Compte client : synthèse */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Tuile icone={<CalendarDays size={13} />} titre="Visite(s)" valeur={String(pv.nbVisites)} />
+          <Tuile icone={<ShoppingBag size={13} />} titre="Facturation (débit)" valeur={`${formatMontant(compte.totalFacture)} FCFA`} sous="Commandes validées" />
+          <Tuile
+            icone={<Wallet size={13} />}
+            titre="Caisse (crédit)"
+            valeur={`${formatMontant(compte.totalPaye - compte.totalRembourse + compte.totalAvoirs + compte.totalRetours)} FCFA`}
+            sous={`Encaissé ${formatMontant(compte.totalPaye - compte.totalRembourse)} · avoirs ${formatMontant(compte.totalAvoirs)} · retours ${formatMontant(compte.totalRetours)}`}
+          />
+          <Tuile
+            icone={<Wallet size={13} />}
+            titre="Reste à encaisser"
+            valeur={`${formatMontant(compte.soldeDu)} FCFA`}
+            sous={compte.soldeDu > 0 ? "Le client doit" : "Compte soldé"}
+            couleur={compte.soldeDu > 0 ? "text-red-600" : "text-teal-600"}
+          />
+        </div>
+
+        {/* Relevé de compte */}
+        <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+          <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-3">
+            <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-800 dark:text-slate-100">
+              <BookOpen size={15} />
+              Factures et situation ({compte.factures.length})
+            </h2>
           </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              <ShoppingBag size={13} />
-              Total vendu (FCFA)
-            </p>
-            <p className="mt-1.5 text-2xl font-bold text-brand">{formatMontant(pv.totalVenteFcfa)}</p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
+                  <th className="px-4 py-2 font-semibold">Facture</th>
+                  <th className="px-2 py-2 font-semibold">Date</th>
+                  <th className="px-2 py-2 text-right font-semibold">Montant</th>
+                  <th className="px-2 py-2 text-right font-semibold">Avoirs</th>
+                  <th className="px-2 py-2 text-right font-semibold">Retours</th>
+                  <th className="px-2 py-2 text-right font-semibold">Encaissé</th>
+                  <th className="px-2 py-2 text-right font-semibold">Reste</th>
+                  {peutCorriger && <th className="px-4 py-2" />}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {compte.factures.length === 0 && (
+                  <tr><td colSpan={8} className="px-4 py-6 text-center text-slate-400">Aucune facture : le compte se remplit dès qu&apos;une commande est validée.</td></tr>
+                )}
+                {compte.factures.map((f) => (
+                  <tr key={f.commandeId}>
+                    <td className="px-4 py-2.5">
+                      <p className="font-semibold text-slate-800 dark:text-slate-100">{f.piece}</p>
+                      <p className="text-xs text-slate-400">{f.produits}</p>
+                    </td>
+                    <td className="px-2 py-2.5 text-slate-500">{formatDate(f.date)}</td>
+                    <td className="px-2 py-2.5 text-right font-medium">{formatMontant(f.montant)}</td>
+                    <td className="px-2 py-2.5 text-right text-slate-500">{f.avoirs ? `−${formatMontant(f.avoirs)}` : "—"}</td>
+                    <td className="px-2 py-2.5 text-right text-slate-500">{f.retours ? `−${formatMontant(f.retours)}` : "—"}</td>
+                    <td className="px-2 py-2.5 text-right text-slate-500">{formatMontant(f.paye - f.rembourse)}</td>
+                    <td className={`px-2 py-2.5 text-right font-semibold ${f.reste > 0 ? "text-red-600" : "text-teal-600"}`}>{formatMontant(f.reste)}</td>
+                    {peutCorriger && (
+                      <td className="px-4 py-2.5 text-right print:hidden"><CorrectionButton commandeId={f.commandeId} /></td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+              {compte.factures.length > 0 && (
+                <tfoot>
+                  <tr className="border-t-2 border-slate-200 font-bold dark:border-slate-700">
+                    <td className="px-4 py-2.5" colSpan={2}>Total</td>
+                    <td className="px-2 py-2.5 text-right">{formatMontant(compte.totalFacture)}</td>
+                    <td className="px-2 py-2.5 text-right">{compte.totalAvoirs ? `−${formatMontant(compte.totalAvoirs)}` : "—"}</td>
+                    <td className="px-2 py-2.5 text-right">{compte.totalRetours ? `−${formatMontant(compte.totalRetours)}` : "—"}</td>
+                    <td className="px-2 py-2.5 text-right">{formatMontant(compte.totalPaye - compte.totalRembourse)}</td>
+                    <td className={`px-2 py-2.5 text-right ${compte.soldeDu > 0 ? "text-red-600" : "text-teal-600"}`}>{formatMontant(compte.soldeDu)}</td>
+                    {peutCorriger && <td />}
+                  </tr>
+                </tfoot>
+              )}
+            </table>
           </div>
-          <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              <Wallet size={13} />
-              Reste à payer (FCFA)
-            </p>
-            <p className={`mt-1.5 text-2xl font-bold ${pv.resteAPayerFcfa > 0 ? "text-red-600" : "text-teal-600"}`}>
-              {formatMontant(pv.resteAPayerFcfa)}
-            </p>
+        </div>
+
+        <div className="rounded-2xl bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+          <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-3">
+            <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-800 dark:text-slate-100">
+              <BookOpen size={15} />
+              Relevé de compte (journal débit / crédit)
+            </h2>
           </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
+                  <th className="px-4 py-2 font-semibold">Date</th>
+                  <th className="px-2 py-2 font-semibold">Pièce</th>
+                  <th className="px-2 py-2 font-semibold">Libellé</th>
+                  <th className="px-2 py-2 text-right font-semibold">Débit</th>
+                  <th className="px-2 py-2 text-right font-semibold">Crédit</th>
+                  <th className="px-4 py-2 text-right font-semibold">Solde</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {compte.ecritures.length === 0 && (
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-400">Aucune écriture.</td></tr>
+                )}
+                {compte.ecritures.map((e) => (
+                  <tr key={e.cle}>
+                    <td className="px-4 py-2.5 text-slate-500">{formatDate(e.date)}</td>
+                    <td className="px-2 py-2.5 font-medium text-slate-800 dark:text-slate-100">
+                      {e.piece}
+                      <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">{ETIQUETTE[e.type]}</span>
+                    </td>
+                    <td className="px-2 py-2.5 text-slate-600 dark:text-slate-300">{e.libelle}</td>
+                    <td className="px-2 py-2.5 text-right">{e.debit ? formatMontant(e.debit) : ""}</td>
+                    <td className="px-2 py-2.5 text-right text-teal-700">{e.credit ? formatMontant(e.credit) : ""}</td>
+                    <td className={`px-4 py-2.5 text-right font-semibold ${e.solde > 0 ? "text-red-600" : "text-slate-700 dark:text-slate-200"}`}>{formatMontant(e.solde)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {compte.enAttente.length > 0 && (
+            <p className="border-t border-slate-100 px-4 py-3 text-xs text-slate-400 dark:border-slate-800">
+              {compte.enAttente.length} commande(s) en attente de validation, non facturée(s) :{" "}
+              {formatMontant(compte.enAttente.reduce((s, c) => s + c.montant, 0))} FCFA.
+            </p>
+          )}
         </div>
 
         {/* Ventes */}
@@ -207,7 +332,7 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
           <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-3">
             <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-800 dark:text-slate-100">
               <ShoppingBag size={15} />
-              Ventes ({pv.ventes.length})
+              Ventes saisies sur le terrain ({pv.ventes.length})
             </h2>
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -225,9 +350,6 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
                 </div>
                 <div className="text-right">
                   <p className="font-semibold text-slate-800 dark:text-slate-100">{formatMontant(v.montantTotal)} FCFA</p>
-                  {v.montantDu > 0 && (
-                    <p className="text-xs font-medium text-red-600">Reste {formatMontant(v.montantDu)} FCFA</p>
-                  )}
                 </div>
               </div>
             ))}

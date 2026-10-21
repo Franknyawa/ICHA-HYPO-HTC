@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { dusParVente } from "@/lib/services/compte";
 
 export type CreditDetail = {
   venteId: string;
@@ -49,13 +50,15 @@ export async function getCreditsCommercial(commercialId: string) {
   });
   const statutParVenteId = new Map(alertes.map((a) => [a.entiteId, a.statut]));
 
+  const dus = await dusParVente(prisma, ventes.map((v) => v.id));
   const detail: CreditDetail[] = [];
 
   for (const v of ventes) {
     if (statutParVenteId.get(v.id) === "RESOLUE") continue;
 
     const totalPaye = v.paiements.reduce((s, p) => s + Number(p.montant), 0);
-    const montantDu = Number(v.montantTotal) - totalPaye;
+    // Si une commande est liée, elle porte les encaissements, avoirs et retours.
+    const montantDu = dus.get(v.id) ?? Number(v.montantTotal) - totalPaye;
     if (montantDu > 0) {
       detail.push({
         venteId: v.id,
