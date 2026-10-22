@@ -1659,3 +1659,8 @@ Règle unique (`lib/services/compte.ts`) : **Solde dû = facturé − avoirs −
 - **Stock** : uniquement l'état du stock (stock initial = total entré, stock disponible). Pas de mouvements, d'entrées ni de sorties ; l'API des mouvements lui est refusée.
 - **Commandes** : consultation + il peut **saisir une nouvelle commande** depuis son ordinateur (POST /api/commandes autorisé). Validation, modification, annulation, bons et factures restent réservés aux admins.
 - **Points de vente** : liste seulement ; pas de fiche détaillée (redirection) ni de fiche client.
+
+## Correctif doublons (commande / client)
+- Une commande n'apparaît plus deux fois dans le profil d'un point de vente (la section « Ventes saisies » est retirée ; la vente reste utilisée pour les statistiques).
+- Rubrique **Clients** : un point de vente n'y apparaît qu'une fois une commande **validée** (en livraison / livrée). Colonnes : commandes validées, cartons réellement commandés (filets/sachets convertis), montant.
+- Une commande en attente se voit uniquement dans Commandes et dans le profil du point de vente.

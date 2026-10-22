@@ -46,7 +46,7 @@ export default async function ClientsPage({
   const visibles = clients.slice((page - 1) * PAR_PAGE, page * PAR_PAGE);
 
   const criteres = [
-    f.du || f.au ? `Achats du ${f.du || "…"} au ${f.au || "…"}` : "Toute la période",
+    f.du || f.au ? `Commandes validées du ${f.du || "…"} au ${f.au || "…"}` : "Toute la période",
     villes.find((v) => v.id === f.villeId)?.nom,
     f.quartier && `Quartier : ${f.quartier}`,
     types.find((t) => t.id === f.typeId)?.nom,
@@ -59,7 +59,7 @@ export default async function ClientsPage({
 
   return (
     <main>
-      <AdminPageHeader title="Clients" subtitle={`${clients.length} point${clients.length > 1 ? "s" : ""} de vente ayant déjà acheté`} />
+      <AdminPageHeader title="Clients" subtitle={`${clients.length} point${clients.length > 1 ? "s" : ""} de vente dont la commande a été validée`} />
 
       <div className="space-y-4 p-4 md:p-6">
         <form action="/admin/clients" className="grid grid-cols-2 gap-2 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 md:grid-cols-4">
@@ -104,7 +104,8 @@ export default async function ClientsPage({
                 <th className="px-4 py-3">Client</th>
                 <th className="px-4 py-3">Localisation</th>
                 <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3 text-right">Achats</th>
+                <th className="px-4 py-3 text-right">Commandes</th>
+                <th className="px-4 py-3 text-right">Cartons</th>
                 <th className="px-4 py-3 text-right">Montant</th>
                 <th className="px-4 py-3">Dernier achat</th>
               </tr>
@@ -128,13 +129,14 @@ export default async function ClientsPage({
                   </td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{c.type ?? "—"}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{c.nbAchats}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{c.cartons.toLocaleString("fr-FR")}</td>
                   <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatFcfa(c.montant)}</td>
                   <td className="px-4 py-3 text-slate-500">{new Date(c.dernierAchat).toLocaleDateString("fr-FR")}</td>
                 </tr>
               ))}
               {visibles.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">
+                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-400">
                     Aucun client ne correspond à ces critères.
                   </td>
                 </tr>

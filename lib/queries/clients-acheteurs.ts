@@ -20,6 +20,8 @@ export type ClientAcheteur = {
   quartier: string | null;
   type: string | null;
   nbAchats: number;
+  /** Cartons réellement commandés (filets et sachets convertis en équivalent carton). */
+  cartons: number;
   montant: number;
   dernierAchat: string;
 };
@@ -28,23 +30,25 @@ const JOUR = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_CLIENTS = 3000;
 
 /**
- * « Clients » = tous les points de vente qui ont déjà acheté, c'est-à-dire
- * au moins une vente ou une commande non annulée (dans la période choisie,
- * s'il y en a une). Les totaux ne comptent que cette période.
+ * « Clients » = les points de vente dont au moins une commande a été VALIDÉE par
+ * l'admin (en livraison ou livrée). Une commande qui vient d'être saisie (en attente)
+ * n'en fait pas encore un client : elle reste visible dans Commandes et Points de vente.
+ * Les totaux (commandes, cartons, montant) ne comptent que ces commandes validées,
+ * dans la période choisie s'il y en a une.
  */
 export async function getClientsAcheteurs(f: FiltreClients): Promise<ClientAcheteur[]> {
   const debut = f.du && JOUR.test(f.du) ? debutJour(f.du) : null;
   const fin = f.au && JOUR.test(f.au) ? finJour(f.au) : null;
-  const plage = (champ: "dateVente" | "dateCommande") =>
-    debut || fin ? { [champ]: { ...(debut ? { gte: debut } : {}), ...(fin ? { lte: fin } : {}) } } : {};
 
-  const venteOk: Prisma.VenteWhereInput = plage("dateVente");
-  const commandeOk: Prisma.CommandeWhereInput = { statut: { not: "ANNULEE" }, ...plage("dateCommande") };
+  const commandeOk: Prisma.CommandeWhereInput = {
+    statut: { in: ["EN_LIVRAISON", "LIVREE"] },
+    ...(debut || fin ? { valideeAt: { ...(debut ? { gte: debut } : {}), ...(fin ? { lte: fin } : {}) } } : {}),
+  };
 
   const recherche = f.search?.trim();
   const where: Prisma.PointVenteWhereInput = {
     AND: [
-      { OR: [{ ventes: { some: venteOk } }, { commandes: { some: commandeOk } }] },
+      { commandes: { some: commandeOk } },
       ...(f.villeId ? [{ villeId: f.villeId }] : []),
       ...(f.quartier?.trim() ? [{ quartier: { nom: { contains: f.quartier.trim(), mode: "insensitive" as const } } }] : []),
       ...(f.typeId ? [{ OR: [{ typeId: f.typeId }, { typesIds: { has: f.typeId } }] }] : []),
@@ -78,31 +82,41 @@ export async function getClientsAcheteurs(f: FiltreClients): Promise<ClientAchet
   if (points.length === 0) return [];
   const ids = points.map((p) => p.id);
 
-  const [ventes, commandes] = await Promise.all([
-    prisma.vente.groupBy({
-      by: ["pointVenteId"],
-      where: { pointVenteId: { in: ids }, ...venteOk },
-      _sum: { montantTotal: true },
-      _count: { _all: true },
-      _max: { dateVente: true },
-    }),
-    prisma.commande.groupBy({
-      by: ["pointVenteId"],
-      where: { pointVenteId: { in: ids }, ...commandeOk },
-      _sum: { montantTotal: true },
-      _count: { _all: true },
-      _max: { dateCommande: true },
-    }),
-  ]);
-  const vMap = new Map(ventes.map((v) => [v.pointVenteId, v]));
-  const cMap = new Map(commandes.map((c) => [c.pointVenteId, c]));
+  const commandes = await prisma.commande.findMany({
+    where: { pointVenteId: { in: ids }, ...commandeOk },
+    select: {
+      pointVenteId: true,
+      montantTotal: true,
+      valideeAt: true,
+      dateCommande: true,
+      lignes: {
+        select: {
+          nbCartons: true,
+          nbFilets: true,
+          nbSachets: true,
+          produit: { select: { sachetsParCarton: true, sachetsParFilet: true } },
+        },
+      },
+    },
+  });
+
+  const cumul = new Map<string, { nb: number; cartons: number; montant: number; dernier: number }>();
+  for (const c of commandes) {
+    const cur = cumul.get(c.pointVenteId) ?? { nb: 0, cartons: 0, montant: 0, dernier: 0 };
+    cur.nb += 1;
+    cur.montant += Number(c.montantTotal);
+    for (const l of c.lignes) {
+      const parCarton = l.produit.sachetsParCarton > 0 ? l.produit.sachetsParCarton : 1;
+      const parFilet = l.produit.sachetsParFilet && l.produit.sachetsParFilet > 0 ? l.produit.sachetsParFilet : 1;
+      cur.cartons += l.nbCartons + (l.nbFilets * parFilet) / parCarton + l.nbSachets / parCarton;
+    }
+    cur.dernier = Math.max(cur.dernier, (c.valideeAt ?? c.dateCommande).getTime());
+    cumul.set(c.pointVenteId, cur);
+  }
 
   return points
     .map((p) => {
-      const v = vMap.get(p.id);
-      const c = cMap.get(p.id);
-      const dates = [v?._max.dateVente, c?._max.dateCommande].filter(Boolean) as Date[];
-      const dernier = dates.length ? new Date(Math.max(...dates.map((d) => d.getTime()))) : new Date(0);
+      const c = cumul.get(p.id);
       return {
         id: p.id,
         nom: p.nom,
@@ -111,9 +125,10 @@ export async function getClientsAcheteurs(f: FiltreClients): Promise<ClientAchet
         ville: p.ville?.nom ?? null,
         quartier: p.quartier?.nom ?? null,
         type: p.type?.nom ?? null,
-        nbAchats: (v?._count._all ?? 0) + (c?._count._all ?? 0),
-        montant: Number(v?._sum.montantTotal ?? 0) + Number(c?._sum.montantTotal ?? 0),
-        dernierAchat: dernier.toISOString(),
+        nbAchats: c?.nb ?? 0,
+        cartons: Math.round((c?.cartons ?? 0) * 100) / 100,
+        montant: c?.montant ?? 0,
+        dernierAchat: new Date(c?.dernier ?? 0).toISOString(),
       };
     })
     .sort((a, b) => b.dernierAchat.localeCompare(a.dernierAchat));

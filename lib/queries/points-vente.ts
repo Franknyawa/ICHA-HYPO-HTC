@@ -114,6 +114,7 @@ export async function getPointVenteDetail(id: string) {
           statut: true,
           dateCommande: true,
           dateLivraisonPrevue: true,
+          montantTotal: true,
           commercial: { select: { nom: true, prenom: true } },
           lignes: {
             select: { nbSachets: true, nbFilets: true, nbCartons: true, produit: { select: { code: true } } },
@@ -138,8 +139,12 @@ export async function getPointVenteDetail(id: string) {
   const resumeLignes = (lignes: { nbCartons: number; nbSachets: number; nbFilets: number; produit: { code: string } }[]) =>
     lignes
       .map((l) => {
-        const qte = l.nbCartons > 0 ? `${l.nbCartons} cartons` : l.nbFilets > 0 ? `${l.nbFilets} filets` : `${l.nbSachets} sachets`;
-        return `${l.produit.code} — ${qte}`;
+        const parts = [
+          l.nbCartons > 0 ? `${l.nbCartons} carton${l.nbCartons > 1 ? "s" : ""}` : "",
+          l.nbFilets > 0 ? `${l.nbFilets} filet${l.nbFilets > 1 ? "s" : ""}` : "",
+          l.nbSachets > 0 ? `${l.nbSachets} sachet${l.nbSachets > 1 ? "s" : ""}` : "",
+        ].filter(Boolean);
+        return `${l.produit.code} — ${parts.join(" + ") || "0"}`;
       })
       .join(", ");
 
@@ -165,6 +170,7 @@ export async function getPointVenteDetail(id: string) {
     dateLivraisonPrevue: c.dateLivraisonPrevue,
     commercialNom: `${c.commercial.prenom} ${c.commercial.nom}`,
     produitsResume: resumeLignes(c.lignes) || "—",
+    montantTotal: Number(c.montantTotal),
   }));
 
   const typesNoms = pointVente.typesIds.length
