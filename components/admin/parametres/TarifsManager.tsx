@@ -111,9 +111,58 @@ export function TarifsManager() {
               )}
             </>
           )}
+          <RecalculMontants />
         </div>
       )}
     </div>
+  );
+}
+
+// --- Mise en conformité des montants existants -------------------------------
+
+type BilanRecalcul = { appliquer: boolean; lignesModifiees: number; commandesModifiees: number; ventesModifiees: number; ecart: number };
+
+function RecalculMontants() {
+  const [bilan, setBilan] = useState<BilanRecalcul | null>(null);
+  const [envoi, setEnvoi] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  async function lancer(appliquer: boolean) {
+    if (appliquer && !window.confirm("Recalculer les montants des commandes et ventes existantes ? Cette action modifie les factures déjà enregistrées.")) return;
+    setEnvoi(true);
+    setErreur(null);
+    try {
+      setBilan(await apiFetch<BilanRecalcul>("/api/parametres/recalculer-prix", { method: appliquer ? "POST" : "GET" }));
+    } catch (e) {
+      setErreur(e instanceof ApiError ? e.message : "Échec du calcul.");
+    } finally {
+      setEnvoi(false);
+    }
+  }
+
+  return (
+    <section className="mt-6 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+      <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Règle du demi-carton</h3>
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        Un demi-carton (56 sachets HYPO, 60 sachets ou 6 filets HTC) est facturé à la moitié du prix du carton. Cette
+        mise à jour applique la règle aux commandes et ventes déjà enregistrées, pour que les factures et les rapports
+        soient cohérents.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button onClick={() => lancer(false)} disabled={envoi} className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200">
+          Simuler
+        </button>
+        <button onClick={() => lancer(true)} disabled={envoi} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+          Mettre à jour les montants
+        </button>
+      </div>
+      {bilan && (
+        <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+          {bilan.appliquer ? "Mis à jour" : "À mettre à jour"} : {bilan.commandesModifiees} commande(s), {bilan.ventesModifiees} vente(s), {bilan.lignesModifiees} ligne(s) — écart total {bilan.ecart.toLocaleString("fr-FR")} FCFA.
+        </p>
+      )}
+      {erreur && <p className="mt-2 text-xs text-alert">{erreur}</p>}
+    </section>
   );
 }
 

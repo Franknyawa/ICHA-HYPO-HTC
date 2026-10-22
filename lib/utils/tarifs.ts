@@ -8,7 +8,12 @@
 //   3. grille tarifaire : le prix du CARTON dépend alors de la quantité de
 //      cartons commandée pour ce produit (s'il existe un palier qui la couvre).
 
-export type ProduitTarif = {
+export type ConversionTarif = {
+  sachetsParCarton?: number | null;
+  sachetsParFilet?: number | null;
+};
+
+export type ProduitTarif = ConversionTarif & {
   id: string;
   prixSachet: number;
   prixFilet: number | null;
@@ -65,8 +70,67 @@ export function prixUnitaires(
   return { sachet, filet, carton };
 }
 
-export function sousTotal(prix: PrixUnitaires, q: Quantites): number {
-  return Math.round(q.sachets * prix.sachet + q.filets * prix.filet + q.cartons * prix.carton);
+/** Nombre de sachets d'un demi-carton (56 pour HYPO, 60 pour HTC), ou null si inconnu. */
+export function sachetsDemiCarton(conv?: ConversionTarif): number | null {
+  const spc = conv?.sachetsParCarton ?? 0;
+  return spc > 0 && spc % 2 === 0 ? spc / 2 : null;
+}
+
+/**
+ * Le champ « cartons » accepte les demi-cartons (0,5 / 1,5…). La base ne stocke que des
+ * entiers : le demi-carton est converti en filets (HTC : 6) ou en sachets (HYPO : 56).
+ * Il sera facturé au prix du carton / 2 (4 500 HYPO, 4 800 HTC), voir `sousTotal`.
+ */
+export function normaliserCartons(q: Quantites, conv?: ConversionTarif): Quantites {
+  const ent = Math.floor(q.cartons + 1e-9);
+  const demis = Math.round((q.cartons - ent) * 2);
+  if (demis === 0) return { ...q, cartons: ent };
+  const demi = sachetsDemiCarton(conv);
+  if (demi === null) return { ...q, cartons: ent + (demis >= 2 ? 1 : 0) };
+  const spf = conv?.sachetsParFilet ?? 0;
+  const enFilets = spf > 0 && demi % spf === 0;
+  return {
+    cartons: ent + (demis >= 2 ? 1 : 0),
+    sachets: q.sachets + (enFilets || demis >= 2 ? 0 : demi),
+    filets: q.filets + (enFilets && demis < 2 ? demi / spf : 0),
+  };
+}
+
+/**
+ * Montant d'une ligne. Règle « base carton » : tout ensemble de sachets / filets qui forme un
+ * demi-carton (56 sachets HYPO, 60 sachets ou 6 filets HTC) est facturé au demi-prix du carton
+ * (4 500 / 4 800 FCFA), pas au sachet. Le reste (moins d'un demi-carton) est facturé à l'unité.
+ */
+export function sousTotal(prix: PrixUnitaires, q: Quantites, conv?: ConversionTarif): number {
+  const demi = sachetsDemiCarton(conv);
+  const spf = conv?.sachetsParFilet ?? 0;
+  if (demi === null) return Math.round(q.sachets * prix.sachet + q.filets * prix.filet + q.cartons * prix.carton);
+
+  const sachetsEq = q.sachets + (spf > 0 ? q.filets * spf : 0);
+  const filetsSepares = spf > 0 ? 0 : q.filets;
+  const nbDemis = Math.floor(sachetsEq / demi);
+  const reste = sachetsEq - nbDemis * demi;
+  const restFilets = spf > 0 ? Math.floor(reste / spf) : 0;
+  const restSachets = reste - restFilets * spf;
+  return Math.round(
+    q.cartons * prix.carton +
+      nbDemis * (prix.carton / 2) +
+      restFilets * prix.filet +
+      restSachets * prix.sachet +
+      filetsSepares * prix.filet
+  );
+}
+
+/** Valeur d'une ligne au prix catalogue du produit (estimations, rapports). */
+export function valeurCatalogueLigne(
+  l: { nbSachets: number; nbFilets: number; nbCartons: number },
+  p: ConversionTarif & { prixSachet: unknown; prixFilet: unknown; prixCarton: unknown }
+): number {
+  return sousTotal(
+    { sachet: Number(p.prixSachet), filet: Number(p.prixFilet ?? 0), carton: Number(p.prixCarton) },
+    { sachets: l.nbSachets, filets: l.nbFilets, cartons: l.nbCartons },
+    p
+  );
 }
 
 /** Calcule d'un coup prix appliqués + montant d'une ligne de commande. */
@@ -75,8 +139,9 @@ export function calculerLigne(
   q: Quantites,
   opts: { typeId?: string | null; prixParType?: PrixTypeTarif[]; paliers?: PalierTarif[] }
 ) {
-  const prix = prixUnitaires(produit, { ...opts, cartons: q.cartons });
-  return { prix, montant: sousTotal(prix, q) };
+  const quantites = normaliserCartons(q, produit);
+  const prix = prixUnitaires(produit, { ...opts, cartons: quantites.cartons });
+  return { prix, montant: sousTotal(prix, quantites, produit), quantites };
 }
 
 /** Vérifie une grille : paliers triés, sans chevauchement. Renvoie un message d'erreur ou null. */

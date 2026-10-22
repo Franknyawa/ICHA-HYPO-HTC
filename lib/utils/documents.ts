@@ -1,6 +1,8 @@
 // Éléments communs aux documents imprimés (bon de commande, facture, bon de
 // livraison) : identité de l'entreprise, numérotation, désignations, lignes.
 
+import { sousTotal } from "./tarifs";
+
 export const ENTREPRISE = {
   nom: "ICHA IMPORT",
   activites: "Importation, Commerce Général, Prestation de Services",
@@ -165,8 +167,11 @@ export function lignesCartons(sources: LigneSource[]): LigneDocument[] {
     const cartons = s.nbCartons + (s.nbFilets * parFilet) / parCarton + s.nbSachets / parCarton;
     if (cartons <= 0) continue;
     // Total de la ligne : montant enregistré, sinon somme des prix unitaires.
-    const calcule =
-      s.nbCartons * (s.prixCarton ?? 0) + s.nbFilets * (s.prixFilet ?? 0) + s.nbSachets * (s.prixSachet ?? 0);
+    const calcule = sousTotal(
+      { carton: s.prixCarton ?? 0, filet: s.prixFilet ?? 0, sachet: s.prixSachet ?? 0 },
+      { cartons: s.nbCartons, filets: s.nbFilets, sachets: s.nbSachets },
+      s
+    );
     const total = s.montant && s.montant > 0 ? s.montant : calcule > 0 ? calcule : null;
     const cle = s.produitCode;
     const cur = parProduit.get(cle);

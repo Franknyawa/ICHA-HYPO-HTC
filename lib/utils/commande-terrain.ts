@@ -15,7 +15,6 @@ export type ProduitForm = ProduitTarif & {
   code: string;
   nom: string;
   designation?: string | null;
-  sachetsParCarton?: number | null;
   volumeMl?: number | null;
 };
 
@@ -51,15 +50,15 @@ export function preparerCommande(
 
   for (const p of produits) {
     const q = quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
-    const { prix, montant } = calculerLigne(p, q, ctx);
+    const { prix, montant, quantites: qn } = calculerLigne(p, q, ctx);
     sousTotaux.set(p.code, montant);
     if (q.sachets === 0 && q.filets === 0 && q.cartons === 0) continue;
     total += montant;
     lignes.push({
       produitCode: p.code,
-      nbSachets: q.sachets,
-      nbFilets: q.filets,
-      nbCartons: q.cartons,
+      nbSachets: qn.sachets,
+      nbFilets: qn.filets,
+      nbCartons: qn.cartons,
       prixSachet: prix.sachet,
       prixFilet: prix.filet,
       prixCarton: prix.carton,
@@ -70,10 +69,11 @@ export function preparerCommande(
       produitNom: p.nom,
       designation: p.designation,
       sachetsParCarton: p.sachetsParCarton,
+      sachetsParFilet: p.sachetsParFilet,
       volumeMl: p.volumeMl,
-      nbSachets: q.sachets,
-      nbFilets: q.filets,
-      nbCartons: q.cartons,
+      nbSachets: qn.sachets,
+      nbFilets: qn.filets,
+      nbCartons: qn.cartons,
       prixSachet: prix.sachet,
       prixFilet: prix.filet,
       prixCarton: prix.carton,

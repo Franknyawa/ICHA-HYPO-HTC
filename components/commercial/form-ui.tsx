@@ -290,15 +290,21 @@ export function QuantitesProduit({
             <span className="mb-1 block text-xs text-slate-500 dark:text-slate-400">{c.label}</span>
             <Saisie
               type="number"
-              inputMode="numeric"
+              inputMode={c.cle === "cartons" ? "decimal" : "numeric"}
               min={0}
+              step={c.cle === "cartons" ? 0.5 : 1}
               placeholder="0"
               value={valeur[c.cle] || ""}
-              onChange={(e) => onChange(c.cle, Number(e.target.value) || 0)}
+              onChange={(e) => {
+                const n = Number(e.target.value) || 0;
+                // Cartons : par pas de 0,5 (demi-carton) ; sachets et filets : entiers.
+                onChange(c.cle, c.cle === "cartons" ? Math.max(0, Math.round(n * 2) / 2) : Math.max(0, Math.floor(n)));
+              }}
             />
           </label>
         ))}
       </div>
+      <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">Cartons : 0,5 = demi-carton.</p>
       {sousTotal > 0 && (
         <p className="mt-3 text-right text-sm font-semibold" style={{ color: VERT }}>
           {sousTotal.toLocaleString("fr-FR")} FCFA

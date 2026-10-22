@@ -1693,3 +1693,9 @@ Cumul des commandes en attente de validation et des commandes validées à livre
 - Caisse > « Commandes à encaisser » regroupées par date de livraison prévue : En retard, À encaisser aujourd'hui, À venir (date affichée), Sans date ; total par groupe.
 - Alerte « Encaissement à faire » : commande validée non soldée dont la livraison est passée (ou aujourd'hui après 17 h) ; se ferme à l'encaissement complet.
 - Facture : la remise de palier ne s'affiche que sur des cartons entiers HYPO (jamais sur sachets/filets, hors grille).
+
+### Règle « base carton » : demi-carton (22/10/2026)
+- Demi-carton = moitié du prix du carton : HYPO 56 sachets = 4 500 FCFA, HTC 60 sachets (ou 6 filets) = 4 800 FCFA. Le reste (moins d'un demi-carton) est facturé à l'unité.
+- Champ « Cartons » des formulaires (terrain, relances, nouvelle commande bureau) : pas de 0,5. Le demi-carton est enregistré en sachets (HYPO) ou en filets (HTC) ; la facture l'affiche en 0,5 carton, sans remise.
+- Moteur commun : `lib/utils/tarifs.ts` (`sousTotal`, `normaliserCartons`, `valeurCatalogueLigne`), utilisé par le serveur, le terrain hors ligne, les avoirs/retours, les estimations.
+- Mise à jour des données existantes : Paramètres > Tarifs > « Règle du demi-carton » (Simuler puis Mettre à jour). Aucun SQL.

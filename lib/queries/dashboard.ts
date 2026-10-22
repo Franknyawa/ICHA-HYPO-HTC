@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { valeurCatalogueLigne } from "@/lib/utils/tarifs";
 import { cartonsEq, arrondiCartons, detailQte, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 import { ajouterJours, debutJour, finJour, jourDouala } from "@/lib/utils/periode";
 
@@ -244,7 +245,7 @@ export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
           nbCartons: true,
           montant: true,
           produit: {
-            select: { code: true, nom: true, sachetsParCarton: true, filetsParCarton: true, prixSachet: true, prixFilet: true, prixCarton: true },
+            select: { code: true, nom: true, sachetsParCarton: true, sachetsParFilet: true, filetsParCarton: true, prixSachet: true, prixFilet: true, prixCarton: true },
           },
         },
       },
@@ -259,7 +260,7 @@ export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
         const m = Number(l.montant);
         return m > 0
           ? m
-          : l.nbCartons * Number(l.produit.prixCarton) + l.nbFilets * Number(l.produit.prixFilet ?? 0) + l.nbSachets * Number(l.produit.prixSachet);
+          : valeurCatalogueLigne(l, l.produit);
       });
       const somme = valeurs.reduce((s, x) => s + x, 0);
       c.lignes.forEach((l, i) => {

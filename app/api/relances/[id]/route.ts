@@ -13,7 +13,7 @@ const schema = z.discriminatedUnion("action", [
   // Converti : l'admin saisit les cartons demandés → commande « à traiter » créée aussitôt.
   z.object({
     action: z.literal("converti"),
-    lignes: z.array(z.object({ produitCode: z.string(), nbCartons: z.number().int().min(0).max(100_000) })).min(1),
+    lignes: z.array(z.object({ produitCode: z.string(), nbCartons: z.number().min(0).max(100_000).multipleOf(0.5) })).min(1),
     modePaiement: z.enum(["ESPECES", "MOBILE_MONEY", "BANQUE", "CREDIT_PARTIEL", "CREDIT_TOTAL"]).optional(),
   }),
   z.object({ action: z.literal("abandonne") }),
@@ -64,13 +64,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       const lignes = lignesUtiles.map((l) => {
         const p = parCode.get(l.produitCode);
         if (!p) throw new Error(`Produit inconnu : ${l.produitCode}`);
-        const { prix, montant } = calculerLigne(
-          { id: p.id, prixSachet: Number(p.prixSachet), prixFilet: p.prixFilet === null ? null : Number(p.prixFilet), prixCarton: Number(p.prixCarton) },
+        const { prix, montant, quantites: qn } = calculerLigne(
+          { id: p.id, prixSachet: Number(p.prixSachet), prixFilet: p.prixFilet === null ? null : Number(p.prixFilet), prixCarton: Number(p.prixCarton), sachetsParCarton: p.sachetsParCarton, sachetsParFilet: p.sachetsParFilet },
           { sachets: 0, filets: 0, cartons: l.nbCartons },
           ctx
         );
         total += montant;
-        return { produitId: p.id, nbSachets: 0, nbFilets: 0, nbCartons: l.nbCartons, prixSachet: prix.sachet, prixFilet: prix.filet, prixCarton: prix.carton, montant };
+        return { produitId: p.id, nbSachets: qn.sachets, nbFilets: qn.filets, nbCartons: qn.cartons, prixSachet: prix.sachet, prixFilet: prix.filet, prixCarton: prix.carton, montant };
       });
 
       // Même schéma qu'une commande terrain : Vente (stats) + Commande EN_ATTENTE liée + Bon de commande.

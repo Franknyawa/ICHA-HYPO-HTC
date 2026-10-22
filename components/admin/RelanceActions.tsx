@@ -88,7 +88,7 @@ export function RelanceActions({ id, statut, produits, cartonsEstimes }: { id: s
           {produits.map((p) => (
             <label key={p.code} className="flex items-center justify-between gap-3 text-sm text-slate-700 dark:text-slate-200">
               {p.nom}
-              <input type="number" min={0} inputMode="numeric" value={cartons[p.code] || ""} onChange={(e) => setCartons((c) => ({ ...c, [p.code]: Math.max(0, Math.floor(Number(e.target.value) || 0)) }))} className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right text-sm dark:border-slate-700 dark:bg-slate-950" />
+              <input type="number" min={0} step={0.5} inputMode="decimal" value={cartons[p.code] || ""} onChange={(e) => setCartons((c) => ({ ...c, [p.code]: Math.max(0, Math.round((Number(e.target.value) || 0) * 2) / 2) }))} className="w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right text-sm dark:border-slate-700 dark:bg-slate-950" />
             </label>
           ))}
           <button

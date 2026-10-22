@@ -32,6 +32,8 @@ export async function GET(req: NextRequest) {
 }
 
 const QTE = z.number().int().min(0).max(100_000).default(0);
+// Cartons : les demi-cartons (0,5 / 1,5…) sont acceptés.
+const QTE_CARTONS = z.number().min(0).max(100_000).multipleOf(0.5).default(0);
 
 const schema = z
   .object({
@@ -48,7 +50,7 @@ const schema = z
       })
       .optional(),
     commercialId: z.string().uuid().optional(),
-    lignes: z.array(z.object({ produitCode: z.string(), nbSachets: QTE, nbFilets: QTE, nbCartons: QTE })).min(1),
+    lignes: z.array(z.object({ produitCode: z.string(), nbSachets: QTE, nbFilets: QTE, nbCartons: QTE_CARTONS })).min(1),
     modePaiement: z.enum(["ESPECES", "MOBILE_MONEY", "CREDIT_PARTIEL", "CREDIT_TOTAL"]).optional(),
     dateLivraisonPrevue: z.string().datetime().optional(),
   })
@@ -144,17 +146,17 @@ export async function POST(req: NextRequest) {
       const lignes = lignesUtiles.map((l) => {
         const p = produitParCode.get(l.produitCode);
         if (!p) throw new ErreurMetier(`Produit inconnu : ${l.produitCode}`, 400);
-        const { prix, montant } = calculerLigne(
-          { id: p.id, prixSachet: Number(p.prixSachet), prixFilet: p.prixFilet === null ? null : Number(p.prixFilet), prixCarton: Number(p.prixCarton) },
+        const { prix, montant, quantites: qn } = calculerLigne(
+          { id: p.id, prixSachet: Number(p.prixSachet), prixFilet: p.prixFilet === null ? null : Number(p.prixFilet), prixCarton: Number(p.prixCarton), sachetsParCarton: p.sachetsParCarton, sachetsParFilet: p.sachetsParFilet },
           { sachets: l.nbSachets, filets: l.nbFilets, cartons: l.nbCartons },
           ctx
         );
         total += montant;
         return {
           produitId: p.id,
-          nbSachets: l.nbSachets,
-          nbFilets: l.nbFilets,
-          nbCartons: l.nbCartons,
+          nbSachets: qn.sachets,
+          nbFilets: qn.filets,
+          nbCartons: qn.cartons,
           prixSachet: prix.sachet,
           prixFilet: prix.filet,
           prixCarton: prix.carton,

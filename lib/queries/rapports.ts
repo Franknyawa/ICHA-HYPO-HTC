@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { valeurCatalogueLigne } from "@/lib/utils/tarifs";
 import { formatMontant } from "@/lib/utils/format";
 import { detailQte, libelleCartons } from "@/lib/utils/cartons-equiv";
 
@@ -138,13 +139,9 @@ export function cartonsEquivalents(
 
 function valeurCatalogue(
   l: { nbSachets: number; nbFilets: number; nbCartons: number },
-  p: ProduitCalc
+  p: ProduitCalc & { sachetsParFilet?: number | null }
 ): number {
-  return (
-    l.nbCartons * Number(p.prixCarton) +
-    l.nbFilets * Number(p.prixFilet ?? 0) +
-    l.nbSachets * Number(p.prixSachet)
-  );
+  return valeurCatalogueLigne(l, p);
 }
 
 // ---------------------------------------------------------------------------

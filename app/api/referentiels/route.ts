@@ -30,6 +30,7 @@ export async function GET(_req: NextRequest) {
           prixCarton: true,
           designation: true,
           sachetsParCarton: true,
+          sachetsParFilet: true,
           volumeMl: true,
         },
       }),

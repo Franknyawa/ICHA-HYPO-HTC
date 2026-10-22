@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { valeurCatalogueLigne } from "@/lib/utils/tarifs";
 import { cartonsEq, arrondiCartons, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 
 const DEFAUTS_INDIVIDUEL: Record<"JOURNALIER" | "HEBDOMADAIRE" | "MENSUEL", number> = {
@@ -146,7 +147,7 @@ export async function getCommandesEnAttente(commercialId: string) {
           nbSachets: true,
           nbFilets: true,
           nbCartons: true,
-          produit: { select: { prixSachet: true, prixFilet: true, prixCarton: true } },
+          produit: { select: { prixSachet: true, prixFilet: true, prixCarton: true, sachetsParCarton: true, sachetsParFilet: true } },
         },
       },
     },
@@ -159,13 +160,6 @@ export async function getCommandesEnAttente(commercialId: string) {
     id: c.id,
     dateLivraisonPrevue: c.dateLivraisonPrevue,
     pointVente: c.pointVente,
-    montantEstime: c.lignes.reduce(
-      (s, l) =>
-        s +
-        l.nbSachets * Number(l.produit.prixSachet) +
-        l.nbFilets * Number(l.produit.prixFilet ?? 0) +
-        l.nbCartons * Number(l.produit.prixCarton),
-      0
-    ),
+    montantEstime: c.lignes.reduce((s, l) => s + valeurCatalogueLigne(l, l.produit), 0),
   }));
 }

@@ -37,6 +37,7 @@ export default async function NouvelleCommandePage() {
             nom: p.nom,
             designation: p.designation,
             sachetsParCarton: p.sachetsParCarton,
+            sachetsParFilet: p.sachetsParFilet,
             volumeMl: p.volumeMl,
             prixSachet: Number(p.prixSachet),
             prixFilet: p.prixFilet === null ? null : Number(p.prixFilet),

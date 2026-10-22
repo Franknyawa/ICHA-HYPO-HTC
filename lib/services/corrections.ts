@@ -2,6 +2,7 @@
 // au moment de l'émission : le document reste identique même si les tarifs ou
 // les désignations changent ensuite.
 
+import { sousTotal } from "@/lib/utils/tarifs";
 import { prisma } from "@/lib/prisma";
 import { applyStockMovement, InsufficientStockError } from "@/lib/services/stock";
 import { convertToSachets } from "@/lib/services/produits";
@@ -101,7 +102,7 @@ async function construireLignes(commandeId: string, demandees: QuantitesLigne[])
       throw new CorrectionError(`Quantité supérieure à ce qui reste facturé pour ${l.produit.nom}.`);
     }
     const pc = prixUnite(l, "carton"), pf = prixUnite(l, "filet"), ps = prixUnite(l, "sachet");
-    const m = d.nbCartons * pc + d.nbFilets * pf + d.nbSachets * ps;
+    const m = sousTotal({ carton: pc, filet: pf, sachet: ps }, { cartons: d.nbCartons, filets: d.nbFilets, sachets: d.nbSachets }, l.produit);
     montant += m;
     sortie.push({
       ligneId: l.id,
