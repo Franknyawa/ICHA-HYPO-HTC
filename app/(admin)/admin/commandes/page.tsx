@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Plus, Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { listCommandes, countCommandesParStatut, type StatutCommandeFiltre } from "@/lib/queries/commandes";
 import { prisma } from "@/lib/prisma";
+import { cartonsEq, libelleCartons } from "@/lib/utils/cartons-equiv";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CommandeStatusActions } from "@/components/admin/CommandeStatusActions";
 import { ArchiveButton, ArchiverAnciennesButton } from "@/components/admin/ArchiveButton";
@@ -192,6 +193,9 @@ export default async function CommandesPage({
                       ]
                         .filter(Boolean)
                         .join(", ")}
+                      {(l.nbSachets > 0 || l.nbFilets > 0) && (
+                        <span className="ml-1 opacity-70">({libelleCartons(cartonsEq(l, l.produit))})</span>
+                      )}
                     </span>
                   ))}
                 </div>

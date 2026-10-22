@@ -187,18 +187,22 @@ const SELECT_PV = {
 
 async function chargerVentes(filters: RapportFilters) {
   const produitWhere = filtreProduit(filters);
-  return prisma.vente.findMany({
+  // « Ventes » = commandes VALIDÉES par l'admin (valeur = montant de la commande,
+  // sachets et filets inclus ; quantités converties en cartons équivalents).
+  const rows = await prisma.commande.findMany({
     where: {
+      statut: { in: ["EN_LIVRAISON", "LIVREE"] },
+      valideeAt: plageDates(filters) ?? { not: null },
       ...(filters.commercialId ? { commercialId: filters.commercialId } : {}),
       ...(filters.binomeId ? { commercial: { binomeId: filters.binomeId } } : {}),
       ...(filtrePointVente(filters) ? { pointVente: filtrePointVente(filters) } : {}),
       ...(produitWhere ? { lignes: { some: { produit: produitWhere } } } : {}),
-      ...(plageDates(filters) ? { dateVente: plageDates(filters) } : {}),
     },
-    orderBy: { dateVente: "desc" },
+    orderBy: { valideeAt: "desc" },
     select: {
       id: true,
-      dateVente: true,
+      valideeAt: true,
+      dateCommande: true,
       montantTotal: true,
       commercialId: true,
       commercial: { select: { nom: true, prenom: true, binome: { select: { nom: true } } } },
@@ -229,6 +233,7 @@ async function chargerVentes(filters: RapportFilters) {
       paiements: { select: { montant: true } },
     },
   });
+  return rows.map((r) => ({ ...r, dateVente: r.valideeAt ?? r.dateCommande }));
 }
 
 type VenteChargee = Awaited<ReturnType<typeof chargerVentes>>[number];

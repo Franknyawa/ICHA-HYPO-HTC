@@ -1673,3 +1673,9 @@ Règle unique (`lib/services/compte.ts`) : **Solde dû = facturé − avoirs −
 - **Cartons** : toutes les statistiques (objectifs commerciaux, binômes, villes/régions, agrégats nocturnes) convertissent désormais filets et sachets en cartons (`lib/utils/cartons-equiv.ts`).
 - **Date de livraison** : modifiable sur chaque commande à traiter (Commandes), enregistrée immédiatement ; l'alerte de rappel est recréée et apparaît dans Alertes N jours avant (réglage « seuil livraison proche », 2 jours par défaut). Les commandes validées mais non livrées sont aussi suivies.
 - Aucune migration SQL.
+
+### Rapports et ventes par produit sur la base du carton (22/10/2026)
+- Rapports et « Ventes par produit » partent des **commandes validées** (valeur = montant de la commande, sachets et filets compris), au lieu des ventes terrain à 0 FCFA pour les sachets.
+- Quantités converties en cartons : 1 carton HYPO = 112 sachets, 1/2 carton = 56 ; 1 carton HTC = 12 filets = 120 sachets.
+- Les commandes affichent l'équivalent indicatif : « HYPO — 56 sachets (1/2 carton) » (`libelleCartons`).
+- Les dates des rapports se filtrent sur la date de validation.

@@ -71,10 +71,12 @@ export async function getDonneesVentesProduit(): Promise<DonneesVentesProduit> {
     PERIODES.map((p) => [p.id, p.jours ? debutDuJour(new Date(maintenant.getTime() - p.jours * 86400000)) : null])
   ) as Record<PeriodeId, Date | null>;
 
-  const [ventes, commandesParPeriode] = await Promise.all([
-    prisma.vente.findMany({
+  const [ventesBrutes, commandesParPeriode] = await Promise.all([
+    prisma.commande.findMany({
+      where: { statut: { in: ["EN_LIVRAISON", "LIVREE"] }, valideeAt: { not: null } },
       select: {
-        dateVente: true,
+        valideeAt: true,
+        dateCommande: true,
         montantTotal: true,
         pointVenteId: true,
         pointVente: {
@@ -119,6 +121,8 @@ export async function getDonneesVentesProduit(): Promise<DonneesVentesProduit> {
       )
     ),
   ]);
+
+  const ventes = ventesBrutes.map((r) => ({ ...r, dateVente: r.valideeAt ?? r.dateCommande }));
 
   // Accumulateurs par période
   const accs = Object.fromEntries(PERIODES.map((p) => [p.id, new Map<string, Acc>()])) as Record<PeriodeId, Map<string, Acc>>;

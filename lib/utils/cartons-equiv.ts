@@ -17,3 +17,16 @@ export function cartonsEq(l: LigneQte, p: ProduitConv): number {
 export function arrondiCartons(n: number): number {
   return Math.round(n * 10) / 10;
 }
+
+/** « 1/2 carton », « 1 1/2 carton », « 2,3 cartons » : lisible pour un commercial. */
+export function libelleCartons(n: number): string {
+  const r = Math.round(n * 100) / 100;
+  const entier = Math.floor(r + 1e-9);
+  const reste = Math.round((r - entier) * 100) / 100;
+  const frac: Record<number, string> = { 0.25: "1/4", 0.5: "1/2", 0.75: "3/4" };
+  let txt: string;
+  if (reste === 0) txt = String(entier);
+  else if (frac[reste]) txt = entier > 0 ? `${entier} ${frac[reste]}` : frac[reste];
+  else txt = String(r).replace(".", ",");
+  return `${txt} carton${r > 1 ? "s" : ""}`;
+}
