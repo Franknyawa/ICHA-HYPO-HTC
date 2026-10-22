@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { cartonsEq, arrondiCartons, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 
 const DEFAUTS_INDIVIDUEL: Record<"JOURNALIER" | "HEBDOMADAIRE" | "MENSUEL", number> = {
   JOURNALIER: 42,
@@ -45,9 +46,9 @@ async function cartonsVendus(where: { commercialId?: string; binomeId?: string }
         ...(where.binomeId ? { commercial: { binomeId: where.binomeId } } : {}),
       },
     },
-    select: { nbCartons: true },
+    select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV } },
   });
-  return lignes.reduce((s, l) => s + l.nbCartons, 0);
+  return arrondiCartons(lignes.reduce((s, l) => s + cartonsEq(l, l.produit), 0));
 }
 
 export async function getObjectifsIndividuels() {

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { cartonsEq, arrondiCartons, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 import { ajouterJours, debutJour, finJour, jourDouala } from "@/lib/utils/periode";
 
 // « Aujourd'hui » = la journée du Cameroun (UTC+1), quel que soit le fuseau
@@ -21,28 +22,32 @@ export async function getDashboardKpis() {
   const [visitesAujourdhui, prospectsTotal, clientsTotal] = await Promise.all([
     prisma.visite.count({ where: { dateVisite: today } }),
     prisma.prospect.count(),
-    // « Clients » = points de vente ayant déjà acheté (vente ou commande non annulée).
+    // « Clients » = points de vente ayant au moins une commande validée.
     prisma.pointVente.count({
-      where: { archivedAt: null, OR: [{ ventes: { some: {} } }, { commandes: { some: { statut: { not: "ANNULEE" } } } }] },
+      where: { archivedAt: null, commandes: { some: { valideeAt: { not: null }, statut: { not: "ANNULEE" } } } },
     }),
   ]);
 
-  const [ventesAujourdhui, commandesEnAttente, lignesVenteAujourdhui] = await Promise.all([
-    prisma.vente.count({ where: { createdAt: today } }),
+  // « Ventes » = commandes VALIDÉES aujourd'hui par l'admin (pas la prise de commande terrain).
+  const validees = { valideeAt: today, statut: { in: ["EN_LIVRAISON", "LIVREE"] as ("EN_LIVRAISON" | "LIVREE")[] } };
+  const [commandesValidees, commandesEnAttente, lignesValidees] = await Promise.all([
+    prisma.commande.count({ where: validees }),
     prisma.commande.count({ where: { statut: "EN_ATTENTE", archivedAt: null } }),
-    prisma.venteLigne.findMany({
-      where: { vente: { createdAt: today } },
-      select: { nbCartons: true, produit: { select: { code: true } } },
+    prisma.commandeLigne.findMany({
+      where: { commande: validees },
+      select: {
+        nbSachets: true,
+        nbFilets: true,
+        nbCartons: true,
+        produit: { select: { code: true, ...SELECT_CONV } },
+      },
     }),
   ]);
 
-  const [caAujourdhui, paiementsAujourdhui, stocks] = await Promise.all([
-    prisma.vente.aggregate({
-      where: { createdAt: today },
-      _sum: { montantTotal: true },
-    }),
+  // « Chiffre d'affaires » = argent réellement encaissé aujourd'hui.
+  const [paiementsAujourdhui, stocks] = await Promise.all([
     prisma.paiement.findMany({
-      where: { createdAt: today },
+      where: { datePaiement: today },
       select: { montant: true, estCredit: true },
     }),
     prisma.stock.findMany({
@@ -50,12 +55,12 @@ export async function getDashboardKpis() {
     }),
   ]);
 
-  const cartonsHypo = lignesVenteAujourdhui
-    .filter((l) => l.produit.code === "HYPO")
-    .reduce((s, l) => s + l.nbCartons, 0);
-  const cartonsHtc = lignesVenteAujourdhui
-    .filter((l) => l.produit.code === "HTC")
-    .reduce((s, l) => s + l.nbCartons, 0);
+  const cartonsDe = (code: string) =>
+    arrondiCartons(
+      lignesValidees.filter((l) => l.produit.code === code).reduce((s, l) => s + cartonsEq(l, l.produit), 0)
+    );
+  const cartonsHypo = cartonsDe("HYPO");
+  const cartonsHtc = cartonsDe("HTC");
 
   const encaissements = paiementsAujourdhui
     .filter((p) => !p.estCredit)
@@ -71,11 +76,11 @@ export async function getDashboardKpis() {
     visitesAujourdhui,
     prospectsTotal,
     clientsTotal,
-    ventesAujourdhui,
+    ventesAujourdhui: commandesValidees,
     commandesEnAttente,
     cartonsHypo,
     cartonsHtc,
-    caAujourdhui: Number(caAujourdhui._sum.montantTotal ?? 0),
+    caAujourdhui: encaissements,
     encaissements,
     credits,
     stockHypoSachets: stockHypoStock?.quantiteSachets ?? 0,
@@ -94,16 +99,22 @@ export type DashboardKpis = Awaited<ReturnType<typeof getDashboardKpis>>;
 export async function getCaParBinomeEtVendeur() {
   const today = todayRange();
 
-  const ventes = await prisma.vente.findMany({
-    where: { createdAt: today },
+  const paiements = await prisma.paiement.findMany({
+    where: { datePaiement: today, estCredit: false },
     select: {
-      montantTotal: true,
-      commercial: {
+      montant: true,
+      commande: {
         select: {
-          id: true,
-          nom: true,
-          prenom: true,
-          binome: { select: { id: true, nom: true } },
+          commercial: {
+            select: { id: true, nom: true, prenom: true, binome: { select: { id: true, nom: true } } },
+          },
+        },
+      },
+      vente: {
+        select: {
+          commercial: {
+            select: { id: true, nom: true, prenom: true, binome: { select: { id: true, nom: true } } },
+          },
         },
       },
     },
@@ -112,17 +123,16 @@ export async function getCaParBinomeEtVendeur() {
   const parBinome = new Map<string, number>();
   const parVendeur = new Map<string, { nom: string; montant: number }>();
 
-  for (const v of ventes) {
-    const montant = Number(v.montantTotal);
-    const binomeNom = v.commercial.binome?.nom ?? "Sans binôme";
+  for (const p of paiements) {
+    const commercial = p.commande?.commercial ?? p.vente?.commercial;
+    if (!commercial) continue;
+    const montant = Number(p.montant);
+    const binomeNom = commercial.binome?.nom ?? "Sans binôme";
     parBinome.set(binomeNom, (parBinome.get(binomeNom) ?? 0) + montant);
 
-    const vendeurNom = `${v.commercial.prenom} ${v.commercial.nom}`;
-    const existing = parVendeur.get(v.commercial.id);
-    parVendeur.set(v.commercial.id, {
-      nom: vendeurNom,
-      montant: (existing?.montant ?? 0) + montant,
-    });
+    const vendeurNom = `${commercial.prenom} ${commercial.nom}`;
+    const existing = parVendeur.get(commercial.id);
+    parVendeur.set(commercial.id, { nom: vendeurNom, montant: (existing?.montant ?? 0) + montant });
   }
 
   return {

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { cartonsEq, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 
 /**
  * Agrège les ventes d'une journée donnée dans VentesJournalieres, groupées
@@ -23,7 +24,7 @@ export async function aggregateVentesDuJour(date: Date) {
       commercialId: true,
       commercial: { select: { binomeId: true } },
       pointVente: { select: { villeId: true } },
-      lignes: { select: { nbCartons: true } },
+      lignes: { select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV } } },
     },
   });
 
@@ -48,7 +49,7 @@ export async function aggregateVentesDuJour(date: Date) {
       cartons: 0,
       montant: 0,
     };
-    existant.cartons += v.lignes.reduce((s, l) => s + l.nbCartons, 0);
+    existant.cartons += v.lignes.reduce((s, l) => s + cartonsEq(l, l.produit), 0);
     existant.montant += Number(v.montantTotal);
     groupes.set(cle, existant);
   }
@@ -65,14 +66,14 @@ export async function aggregateVentesDuJour(date: Date) {
           produitId: "",
         },
       },
-      update: { cartonsVendus: g.cartons, montantTotal: g.montant },
+      update: { cartonsVendus: Math.round(g.cartons), montantTotal: g.montant },
       create: {
         date: debut,
         villeId: g.villeId,
         commercialId: g.commercialId,
         binomeId: g.binomeId,
         produitId: "",
-        cartonsVendus: g.cartons,
+        cartonsVendus: Math.round(g.cartons),
         montantTotal: g.montant,
       },
     });
@@ -114,7 +115,7 @@ export async function aggregerPerformanceBinome(anneeMois: string) {
             createdAt: { gte: debut, lte: fin },
           },
         },
-        select: { nbCartons: true },
+        select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV } },
       }),
       prisma.visite.count({
         where: { binomeId: b.id, dateVisite: { gte: debut, lte: fin } },
@@ -127,7 +128,7 @@ export async function aggregerPerformanceBinome(anneeMois: string) {
       }),
     ]);
 
-    const cartonsVendus = lignesVente.reduce((s, l) => s + l.nbCartons, 0);
+    const cartonsVendus = Math.round(lignesVente.reduce((s, l) => s + cartonsEq(l, l.produit), 0));
 
     await prisma.performanceBinome.upsert({
       where: { binomeId_periode: { binomeId: b.id, periode: anneeMois } },

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { cartonsEq, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 import { NOMS_REGIONS, regionDeVille } from "@/lib/geo/cameroun";
 import { assurerVilles } from "@/lib/geo/synchro-villes";
 import { ajouterJours, debutJour, jourDouala } from "@/lib/utils/periode";
@@ -21,7 +22,7 @@ export type ProgressionTerritoires = { regions: LigneTerritoire[]; villes: Ligne
 function mesure(realise: number, objectif: number): MesureTerritoire {
   const pct = objectif > 0 ? (realise / objectif) * 100 : 0;
   return {
-    realise,
+    realise: Math.round(realise * 10) / 10,
     objectif,
     pourcentage: objectif > 0 ? Math.min(999, Math.round(pct)) : 0,
     couleur: pct >= 80 ? "vert" : pct >= 50 ? "orange" : "rouge",
@@ -44,13 +45,13 @@ export async function getProgressionTerritoires(): Promise<ProgressionTerritoire
 
   const [lignesVente, lignesCommande, objectifs, villes] = await Promise.all([
     prisma.venteLigne.findMany({
-      where: { nbCartons: { gt: 0 }, vente: { dateVente: { gte: depuis } } },
-      select: { nbCartons: true, vente: { select: { dateVente: true, pointVente: { select: { villeId: true } } } } },
+      where: { vente: { dateVente: { gte: depuis } } },
+      select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV }, vente: { select: { dateVente: true, pointVente: { select: { villeId: true } } } } },
     }),
     prisma.commandeLigne.findMany({
       // Les commandes issues d'une vente terrain (venteId) sont déjà comptées dans les ventes.
-      where: { nbCartons: { gt: 0 }, commande: { statut: { not: "ANNULEE" }, venteId: null, dateCommande: { gte: depuis } } },
-      select: { nbCartons: true, commande: { select: { dateCommande: true, pointVente: { select: { villeId: true } } } } },
+      where: { commande: { statut: { not: "ANNULEE" }, venteId: null, dateCommande: { gte: depuis } } },
+      select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV }, commande: { select: { dateCommande: true, pointVente: { select: { villeId: true } } } } },
     }),
     prisma.objectifTerritoire.findMany(),
     prisma.ville.findMany({ select: { id: true, nom: true, region: true } }),
@@ -75,8 +76,8 @@ export async function getProgressionTerritoires(): Promise<ProgressionTerritoire
       if (t >= debutMoisMs) cible.MENSUEL += cartons;
     }
   };
-  for (const l of lignesVente) ajouter(l.vente.pointVente.villeId, l.vente.dateVente, l.nbCartons);
-  for (const l of lignesCommande) ajouter(l.commande.pointVente.villeId, l.commande.dateCommande, l.nbCartons);
+  for (const l of lignesVente) ajouter(l.vente.pointVente.villeId, l.vente.dateVente, cartonsEq(l, l.produit));
+  for (const l of lignesCommande) ajouter(l.commande.pointVente.villeId, l.commande.dateCommande, cartonsEq(l, l.produit));
 
   const objectifDe = (niveau: string, cle: string) => {
     const o = vide();

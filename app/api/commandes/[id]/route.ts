@@ -5,12 +5,15 @@ import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { applyStockMovement, InsufficientStockError } from "@/lib/services/stock";
 import { convertToSachets } from "@/lib/services/produits";
+import { rafraichirAlerteLivraison } from "@/lib/jobs/alertes";
 
 export const runtime = "nodejs";
 
 const schema = z.object({
-  statut: z.enum(["EN_ATTENTE", "EN_LIVRAISON", "LIVREE", "ANNULEE"]),
-});
+  statut: z.enum(["EN_ATTENTE", "EN_LIVRAISON", "LIVREE", "ANNULEE"]).optional(),
+  // Date de livraison ajustée par l'admin (AAAA-MM-JJ) ; null pour l'effacer.
+  dateLivraisonPrevue: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+}).refine((d) => d.statut !== undefined || d.dateLivraisonPrevue !== undefined, { message: "Rien à modifier." });
 
 export async function PATCH(
   req: NextRequest,
@@ -24,7 +27,7 @@ export async function PATCH(
     const json = await req.json().catch(() => null);
     const parsed = schema.safeParse(json);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Statut invalide." }, { status: 400 });
+      return NextResponse.json({ error: "Données invalides." }, { status: 400 });
     }
 
     const existante = await prisma.commande.findUnique({
@@ -33,6 +36,7 @@ export async function PATCH(
         id: true,
         statut: true,
         valideeAt: true,
+        dateLivraisonPrevue: true,
         commercialId: true,
         pointVente: {
           select: {
@@ -49,9 +53,34 @@ export async function PATCH(
       return NextResponse.json({ error: "Commande introuvable." }, { status: 404 });
     }
 
+    const nouvelleDate =
+      parsed.data.dateLivraisonPrevue === undefined
+        ? undefined
+        : parsed.data.dateLivraisonPrevue === null
+          ? null
+          : new Date(`${parsed.data.dateLivraisonPrevue}T12:00:00`);
+    const dateChangee =
+      nouvelleDate !== undefined &&
+      (nouvelleDate?.toDateString() ?? null) !== (existante.dateLivraisonPrevue?.toDateString() ?? null);
+
+    // Ajustement de la date seule (sans changer le statut).
+    if (parsed.data.statut === undefined) {
+      if (existante.statut === "ANNULEE" || existante.statut === "LIVREE") {
+        return NextResponse.json({ error: "La date d'une commande livrée ou annulée ne se modifie plus." }, { status: 409 });
+      }
+      const maj = await prisma.commande.update({
+        where: { id: params.id },
+        data: { dateLivraisonPrevue: nouvelleDate },
+        select: { id: true, statut: true },
+      });
+      if (dateChangee) await rafraichirAlerteLivraison(params.id);
+      return NextResponse.json(maj);
+    }
+    const statutCible = parsed.data.statut;
+
     // Une commande déjà (en partie) encaissée ne peut pas être annulée ni repasser en attente :
     // l'argent resterait en caisse sans commande. Il faut passer par une facture d'avoir.
-    if (parsed.data.statut === "ANNULEE" || parsed.data.statut === "EN_ATTENTE") {
+    if (statutCible === "ANNULEE" || statutCible === "EN_ATTENTE") {
       const [nbPaiements, nbAvoirs, nbRetours] = await Promise.all([
         prisma.paiement.count({ where: { commandeId: params.id } }),
         prisma.factureAvoir.count({ where: { commandeId: params.id } }),
@@ -69,7 +98,7 @@ export async function PATCH(
     // remis en stock si la commande est annulée ou réactivée. On compare ce
     // qui est déjà sorti (mouvements de cette commande) à ce qui doit l'être :
     // l'opération est donc idempotente et ne débite jamais deux fois.
-    const doitEtreSortie = ["EN_LIVRAISON", "LIVREE"].includes(parsed.data.statut);
+    const doitEtreSortie = ["EN_LIVRAISON", "LIVREE"].includes(statutCible);
 
     let commande;
     try {
@@ -120,7 +149,8 @@ export async function PATCH(
         return tx.commande.update({
           where: { id: params.id },
           data: {
-            statut: parsed.data.statut,
+            statut: statutCible,
+            ...(nouvelleDate !== undefined ? { dateLivraisonPrevue: nouvelleDate } : {}),
             // Date de la 1re validation ; effacée si la commande redevient « en attente » ou est annulée.
             valideeAt: doitEtreSortie ? (existante.valideeAt ?? new Date()) : null,
           },
@@ -140,7 +170,11 @@ export async function PATCH(
     // Quand l'admin valide une commande (passage en livraison), le
     // commercial qui l'a enregistrée est notifié — il n'a autrement aucun
     // moyen de savoir que sa commande a été traitée avant qu'elle arrive.
-    if (parsed.data.statut === "EN_LIVRAISON" && existante.statut !== "EN_LIVRAISON") {
+    if (dateChangee || statutCible === "EN_LIVRAISON" || statutCible === "ANNULEE" || statutCible === "LIVREE") {
+      await rafraichirAlerteLivraison(params.id);
+    }
+
+    if (statutCible === "EN_LIVRAISON" && existante.statut !== "EN_LIVRAISON") {
       const nomVendeur = existante.pointVente.vendeur || existante.pointVente.nom;
       const quartier = existante.pointVente.quartier?.nom || existante.pointVente.ville?.nom || "";
       const message = quartier

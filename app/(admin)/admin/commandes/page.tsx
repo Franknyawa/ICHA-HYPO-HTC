@@ -229,7 +229,7 @@ export default async function CommandesPage({
                         <FactureButton type="COMMANDE" id={c.id} />
                       </>
                     )}
-                    {peutModifier(session.role) && <CommandeStatusActions id={c.id} statut={c.statut} />}
+                    {peutModifier(session.role) && <CommandeStatusActions id={c.id} statut={c.statut} dateLivraisonPrevue={c.dateLivraisonPrevue?.toISOString() ?? null} />}
                     {peutArchiver && (c.statut === "LIVREE" || c.statut === "ANNULEE") && (
                       <ArchiveButton url={`/api/commandes/${c.id}/archiver`} archive compact />
                     )}

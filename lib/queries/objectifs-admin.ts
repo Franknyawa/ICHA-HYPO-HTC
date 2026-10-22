@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { cartonsEq, arrondiCartons, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 import { getObjectifsIndividuels, couleurPerformance } from "@/lib/queries/commercial-stats";
 
 // Optimisé pour un nombre FIXE de requêtes, peu importe le nombre de
@@ -27,7 +28,7 @@ function plages() {
 
 function withPct(realise: number, objectif: number) {
   return {
-    realise,
+    realise: arrondiCartons(realise),
     objectif,
     pourcentage: objectif > 0 ? Math.min(999, Math.round((realise / objectif) * 100)) : 0,
     couleur: couleurPerformance(objectif > 0 ? (realise / objectif) * 100 : 0),
@@ -41,11 +42,11 @@ export async function getProgressionBinomes() {
     prisma.binome.findMany({ where: { actif: true }, orderBy: { nom: "asc" } }),
     prisma.venteLigne.findMany({
       where: { vente: { createdAt: { gte: debutJour, lte: finJour } } },
-      select: { nbCartons: true, vente: { select: { commercial: { select: { binomeId: true } } } } },
+      select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV }, vente: { select: { commercial: { select: { binomeId: true } } } } },
     }),
     prisma.venteLigne.findMany({
       where: { vente: { createdAt: { gte: debutSemaine } } },
-      select: { nbCartons: true, vente: { select: { commercial: { select: { binomeId: true } } } } },
+      select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV }, vente: { select: { commercial: { select: { binomeId: true } } } } },
     }),
     prisma.objectif.findMany({
       where: {
@@ -62,7 +63,7 @@ export async function getProgressionBinomes() {
     for (const l of lignes) {
       const bId = l.vente.commercial.binomeId;
       if (!bId) continue;
-      m.set(bId, (m.get(bId) ?? 0) + l.nbCartons);
+      m.set(bId, (m.get(bId) ?? 0) + cartonsEq(l, l.produit));
     }
     return m;
   };
@@ -100,15 +101,15 @@ export async function getProgressionCommerciaux() {
     }),
     prisma.venteLigne.findMany({
       where: { vente: { createdAt: { gte: debutJour, lte: finJour } } },
-      select: { nbCartons: true, vente: { select: { commercialId: true } } },
+      select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV }, vente: { select: { commercialId: true } } },
     }),
     prisma.venteLigne.findMany({
       where: { vente: { createdAt: { gte: debutSemaine } } },
-      select: { nbCartons: true, vente: { select: { commercialId: true } } },
+      select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV }, vente: { select: { commercialId: true } } },
     }),
     prisma.venteLigne.findMany({
       where: { vente: { createdAt: { gte: debutMois } } },
-      select: { nbCartons: true, vente: { select: { commercialId: true } } },
+      select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV }, vente: { select: { commercialId: true } } },
     }),
     getObjectifsIndividuels(),
   ]);
@@ -117,7 +118,7 @@ export async function getProgressionCommerciaux() {
     const m = new Map<string, number>();
     for (const l of lignes) {
       const cId = l.vente.commercialId;
-      m.set(cId, (m.get(cId) ?? 0) + l.nbCartons);
+      m.set(cId, (m.get(cId) ?? 0) + cartonsEq(l, l.produit));
     }
     return m;
   };

@@ -90,12 +90,13 @@ async function genererAlertesStock() {
   }
 }
 
-async function genererAlertesCommandes(joursLivraisonProche: number) {
+async function genererAlertesCommandes(joursLivraisonProche: number, commandeId?: string) {
   const maintenant = new Date();
   const dansXJours = new Date(maintenant.getTime() + joursLivraisonProche * 24 * 3600 * 1000);
 
   const commandes = await prisma.commande.findMany({
-    where: { statut: "EN_ATTENTE" },
+    // Commande à traiter OU validée mais pas encore livrée : le rappel de livraison vaut pour les deux.
+    where: { statut: { in: ["EN_ATTENTE", "EN_LIVRAISON"] }, ...(commandeId ? { id: commandeId } : {}) },
     select: {
       id: true,
       dateLivraisonPrevue: true,
@@ -122,6 +123,25 @@ async function genererAlertesCommandes(joursLivraisonProche: number) {
       });
     }
   }
+}
+
+/**
+ * Appelée quand l'admin modifie la date de livraison : les anciens rappels de
+ * cette commande sont clos, puis un nouveau est créé si la livraison tombe
+ * dans la fenêtre de rappel (sinon le cron nocturne le créera à temps).
+ */
+export async function rafraichirAlerteLivraison(commandeId: string) {
+  await prisma.alerte.updateMany({
+    where: {
+      entiteType: "Commande",
+      entiteId: commandeId,
+      type: { in: ["COMMANDE_EN_ATTENTE", "LIVRAISON_RETARD"] },
+      statut: { not: "RESOLUE" },
+    },
+    data: { statut: "RESOLUE", verifieeAt: new Date() },
+  });
+  const seuils = await getSeuilsAlertes();
+  await genererAlertesCommandes(seuils.joursLivraisonProche, commandeId);
 }
 
 async function genererAlertesCredits(joursCreditRetard: number) {

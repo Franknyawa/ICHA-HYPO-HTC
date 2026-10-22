@@ -92,9 +92,9 @@ export function DashboardView({
               href={`/admin/tracking?mode=visites&date=${jour}`}
             />
             <KpiCard
-              label="Ventes"
+              label="Ventes validées"
               valeur={kpis.ventesAujourdhui}
-              sous={`${kpis.cartonsHypo + kpis.cartonsHtc} cartons vendus`}
+              sous={`${String(Math.round((kpis.cartonsHypo + kpis.cartonsHtc) * 10) / 10).replace(".", ",")} cartons (commandes validées)`}
               icone={ShoppingBag}
               ton="violet"
               href={`/admin/factures?dateFrom=${jour}&dateTo=${jour}`}
@@ -102,6 +102,7 @@ export function DashboardView({
             <KpiCard
               label="Chiffre d'affaires"
               valeur={formatFcfa(kpis.caAujourdhui)}
+              sous="argent encaissé aujourd'hui"
               icone={Banknote}
               ton="ambre"
               href={`/admin/rapports?dateFrom=${jour}&dateTo=${jour}`}
@@ -284,8 +285,8 @@ export function DashboardView({
         <section>
           <TitreSection ton="violet">Performance du jour</TitreSection>
           <div className="grid gap-4 md:grid-cols-2">
-            <CaChart title="CA par binôme" items={parBinome} color="#1e3a8a" />
-            <CaChart title="CA par vendeur" items={parVendeur} color="#359980" />
+            <CaChart title="CA encaissé par binôme" items={parBinome} color="#1e3a8a" />
+            <CaChart title="CA encaissé par vendeur" items={parVendeur} color="#359980" />
           </div>
         </section>
 

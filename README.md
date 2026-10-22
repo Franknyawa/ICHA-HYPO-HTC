@@ -1664,3 +1664,12 @@ Règle unique (`lib/services/compte.ts`) : **Solde dû = facturé − avoirs −
 - Une commande n'apparaît plus deux fois dans le profil d'un point de vente (la section « Ventes saisies » est retirée ; la vente reste utilisée pour les statistiques).
 - Rubrique **Clients** : un point de vente n'y apparaît qu'une fois une commande **validée** (en livraison / livrée). Colonnes : commandes validées, cartons réellement commandés (filets/sachets convertis), montant.
 - Une commande en attente se voit uniquement dans Commandes et dans le profil du point de vente.
+
+## Tableau de bord cohérent et date de livraison (22/10/2026)
+
+- **Ventes validées** : commandes validées aujourd'hui par l'admin (statut En livraison / Livrée), quantité en cartons équivalents (cartons + filets + sachets). Une commande seulement saisie sur le terrain n'y figure pas.
+- **Chiffre d'affaires** : argent réellement encaissé aujourd'hui (paiements). Les graphiques « par binôme / par vendeur » suivent la même règle.
+- **Clients** : points de vente avec au moins une commande validée.
+- **Cartons** : toutes les statistiques (objectifs commerciaux, binômes, villes/régions, agrégats nocturnes) convertissent désormais filets et sachets en cartons (`lib/utils/cartons-equiv.ts`).
+- **Date de livraison** : modifiable sur chaque commande à traiter (Commandes), enregistrée immédiatement ; l'alerte de rappel est recréée et apparaît dans Alertes N jours avant (réglage « seuil livraison proche », 2 jours par défaut). Les commandes validées mais non livrées sont aussi suivies.
+- Aucune migration SQL.
