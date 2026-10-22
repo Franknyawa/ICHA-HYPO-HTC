@@ -3,6 +3,7 @@
 // jamais recevoir le même numéro, même si deux admins impriment en même temps.
 
 import { prisma } from "@/lib/prisma";
+import { assurerMontantsConformes } from "@/lib/services/recalcul-prix";
 import {
   libelleModePaiement,
   numeroBonCommande,
@@ -114,6 +115,7 @@ async function agentParDefaut() {
 
 /** Crée la facture au premier appel (numéro attribué) puis la retrouve ; l'agent peut être changé. */
 export async function obtenirFacture(type: TypeDocument, id: string, agentId?: string | null): Promise<FactureJson | null> {
+  await assurerMontantsConformes();
   let doc: {
     montantTotal: unknown;
     modePaiement: string | null;
@@ -188,6 +190,7 @@ export async function obtenirFacture(type: TypeDocument, id: string, agentId?: s
 }
 
 export async function obtenirBonLivraison(commandeId: string): Promise<BonLivraisonJson | null> {
+  await assurerMontantsConformes();
   const c = await prisma.commande.findUnique({
     where: { id: commandeId },
     select: {
@@ -228,6 +231,7 @@ export type BonCommandeJson = {
 
 /** Bon de commande (BCICHA 0000X) d'une commande : repris s'il existe déjà, créé sinon. */
 export async function obtenirBonCommande(commandeId: string): Promise<BonCommandeJson | null> {
+  await assurerMontantsConformes();
   const c = await prisma.commande.findUnique({
     where: { id: commandeId },
     select: {

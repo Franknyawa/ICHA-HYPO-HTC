@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { assurerMontantsConformes } from "@/lib/services/recalcul-prix";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import type { Prisma } from "@prisma/client";
 
@@ -18,6 +19,7 @@ export type ListCommandesParams = {
 };
 
 export async function listCommandes(params: ListCommandesParams) {
+  await assurerMontantsConformes();
   const sp = new URLSearchParams();
   if (params.page) sp.set("page", String(params.page));
   if (params.pageSize) sp.set("pageSize", String(params.pageSize));
@@ -75,6 +77,7 @@ export async function listCommandes(params: ListCommandesParams) {
 export async function countCommandesParStatut(
   params: Omit<ListCommandesParams, "page" | "pageSize" | "statut">
 ) {
+  await assurerMontantsConformes();
   const where: Prisma.CommandeWhereInput = {
     archivedAt: null,
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),

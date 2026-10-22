@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { assurerMontantsConformes } from "@/lib/services/recalcul-prix";
 import { valeurCatalogueLigne } from "@/lib/utils/tarifs";
 import { cartonsEq, arrondiCartons, detailQte, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 import { ajouterJours, debutJour, finJour, jourDouala } from "@/lib/utils/periode";
@@ -11,6 +12,7 @@ function todayRange() {
 }
 
 export async function getDashboardKpis() {
+  await assurerMontantsConformes();
   const today = todayRange();
 
   // Regroupées en 3 lots de 3 requêtes en parallèle (Promise.all), plutôt
@@ -233,6 +235,7 @@ export type BilanCommandesEnCours = {
 
 /** Commandes à traiter (en attente) et validées non livrées (en livraison), cumulées par produit. */
 export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
+  await assurerMontantsConformes();
   const commandes = await prisma.commande.findMany({
     where: { statut: { in: ["EN_ATTENTE", "EN_LIVRAISON"] }, archivedAt: null },
     select: {

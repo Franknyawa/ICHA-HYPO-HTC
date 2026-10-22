@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { assurerMontantsConformes } from "@/lib/services/recalcul-prix";
 import type { Prisma } from "@prisma/client";
 import { valeurCatalogueLigne } from "@/lib/utils/tarifs";
 import { formatMontant } from "@/lib/utils/format";
@@ -554,6 +555,7 @@ export async function getRapport(
   vue: RapportVue = "commercial",
   page = 1
 ): Promise<RapportTableau> {
+  await assurerMontantsConformes();
   const filters = vue === "historique" ? filtresHistorique(filtersBrut) : filtersBrut;
 
   if (vue === "produit") return rapportProduit(filters);
@@ -781,6 +783,7 @@ export async function getApercu(
   vue: RapportVue,
   cle: string
 ): Promise<ApercuRapport> {
+  await assurerMontantsConformes();
   let filters = vue === "historique" ? filtresHistorique(filtersBrut) : filtersBrut;
   let titreCible = "";
 

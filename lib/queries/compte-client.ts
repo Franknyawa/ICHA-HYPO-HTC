@@ -2,6 +2,7 @@
 // journal chronologique Débit / Crédit avec solde cumulé, et récapitulatif par facture.
 
 import { prisma } from "@/lib/prisma";
+import { assurerMontantsConformes } from "@/lib/services/recalcul-prix";
 import { numeroAvoir, numeroFacture, numeroRetour, libelleModePaiement } from "@/lib/utils/documents";
 
 const num = (x: unknown) => Number(x ?? 0);
@@ -50,6 +51,7 @@ export type CompteClient = {
 };
 
 export async function getCompteClient(pointVenteId: string): Promise<CompteClient> {
+  await assurerMontantsConformes();
   const commandes = await prisma.commande.findMany({
     where: { pointVenteId, statut: { in: ["EN_ATTENTE", "EN_LIVRAISON", "LIVREE"] } },
     orderBy: { dateCommande: "asc" },

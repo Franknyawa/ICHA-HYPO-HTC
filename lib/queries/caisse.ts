@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { assurerMontantsConformes } from "@/lib/services/recalcul-prix";
 
 export type Canal = "ESPECES" | "MOBILE_MONEY" | "BANQUE";
 
@@ -73,6 +74,7 @@ type LigneCreance = {
  * restent rapides.
  */
 export async function getCreditsAEncaisser(): Promise<CreditAEncaisser[]> {
+  await assurerMontantsConformes();
   const rows = await prisma.$queryRaw<LigneCreance[]>`
     SELECT c.id,
            (c.montant_total - COALESCE(av.credit, 0))::float8 AS total,
@@ -159,6 +161,7 @@ export async function getStockValorise(): Promise<LigneStock[]> {
 }
 
 export async function getCaisse(debut: Date | null, fin: Date | null) {
+  await assurerMontantsConformes();
   const plage = debut && fin ? { gte: debut, lte: fin } : undefined;
 
   const [paiementsPeriode, paiementsTotal, opsPeriode, opsTotal, commandesValidees, avoirsPeriode, retoursPeriode, credits, stock] = await Promise.all([
@@ -308,6 +311,7 @@ export type DonneesCaisse = Awaited<ReturnType<typeof getCaisse>>;
 
 /** Version légère pour le tableau de bord : solde cumulé + mouvements du jour. */
 export async function getCaisseResume(debut: Date, fin: Date) {
+  await assurerMontantsConformes();
   const plage = { gte: debut, lte: fin };
   const [pTotal, oTotal, pJour, oJour, credits, stock] = await Promise.all([
     prisma.paiement.aggregate({ _sum: { montant: true } }),

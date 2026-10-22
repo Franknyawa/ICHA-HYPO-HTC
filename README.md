@@ -1699,3 +1699,4 @@ Cumul des commandes en attente de validation et des commandes validées à livre
 - Champ « Cartons » des formulaires (terrain, relances, nouvelle commande bureau) : pas de 0,5. Le demi-carton est enregistré en sachets (HYPO) ou en filets (HTC) ; la facture l'affiche en 0,5 carton, sans remise.
 - Moteur commun : `lib/utils/tarifs.ts` (`sousTotal`, `normaliserCartons`, `valeurCatalogueLigne`), utilisé par le serveur, le terrain hors ligne, les avoirs/retours, les estimations.
 - Mise à jour des données existantes : Paramètres > Tarifs > « Règle du demi-carton » (Simuler puis Mettre à jour). Aucun SQL.
+- Mise en conformité automatique : à l'ouverture des pages Commandes, Caisse, Tableau de bord, Rapports, profil client et à la génération des documents, les montants des lignes avec sachets/filets sont recalculés selon la règle du demi-carton (`lib/services/recalcul-prix.ts`, au plus 1 fois / minute). Le bouton des Paramètres reste disponible.
