@@ -233,12 +233,17 @@ export default async function CommandesPage({
                         <FactureButton type="COMMANDE" id={c.id} />
                       </>
                     )}
-                    {peutModifier(session.role) && <CommandeStatusActions id={c.id} statut={c.statut} dateLivraisonPrevue={c.dateLivraisonPrevue?.toISOString() ?? null} />}
                     {peutArchiver && (c.statut === "LIVREE" || c.statut === "ANNULEE") && (
                       <ArchiveButton url={`/api/commandes/${c.id}/archiver`} archive compact />
                     )}
                   </div>
                 </div>
+
+                {peutModifier(session.role) && (
+                  <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-slate-800/60">
+                    <CommandeStatusActions id={c.id} statut={c.statut} dateLivraisonPrevue={c.dateLivraisonPrevue?.toISOString() ?? null} />
+                  </div>
+                )}
               </div>
             );
           })}

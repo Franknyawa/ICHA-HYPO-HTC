@@ -58,19 +58,21 @@ export function CommandeStatusActions({
 
   const champDate =
     statut === "EN_ATTENTE" || statut === "EN_LIVRAISON" ? (
-      <div className="flex items-center gap-1.5">
-        <label className="text-[11px] text-slate-500 dark:text-slate-400">Livraison</label>
+      <div className="flex items-end gap-2">
+        <div className="flex flex-col gap-0.5">
+        <label className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Date de livraison</label>
         <input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900"
+          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-900"
         />
+        </div>
         {modifiee && (
           <button
             onClick={enregistrerDate}
             disabled={saving}
-            className="rounded-lg bg-brand px-2 py-1 text-xs font-semibold text-white disabled:opacity-50"
+            className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
           >
             Enregistrer
           </button>
@@ -139,10 +141,10 @@ export function CommandeStatusActions({
   })();
 
   return (
-    <div className="flex flex-col items-start gap-1.5">
-      {champDate}
+    <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+      {champDate ?? <span />}
       {boutons}
-      {erreur && <p className="max-w-[220px] text-[11px] text-alert">{erreur}</p>}
+      {erreur && <p className="w-full text-[11px] text-alert">{erreur}</p>}
     </div>
   );
 }
