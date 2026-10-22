@@ -56,6 +56,7 @@ export default async function CommandesPage({
     statut?: string;
     villeId?: string;
     commercialId?: string;
+    binomeId?: string;
     dateFrom?: string;
     dateTo?: string;
   };
@@ -66,12 +67,13 @@ export default async function CommandesPage({
   const statut = (searchParams.statut as StatutCommandeFiltre | undefined) ?? undefined;
   const villeId = searchParams.villeId ?? "";
   const commercialId = searchParams.commercialId ?? "";
+  const binomeId = searchParams.binomeId ?? "";
   const dateFrom = searchParams.dateFrom ?? "";
   const dateTo = searchParams.dateTo ?? "";
 
-  const filtresSansStatut = { villeId, commercialId, dateFrom, dateTo };
+  const filtresSansStatut = { villeId, commercialId, binomeId, dateFrom, dateTo };
 
-  const [{ data, pagination }, { parStatut, total: totalToutStatut }, villes, commerciaux] = await Promise.all([
+  const [{ data, pagination }, { parStatut, total: totalToutStatut }, villes, commerciaux, binomes] = await Promise.all([
     listCommandes({ page, statut, ...filtresSansStatut }),
     countCommandesParStatut(filtresSansStatut),
     listerVilles(),
@@ -80,9 +82,10 @@ export default async function CommandesPage({
       orderBy: { nom: "asc" },
       select: { id: true, nom: true, prenom: true },
     }),
+    prisma.binome.findMany({ orderBy: { nom: "asc" }, select: { id: true, nom: true } }),
   ]);
 
-  const baseQuery = { statut, villeId, commercialId, dateFrom, dateTo };
+  const baseQuery = { statut, villeId, commercialId, binomeId, dateFrom, dateTo };
 
   return (
     <main>
@@ -130,7 +133,7 @@ export default async function CommandesPage({
         </div>
 
         {/* Filtres */}
-        <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-4" action="/admin/commandes">
+        <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-5" action="/admin/commandes">
           <select name="statut" defaultValue={statut ?? ""} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100">
             <option value="">Tous les statuts</option>
             <option value="EN_ATTENTE">En attente</option>
@@ -150,11 +153,17 @@ export default async function CommandesPage({
               <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>
             ))}
           </select>
+          <select name="binomeId" defaultValue={binomeId} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100">
+            <option value="">Tous les binômes</option>
+            {binomes.map((b) => (
+              <option key={b.id} value={b.id}>{b.nom}</option>
+            ))}
+          </select>
           <div className="grid grid-cols-2 gap-2">
             <input type="date" name="dateFrom" defaultValue={dateFrom} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100" />
             <input type="date" name="dateTo" defaultValue={dateTo} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100" />
           </div>
-          <button type="submit" className="col-span-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white md:col-span-4">
+          <button type="submit" className="col-span-2 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white md:col-span-5">
             Filtrer
           </button>
         </form>

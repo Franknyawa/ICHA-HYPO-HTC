@@ -12,6 +12,7 @@ export type ListCommandesParams = {
   statuts?: StatutCommandeFiltre[];
   villeId?: string;
   commercialId?: string;
+  binomeId?: string;
   dateFrom?: string;
   dateTo?: string;
 };
@@ -27,6 +28,7 @@ export async function listCommandes(params: ListCommandesParams) {
     ...(params.statut ? { statut: params.statut } : params.statuts ? { statut: { in: params.statuts } } : {}),
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),
     ...(params.commercialId ? { commercialId: params.commercialId } : {}),
+    ...(params.binomeId ? { commercial: { binomeId: params.binomeId } } : {}),
     ...(params.dateFrom || params.dateTo
       ? {
           dateCommande: {
@@ -77,6 +79,7 @@ export async function countCommandesParStatut(
     archivedAt: null,
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),
     ...(params.commercialId ? { commercialId: params.commercialId } : {}),
+    ...(params.binomeId ? { commercial: { binomeId: params.binomeId } } : {}),
     ...(params.dateFrom || params.dateTo
       ? {
           dateCommande: {
