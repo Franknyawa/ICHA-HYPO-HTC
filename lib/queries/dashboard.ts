@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { cartonsEq, arrondiCartons, SELECT_CONV } from "@/lib/utils/cartons-equiv";
+import { cartonsEq, arrondiCartons, detailQte, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 import { ajouterJours, debutJour, finJour, jourDouala } from "@/lib/utils/periode";
 
 // « Aujourd'hui » = la journée du Cameroun (UTC+1), quel que soit le fuseau
@@ -221,3 +221,72 @@ export async function getVisitesParJour(jours = 30) {
 }
 
 export type VisitesParJour = Awaited<ReturnType<typeof getVisitesParJour>>;
+
+export type BilanCommandesEnCours = {
+  statut: "EN_ATTENTE" | "EN_LIVRAISON";
+  nbCommandes: number;
+  cartons: number;
+  montant: number;
+  produits: { code: string; nom: string; detail: string; cartons: number; montant: number }[];
+}[];
+
+/** Commandes à traiter (en attente) et validées non livrées (en livraison), cumulées par produit. */
+export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
+  const commandes = await prisma.commande.findMany({
+    where: { statut: { in: ["EN_ATTENTE", "EN_LIVRAISON"] }, archivedAt: null },
+    select: {
+      statut: true,
+      montantTotal: true,
+      lignes: {
+        select: {
+          nbSachets: true,
+          nbFilets: true,
+          nbCartons: true,
+          montant: true,
+          produit: {
+            select: { code: true, nom: true, sachetsParCarton: true, filetsParCarton: true, prixSachet: true, prixFilet: true, prixCarton: true },
+          },
+        },
+      },
+    },
+  });
+
+  return (["EN_ATTENTE", "EN_LIVRAISON"] as const).map((statut) => {
+    const liste = commandes.filter((c) => c.statut === statut);
+    const parProduit = new Map<string, { code: string; nom: string; nbCartons: number; nbFilets: number; nbSachets: number; cartons: number; montant: number }>();
+    for (const c of liste) {
+      const valeurs = c.lignes.map((l) => {
+        const m = Number(l.montant);
+        return m > 0
+          ? m
+          : l.nbCartons * Number(l.produit.prixCarton) + l.nbFilets * Number(l.produit.prixFilet ?? 0) + l.nbSachets * Number(l.produit.prixSachet);
+      });
+      const somme = valeurs.reduce((s, x) => s + x, 0);
+      c.lignes.forEach((l, i) => {
+        const g = parProduit.get(l.produit.code) ?? { code: l.produit.code, nom: l.produit.nom, nbCartons: 0, nbFilets: 0, nbSachets: 0, cartons: 0, montant: 0 };
+        g.nbCartons += l.nbCartons;
+        g.nbFilets += l.nbFilets;
+        g.nbSachets += l.nbSachets;
+        g.cartons += cartonsEq(l, l.produit);
+        g.montant += somme > 0 ? (Number(c.montantTotal) * valeurs[i]) / somme : 0;
+        parProduit.set(l.produit.code, g);
+      });
+    }
+    const produits = [...parProduit.values()]
+      .sort((a, b) => b.cartons - a.cartons)
+      .map((g) => ({
+        code: g.code,
+        nom: g.nom,
+        detail: detailQte(g),
+        cartons: arrondiCartons(g.cartons),
+        montant: Math.round(g.montant),
+      }));
+    return {
+      statut,
+      nbCommandes: liste.length,
+      cartons: arrondiCartons(produits.reduce((s, p) => s + p.cartons, 0)),
+      montant: produits.reduce((s, p) => s + p.montant, 0),
+      produits,
+    };
+  });
+}

@@ -1679,3 +1679,11 @@ Règle unique (`lib/services/compte.ts`) : **Solde dû = facturé − avoirs −
 - Quantités converties en cartons : 1 carton HYPO = 112 sachets, 1/2 carton = 56 ; 1 carton HTC = 12 filets = 120 sachets.
 - Les commandes affichent l'équivalent indicatif : « HYPO — 56 sachets (1/2 carton) » (`libelleCartons`).
 - Les dates des rapports se filtrent sur la date de validation.
+
+### Rapports détaillés par produit et rappel de livraison (22/10/2026)
+- Vues Commercial / Point de vente / Ville / Quartier / Historique : colonnes « <PRODUIT> cartons » et « <PRODUIT> CA » pour chaque produit, puis total cartons et CA.
+- Détail des ventes : « HYPO : 56 sachets (1/2 carton) » ; les fiches (aperçu) montrent quantités saisies + équivalent carton par produit et par vente.
+- Rappel de livraison : fenêtre par défaut portée à 5 jours (Paramètres > Seuils des alertes). Commandes à traiter ET validées non livrées. Valider ou changer la date recrée le rappel.
+
+### Bloc « Commandes en cours » (tableau de bord)
+Cumul des commandes en attente de validation et des commandes validées à livrer : nombre, quantités par produit (unités saisies), équivalent en cartons et valeur, plus le total en cours.

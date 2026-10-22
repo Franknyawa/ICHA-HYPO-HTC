@@ -2,6 +2,7 @@ import { requireAdminPage } from "@/lib/auth/rbac";
 import {
   getDashboardKpis,
   getCaParBinomeEtVendeur,
+  getCommandesEnCours,
   getObservationsRecentes,
   getVisitesParJour,
 } from "@/lib/queries/dashboard";
@@ -24,10 +25,11 @@ export default async function AdminDashboardPage() {
   // Deux lots de requêtes en parallèle plutôt qu'un seul gros : reste sous le
   // nombre de connexions du pool Prisma.
   const [kpis, visites] = await Promise.all([getDashboardKpis(), getVisitesParJour(30)]);
-  const [caisse, { parBinome, parVendeur }, observations] = await Promise.all([
+  const [caisse, { parBinome, parVendeur }, observations, enCours] = await Promise.all([
     getCaisseResume(debutJour(jour), finJour(jour)),
     getCaParBinomeEtVendeur(),
     getObservationsRecentes(6),
+    getCommandesEnCours(),
   ]);
 
   const dateLongue = new Date().toLocaleDateString("fr-FR", {
@@ -45,6 +47,7 @@ export default async function AdminDashboardPage() {
       dateLongue={dateLongue}
       jour={jour}
       kpis={kpis}
+      enCours={enCours}
       visites={visites}
       caisse={caisse}
       parBinome={parBinome}

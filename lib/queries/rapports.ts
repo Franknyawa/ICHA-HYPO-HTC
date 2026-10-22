@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { formatMontant } from "@/lib/utils/format";
+import { detailQte, libelleCartons } from "@/lib/utils/cartons-equiv";
 
 // ---------------------------------------------------------------------------
 // Rapports — même modèle que BELGRAVIA : 7 vues (commercial, point de vente,
@@ -69,6 +70,8 @@ export type ApercuRapport = {
     nom: string;
     gamme: string;
     quantites: string;
+    /** « 1/2 carton » : équivalent de la quantité saisie */
+    cartonsEquiv: string;
     cartons: number;
     ca: number;
     part: number;
@@ -76,6 +79,8 @@ export type ApercuRapport = {
   ventes: {
     id: string;
     date: string;
+    /** « HYPO : 56 sachets (1/2 carton) » pour chaque produit de la vente */
+    detail: string;
     commercial: string;
     pointVente: string;
     ville: string;
@@ -331,6 +336,8 @@ type Evt = {
   ca?: number;
   reste?: number;
   cartons?: number;
+  /** Détail par produit (code → cartons équivalents et CA) */
+  parProduit?: Map<string, { cartons: number; ca: number }>;
 };
 
 function moisDe(d: Date) {
@@ -399,6 +406,13 @@ async function chargerEvenements(filters: RapportFilters) {
     const ca = retenues.reduce((s, l) => s + l.ca, 0);
     const reste = retenues.reduce((s, l) => s + l.reste, 0);
     const cartons = retenues.reduce((s, l) => s + l.cartons, 0);
+    const parProduit = new Map<string, { cartons: number; ca: number }>();
+    for (const l of retenues) {
+      const g = parProduit.get(l.code) ?? { cartons: 0, ca: 0 };
+      g.cartons += l.cartons;
+      g.ca += l.ca;
+      parProduit.set(l.code, g);
+    }
     evts.push({
       type: "vente",
       date: v.dateVente,
@@ -415,6 +429,7 @@ async function chargerEvenements(filters: RapportFilters) {
       ca,
       reste,
       cartons,
+      parProduit,
     });
   }
 
@@ -561,9 +576,8 @@ export async function getRapport(
       const reste = retenues.reduce((s, l) => s + l.reste, 0);
       const resume =
         retenues
-          .filter((l) => l.cartons > 0)
-          .map((l) => `${l.code} ${formatQte(l.cartons)}c`)
-          .join(", ") || "—";
+          .map((l) => `${l.code} : ${detailQte(l)} (${libelleCartons(l.cartons)})`)
+          .join(" · ") || "—";
       const date = v.dateVente.toLocaleDateString("fr-FR");
       const com = `${v.commercial.prenom} ${v.commercial.nom}`;
       return {
@@ -601,8 +615,43 @@ export async function getRapport(
     liste = liste.sort((a, b) => b.m.ca - a.m.ca || a.cle.libelle.localeCompare(b.cle.libelle));
   }
 
+  // Détail par produit : cartons équivalents et CA de chaque produit, par ligne.
+  const codes = [...new Set(evts.flatMap((e) => (e.parProduit ? [...e.parProduit.keys()] : [])))].sort();
+  const parProduitDe = new Map<string, Map<string, { cartons: number; ca: number }>>();
+  const ajouterProd = (k: string, e: Evt) => {
+    if (!e.parProduit) return;
+    const cible = parProduitDe.get(k) ?? new Map<string, { cartons: number; ca: number }>();
+    for (const [code, v] of e.parProduit) {
+      const x = cible.get(code) ?? { cartons: 0, ca: 0 };
+      x.cartons += v.cartons;
+      x.ca += v.ca;
+      cible.set(code, x);
+    }
+    parProduitDe.set(k, cible);
+  };
+  for (const e of evts) {
+    const c = cleDe(vue, e);
+    if (c) ajouterProd(c.cle, e);
+    ajouterProd("__total__", e);
+  }
+  const celluleProduits = (k: string) => {
+    const map = parProduitDe.get(k);
+    const cells: string[] = [];
+    const brut: number[] = [];
+    for (const code of codes) {
+      const x = map?.get(code) ?? { cartons: 0, ca: 0 };
+      cells.push(formatQte(x.cartons), fcfa(x.ca));
+      brut.push(arrondi(x.cartons), Math.round(x.ca));
+    }
+    return { cells, brut };
+  };
+  const NB_COMPTEURS = 3;
+  const inserer = <T,>(tab: T[], ajout: T[]) => [...tab.slice(0, NB_COMPTEURS), ...ajout, ...tab.slice(NB_COMPTEURS)];
+
   const lignes = liste.map(({ cle, m }) => {
-    const mes = ligneMesures(m, totaux.ca, true);
+    const mesBase = ligneMesures(m, totaux.ca, true);
+    const pc = celluleProduits(cle.cle);
+    const mes = { cells: inserer(mesBase.cells, pc.cells), brut: inserer(mesBase.brut as (string | number)[], pc.brut) };
     const libelle = vue === "historique" ? libelleMois(cle.cle) : cle.libelle;
     const texte = cle.sous && vue !== "commercial" ? [libelle, cle.sous] : [libelle];
     return {
@@ -620,10 +669,19 @@ export async function getRapport(
     historique: "Mois",
   }[vue] as string;
   const colSecondaire = vue === "point_vente" ? "Ville · quartier" : vue === "quartier" ? "Ville" : null;
-  const colonnes = [colonnePrincipale, ...(colSecondaire ? [colSecondaire] : []), ...COLS_MESURES];
+  const colsProduits = codes.flatMap((c) => [`${c} cartons`, `${c} CA`]);
+  const colonnes = [
+    colonnePrincipale,
+    ...(colSecondaire ? [colSecondaire] : []),
+    ...COLS_MESURES.slice(0, NB_COMPTEURS),
+    ...colsProduits,
+    ...COLS_MESURES.slice(NB_COMPTEURS).map((c) => (codes.length > 0 && c === "Cartons vendus" ? "Total cartons" : c)),
+  ];
   const nbColsTexte = colSecondaire ? 2 : 1;
 
-  const tm = ligneMesures(totaux, totaux.ca, true);
+  const tmBase = ligneMesures(totaux, totaux.ca, true);
+  const tpc = celluleProduits("__total__");
+  const tm = { cells: inserer(tmBase.cells, tpc.cells), brut: inserer(tmBase.brut as (string | number)[], tpc.brut) };
   const remplissage = Array(nbColsTexte - 1).fill("");
   return {
     vue,
@@ -795,6 +853,7 @@ export async function getApercu(
     lignesVentes.push({
       id: v.id,
       date: v.dateVente.toISOString(),
+      detail: retenues.map((l) => `${l.code} : ${detailQte(l)} (${libelleCartons(l.cartons)})`).join(" · ") || "—",
       commercial: `${v.commercial.prenom} ${v.commercial.nom}`,
       pointVente: v.pointVente.nom,
       ville: v.pointVente.ville.nom,
@@ -816,6 +875,7 @@ export async function getApercu(
       quantites: [g.cart ? `${g.cart} carton${g.cart > 1 ? "s" : ""}` : "", g.fil ? `${g.fil} filet${g.fil > 1 ? "s" : ""}` : "", g.sach ? `${g.sach} sachet${g.sach > 1 ? "s" : ""}` : ""]
         .filter(Boolean)
         .join(" · ") || "—",
+      cartonsEquiv: libelleCartons(g.cartons),
       cartons: arrondi(g.cartons),
       ca: Math.round(g.ca),
       part: totalCa > 0 ? arrondi((g.ca / totalCa) * 100, 1) : 0,

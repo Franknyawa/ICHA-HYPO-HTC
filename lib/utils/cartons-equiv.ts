@@ -30,3 +30,16 @@ export function libelleCartons(n: number): string {
   else txt = String(r).replace(".", ",");
   return `${txt} carton${r > 1 ? "s" : ""}`;
 }
+
+/** « 1 carton, 2 filets, 56 sachets » (unités saisies, au singulier/pluriel). */
+export function detailQte(l: LigneQte): string {
+  return (
+    [
+      l.nbCartons > 0 ? `${l.nbCartons} carton${l.nbCartons > 1 ? "s" : ""}` : "",
+      l.nbFilets > 0 ? `${l.nbFilets} filet${l.nbFilets > 1 ? "s" : ""}` : "",
+      l.nbSachets > 0 ? `${l.nbSachets} sachet${l.nbSachets > 1 ? "s" : ""}` : "",
+    ]
+      .filter(Boolean)
+      .join(", ") || "—"
+  );
+}

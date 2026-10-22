@@ -8,7 +8,7 @@ const SEUILS_DEFAUT = {
   joursCreditRetard: 7,
   joursProspectARelancer: 5,
   joursClientInactif: 30,
-  joursLivraisonProche: 2,
+  joursLivraisonProche: 5,
 };
 
 const CLES_SEUILS: Record<keyof typeof SEUILS_DEFAUT, string> = {

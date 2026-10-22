@@ -157,7 +157,7 @@ export function ApercuRapport({
                         <tr key={p.code} className="border-b border-slate-100">
                           <td className="py-2 pr-3 font-medium">{p.code} — {p.nom}</td>
                           <td className="py-2 pr-3 text-slate-600">{p.gamme}</td>
-                          <td className="py-2 pr-3 text-slate-600">{p.quantites}</td>
+                          <td className="py-2 pr-3 text-slate-600">{p.quantites}{p.quantites !== "—" ? ` (${p.cartonsEquiv})` : ""}</td>
                           <td className="py-2 pr-3 text-right">{qte(p.cartons)}</td>
                           <td className="py-2 pr-3 text-right">{fcfa(p.ca)}</td>
                           <td className="py-2 text-right">{qte(p.part)} %</td>
@@ -185,6 +185,7 @@ export function ApercuRapport({
                     <th className="py-2 pr-3">Commercial</th>
                     <th className="py-2 pr-3">Point de vente</th>
                     <th className="py-2 pr-3">Ville</th>
+                    <th className="py-2 pr-3">Produits</th>
                     <th className="py-2 pr-3 text-right">Cartons</th>
                     <th className="py-2 pr-3 text-right">CA</th>
                     <th className="py-2 pr-3 text-right">Payé</th>
@@ -198,6 +199,7 @@ export function ApercuRapport({
                       <td className="py-2 pr-3">{v.commercial}</td>
                       <td className="py-2 pr-3">{v.pointVente}{v.client ? ` (${v.client})` : ""}</td>
                       <td className="py-2 pr-3">{v.ville}</td>
+                      <td className="py-2 pr-3">{v.detail}</td>
                       <td className="py-2 pr-3 text-right">{qte(v.cartons)}</td>
                       <td className="whitespace-nowrap py-2 pr-3 text-right">{fcfa(v.ca)}</td>
                       <td className="whitespace-nowrap py-2 pr-3 text-right">{fcfa(v.paye)}</td>
@@ -206,7 +208,7 @@ export function ApercuRapport({
                   ))}
                   {data.ventes.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="py-4 text-center text-slate-400">Aucune vente.</td>
+                      <td colSpan={9} className="py-4 text-center text-slate-400">Aucune vente.</td>
                     </tr>
                   )}
                 </tbody>

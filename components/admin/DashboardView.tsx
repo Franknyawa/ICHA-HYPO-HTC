@@ -1,4 +1,4 @@
-import type { DashboardKpis, VisitesParJour } from "@/lib/queries/dashboard";
+import type { DashboardKpis, VisitesParJour, BilanCommandesEnCours } from "@/lib/queries/dashboard";
 import type { getCaisseResume } from "@/lib/queries/caisse";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -25,6 +25,10 @@ function formatFcfa(n: number) {
   return new Intl.NumberFormat("fr-FR").format(Math.round(n)) + " FCFA";
 }
 
+function fmtCartons(n: number) {
+  return String(Math.round(n * 10) / 10).replace(".", ",");
+}
+
 function tendance(auj: number, hier: number) {
   const d = auj - hier;
   if (d === 0) return `comme hier (${hier})`;
@@ -36,6 +40,7 @@ export function DashboardView({
   dateLongue,
   jour,
   kpis,
+  enCours,
   visites,
   caisse,
   parBinome,
@@ -50,6 +55,7 @@ export function DashboardView({
   dateLongue: string;
   jour: string;
   kpis: DashboardKpis;
+  enCours: BilanCommandesEnCours;
   visites: VisitesParJour;
   caisse: Awaited<ReturnType<typeof getCaisseResume>>;
   parBinome: { nom: string; montant: number }[];
@@ -126,6 +132,59 @@ export function DashboardView({
               href="/admin/commandes?statut=EN_ATTENTE"
             />
           </div>
+        </section>
+
+        {/* Commandes en cours : cumul par produit */}
+        <section>
+          <TitreSection ton="rose">Commandes en cours</TitreSection>
+          <Panneau
+            titre={`${enCours.reduce((s, b) => s + b.nbCommandes, 0)} commande(s) en cours · ${fmtCartons(enCours.reduce((s, b) => s + b.cartons, 0))} cartons`}
+            sousTitre={`Valeur totale : ${formatFcfa(enCours.reduce((s, b) => s + b.montant, 0))}`}
+            icone={Truck}
+            ton="rose"
+          >
+            <div className="grid gap-6 md:grid-cols-2">
+              {enCours.map((b) => (
+                <div key={b.statut}>
+                  <div className="mb-2 flex items-baseline justify-between gap-3">
+                    <Link
+                      href={`/admin/commandes?statut=${b.statut}`}
+                      className="text-sm font-bold text-slate-800 hover:underline dark:text-slate-100"
+                    >
+                      {b.statut === "EN_ATTENTE" ? "En attente de validation" : "Validées, à livrer"}
+                    </Link>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {b.nbCommandes} commande(s) · {fmtCartons(b.cartons)} cartons · {formatFcfa(b.montant)}
+                    </span>
+                  </div>
+                  {b.produits.length === 0 ? (
+                    <p className="py-4 text-sm text-slate-400">Rien en cours.</p>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-left text-xs text-slate-400 dark:border-slate-800">
+                          <th className="py-1.5 font-medium">Produit</th>
+                          <th className="py-1.5 font-medium">Quantité</th>
+                          <th className="py-1.5 text-right font-medium">Cartons</th>
+                          <th className="py-1.5 text-right font-medium">Valeur</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {b.produits.map((p) => (
+                          <tr key={p.code} className="border-b border-slate-50 dark:border-slate-800/60">
+                            <td className="py-2 font-semibold text-slate-800 dark:text-slate-100">{p.code}</td>
+                            <td className="py-2 text-slate-600 dark:text-slate-300">{p.detail}</td>
+                            <td className="py-2 text-right tabular-nums">{fmtCartons(p.cartons)}</td>
+                            <td className="whitespace-nowrap py-2 text-right tabular-nums">{formatFcfa(p.montant)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Panneau>
         </section>
 
         {/* Points visités par jour */}
