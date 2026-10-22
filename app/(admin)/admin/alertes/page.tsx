@@ -26,6 +26,7 @@ const CONFIG_TYPE: Record<string, { label: string; icon: React.ElementType; coul
   CREDIT_RETARD: { label: "Crédit en retard", icon: CreditCard, couleur: "#b91c1c", bg: "#fef2f2" },
   PROSPECT_A_RELANCER: { label: "Prospect à relancer", icon: UserPlus, couleur: "#4338ca", bg: "#eef2ff" },
   CLIENT_INACTIF: { label: "Client inactif", icon: UserX, couleur: "#475569", bg: "#f8fafc" },
+  ENCAISSEMENT_A_FAIRE: { label: "Encaissement à faire", icon: CreditCard, couleur: "#b45309", bg: "#fffbeb" },
   OBJECTIF_NON_ATTEINT: { label: "Objectif non atteint", icon: TrendingDown, couleur: "#b45309", bg: "#fffbeb" },
 };
 

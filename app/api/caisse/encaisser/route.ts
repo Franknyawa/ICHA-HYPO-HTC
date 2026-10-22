@@ -74,6 +74,12 @@ export async function POST(req: NextRequest) {
         // Soldée : le mode réellement utilisé devient celui de la commande.
         if (type === "VENTE") await tx.vente.update({ where: { id }, data: { modePaiement: canal } });
         else await tx.commande.update({ where: { id }, data: { modePaiement: canal } });
+        if (type === "COMMANDE") {
+          await tx.alerte.updateMany({
+            where: { type: "ENCAISSEMENT_A_FAIRE", entiteType: "Commande", entiteId: id, statut: { not: "RESOLUE" } },
+            data: { statut: "RESOLUE", verifieeParId: session.userId, verifieeAt: new Date() },
+          });
+        }
         if (type === "VENTE") {
           await tx.alerte.updateMany({
             where: { type: "CREDIT_RETARD", entiteType: "Vente", entiteId: id, statut: { not: "RESOLUE" } },

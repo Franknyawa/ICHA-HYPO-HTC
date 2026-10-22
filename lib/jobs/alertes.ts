@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { dusParVente } from "@/lib/services/compte";
 import type { TypeAlerte } from "@prisma/client";
+import { getCreditsAEncaisser } from "@/lib/queries/caisse";
+import { jourDouala } from "@/lib/utils/periode";
 
 // Seuils par défaut si jamais réglés en back office — voir
 // /admin/parametres, section "Seuils des alertes".
@@ -142,6 +144,38 @@ export async function rafraichirAlerteLivraison(commandeId: string) {
   });
   const seuils = await getSeuilsAlertes();
   await genererAlertesCommandes(seuils.joursLivraisonProche, commandeId);
+}
+
+/**
+ * Encaissements de la journée non faits : une commande validée dont la date de
+ * livraison est passée (ou est aujourd'hui, après 17 h à Douala) et qui n'est
+ * pas soldée. L'alerte se ferme toute seule quand l'encaissement est validé.
+ */
+async function genererAlertesEncaissements() {
+  const aujourdhui = jourDouala();
+  const heureDouala = (new Date().getUTCHours() + 1) % 24;
+  const creances = await getCreditsAEncaisser();
+  for (const c of creances) {
+    if (!c.dateLivraisonPrevue) continue;
+    const jour = jourDouala(c.dateLivraisonPrevue);
+    const echu = jour < aujourdhui || (jour === aujourdhui && heureDouala >= 17);
+    if (!echu) continue;
+    await creerAlerteSiAbsente({
+      type: "ENCAISSEMENT_A_FAIRE",
+      message: `Encaissement non fait : ${c.pointVenteNom} doit ${Math.round(c.du).toLocaleString("fr-FR")} FCFA (livraison prévue le ${c.dateLivraisonPrevue.toLocaleDateString("fr-FR")}).`,
+      entiteType: "Commande",
+      entiteId: c.id,
+    });
+  }
+}
+
+// Si la valeur d'enum n'existe pas encore en base (SQL non passé), on n'arrête pas les autres alertes.
+async function genererAlertesEncaissementsSecurise() {
+  try {
+    await genererAlertesEncaissements();
+  } catch (e) {
+    console.error("Alertes d'encaissement non générées (migration SQL à passer ?)", e);
+  }
 }
 
 async function genererAlertesCredits(joursCreditRetard: number) {
@@ -303,6 +337,7 @@ export async function genererToutesLesAlertes(dateVeille: Date) {
   await genererAlertesStock();
   await genererAlertesCommandes(seuils.joursLivraisonProche);
   await genererAlertesCredits(seuils.joursCreditRetard);
+  await genererAlertesEncaissementsSecurise();
   await genererAlertesProspects(seuils.joursProspectARelancer);
   await genererAlertesClientsInactifs(seuils.joursClientInactif);
   await genererAlertesObjectifs(dateVeille);
@@ -318,6 +353,7 @@ export async function genererAlertesManuelles() {
   await genererAlertesStock();
   await genererAlertesCommandes(seuils.joursLivraisonProche);
   await genererAlertesCredits(seuils.joursCreditRetard);
+  await genererAlertesEncaissementsSecurise();
   await genererAlertesProspects(seuils.joursProspectARelancer);
   await genererAlertesClientsInactifs(seuils.joursClientInactif);
 }

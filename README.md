@@ -1687,3 +1687,9 @@ Règle unique (`lib/services/compte.ts`) : **Solde dû = facturé − avoirs −
 
 ### Bloc « Commandes en cours » (tableau de bord)
 Cumul des commandes en attente de validation et des commandes validées à livrer : nombre, quantités par produit (unités saisies), équivalent en cartons et valeur, plus le total en cours.
+
+### Encaissements par date de livraison + remise de grille (22/10/2026)
+- **SQL requis** : `docs/migration-2026-10-22.sql` (nouvelle valeur d'alerte `ENCAISSEMENT_A_FAIRE`, à exécuter seule). Sans elle, seules ces alertes ne se génèrent pas.
+- Caisse > « Commandes à encaisser » regroupées par date de livraison prévue : En retard, À encaisser aujourd'hui, À venir (date affichée), Sans date ; total par groupe.
+- Alerte « Encaissement à faire » : commande validée non soldée dont la livraison est passée (ou aujourd'hui après 17 h) ; se ferme à l'encaissement complet.
+- Facture : la remise de palier ne s'affiche que sur des cartons entiers HYPO (jamais sur sachets/filets, hors grille).

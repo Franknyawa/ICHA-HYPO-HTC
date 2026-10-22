@@ -20,6 +20,8 @@ export type CreditAEncaisser = {
   du: number;
   /** Mode annoncé par le commercial sur le terrain (indicatif). */
   modeAnnonce: string | null;
+  /** Date de livraison prévue : c'est le jour où l'argent doit être encaissé. */
+  dateLivraisonPrevue: Date | null;
 };
 
 export type LigneJournal = {
@@ -58,6 +60,7 @@ type LigneCreance = {
   paye: number;
   mode: string | null;
   date: Date;
+  livraison: Date | null;
   pv: string;
   prenom: string;
   nom: string;
@@ -76,6 +79,7 @@ export async function getCreditsAEncaisser(): Promise<CreditAEncaisser[]> {
            (COALESCE(p.paye, 0) - COALESCE(rb.rembourse, 0))::float8 AS paye,
            c.mode_paiement::text AS mode,
            c.created_at AS date,
+           c.date_livraison_prevue AS livraison,
            pv.nom AS pv,
            u.prenom AS prenom,
            u.nom AS nom
@@ -113,7 +117,7 @@ export async function getCreditsAEncaisser(): Promise<CreditAEncaisser[]> {
     WHERE c.statut IN ('EN_LIVRAISON', 'LIVREE')
       AND c.montant_total > 0
       AND c.montant_total - COALESCE(av.credit, 0) - (COALESCE(p.paye, 0) - COALESCE(rb.rembourse, 0)) > 0.5
-    ORDER BY c.created_at ASC`;
+    ORDER BY c.date_livraison_prevue ASC NULLS LAST, c.created_at ASC`;
 
   return rows.map((r) => ({
     cle: `COMMANDE:${r.id}`,
@@ -126,6 +130,7 @@ export async function getCreditsAEncaisser(): Promise<CreditAEncaisser[]> {
     paye: r.paye,
     du: r.total - r.paye,
     modeAnnonce: r.mode,
+    dateLivraisonPrevue: r.livraison ? new Date(r.livraison) : null,
   }));
 }
 

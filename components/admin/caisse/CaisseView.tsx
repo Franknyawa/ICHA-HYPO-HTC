@@ -13,7 +13,7 @@ import {
   Landmark,
 } from "lucide-react";
 import type { DonneesCaisse } from "@/lib/queries/caisse";
-import { PERIODES_CAISSE } from "@/lib/utils/periode";
+import { PERIODES_CAISSE, jourDouala } from "@/lib/utils/periode";
 import { formatFcfa } from "@/lib/utils/format";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { KpiCard, Panneau, TitreSection } from "@/components/admin/ui";
@@ -179,7 +179,12 @@ export function CaisseView({
 
         {/* Opérations + crédits */}
         <CaisseOperations
-          credits={c.credits.map((x) => ({ ...x, date: x.date.toISOString() }))}
+          jour={jourDouala()}
+          credits={c.credits.map((x) => ({
+            ...x,
+            date: x.date.toISOString(),
+            dateLivraisonPrevue: x.dateLivraisonPrevue ? x.dateLivraisonPrevue.toISOString() : null,
+          }))}
         />
 
         {/* Stock présent */}

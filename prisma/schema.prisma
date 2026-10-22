@@ -760,6 +760,7 @@ enum TypeAlerte {
   PROSPECT_A_RELANCER
   CLIENT_INACTIF
   OBJECTIF_NON_ATTEINT
+  ENCAISSEMENT_A_FAIRE
 }
 
 /// Cycle de vie d'une alerte. Pour la plupart des types, ACTIVE -> RESOLUE

@@ -158,7 +158,7 @@ export function formaterCartons(n: number): string {
  * des montants d'origine, le prix unitaire est le prix du carton équivalent.
  */
 export function lignesCartons(sources: LigneSource[]): LigneDocument[] {
-  const parProduit = new Map<string, { source: LigneSource; cartons: number; total: number | null }>();
+  const parProduit = new Map<string, { source: LigneSource; cartons: number; total: number | null; pur: boolean }>();
   for (const s of sources) {
     const parCarton = s.sachetsParCarton && s.sachetsParCarton > 0 ? s.sachetsParCarton : 1;
     const parFilet = s.sachetsParFilet && s.sachetsParFilet > 0 ? s.sachetsParFilet : 1;
@@ -170,19 +170,22 @@ export function lignesCartons(sources: LigneSource[]): LigneDocument[] {
     const total = s.montant && s.montant > 0 ? s.montant : calcule > 0 ? calcule : null;
     const cle = s.produitCode;
     const cur = parProduit.get(cle);
+    const purCarton = s.nbFilets === 0 && s.nbSachets === 0;
     if (cur) {
+      cur.pur = cur.pur && purCarton;
       cur.cartons += cartons;
       cur.total = cur.total === null || total === null ? null : cur.total + total;
     } else {
-      parProduit.set(cle, { source: s, cartons, total });
+      parProduit.set(cle, { source: s, cartons, total, pur: purCarton });
     }
   }
-  return Array.from(parProduit.values()).map(({ source, cartons, total }) => {
+  return Array.from(parProduit.values()).map(({ source, cartons, total, pur }) => {
     const prixUnitaire = total === null ? null : Math.round(total / cartons);
-    // Remise de palier : uniquement HYPO, quand le prix du carton tombe sous le prix catalogue.
+    // Remise de palier : uniquement HYPO, sur des CARTONS entiers (la grille ne s'applique pas
+    // aux sachets ni aux filets), quand le prix du carton tombe sous le prix catalogue.
     const base = source.prixCartonBase ?? null;
     const remise =
-      source.produitCode === "HYPO" && base && prixUnitaire !== null && prixUnitaire < base
+      source.produitCode === "HYPO" && pur && base && prixUnitaire !== null && prixUnitaire < base
         ? Math.round((1 - prixUnitaire / base) * 10000) / 100
         : null;
     return {

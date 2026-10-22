@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, HandCoins, Plus, Search, Trash2 } from "lucide-react";
+import { CalendarClock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, HandCoins, Plus, Search, Trash2 } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/client/apiFetch";
 import { formatFcfa } from "@/lib/utils/format";
 
@@ -17,6 +17,7 @@ type Credit = {
   montantTotal: number;
   paye: number;
   du: number;
+  dateLivraisonPrevue: string | null;
 };
 
 type Onglet = "CREDIT" | "DEPENSE" | "RECETTE";
@@ -30,7 +31,7 @@ const CATEGORIES_DEPENSE = ["Achat de stock", "Transport", "Salaires", "Carburan
 const champ =
   "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#359980] focus:outline-none focus:ring-2 focus:ring-[#359980]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
 
-export function CaisseOperations({ credits }: { credits: Credit[] }) {
+export function CaisseOperations({ credits, jour }: { credits: Credit[]; jour: string }) {
   const router = useRouter();
   const [onglet, setOnglet] = useState<Onglet>(credits.length > 0 ? "CREDIT" : "DEPENSE");
   const [canal, setCanal] = useState<Canal>("ESPECES");
@@ -42,6 +43,18 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [succes, setSucces] = useState<string | null>(null);
+
+  // Regroupement par jour d'encaissement prévu (= jour de livraison, heure de Douala).
+  const groupesCredits = useMemo(() => {
+    const jourDe = (c: Credit) =>
+      c.dateLivraisonPrevue ? new Date(new Date(c.dateLivraisonPrevue).getTime() + 3600000).toISOString().slice(0, 10) : null;
+    return [
+      { id: "retard", titre: "En retard", couleur: "text-red-700 dark:text-red-400", items: credits.filter((c) => { const j = jourDe(c); return j !== null && j < jour; }) },
+      { id: "jour", titre: "À encaisser aujourd'hui", couleur: "text-amber-700 dark:text-amber-400", items: credits.filter((c) => jourDe(c) === jour) },
+      { id: "venir", titre: "À venir", couleur: "text-blue-700 dark:text-blue-400", items: credits.filter((c) => { const j = jourDe(c); return j !== null && j > jour; }) },
+      { id: "sans", titre: "Sans date de livraison", couleur: "text-slate-500", items: credits.filter((c) => jourDe(c) === null) },
+    ];
+  }, [credits, jour]);
 
   const creditChoisi = credits.find((c) => c.cle === cleChoisie) ?? null;
 
@@ -253,30 +266,52 @@ export function CaisseOperations({ credits }: { credits: Credit[] }) {
         {credits.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Aucun crédit en cours : toutes les commandes sont soldées.</p>
         ) : (
-          <ul className="max-h-[360px] divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
-            {credits.map((c) => (
-              <li key={c.cle} className="flex items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{c.pointVenteNom}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {c.commercialNom} · {new Date(c.date).toLocaleDateString("fr-FR")}
-                  </p>
+          <div className="space-y-5">
+            {groupesCredits.map((g) =>
+              g.items.length === 0 ? null : (
+                <div key={g.id}>
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <h3 className={`text-xs font-bold uppercase tracking-wide ${g.couleur}`}>
+                      {g.titre} ({g.items.length})
+                    </h3>
+                    <span className="text-xs font-bold tabular-nums text-slate-700 dark:text-slate-200">
+                      {formatFcfa(g.items.reduce((s, x) => s + x.du, 0))}
+                    </span>
+                  </div>
+                  <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {g.items.map((c) => (
+                      <li key={c.cle} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{c.pointVenteNom}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {c.commercialNom} · commandée le {new Date(c.date).toLocaleDateString("fr-FR")}
+                          </p>
+                          <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+                            <CalendarClock size={12} />
+                            {c.dateLivraisonPrevue
+                              ? `Livraison / encaissement prévu le ${new Date(c.dateLivraisonPrevue).toLocaleDateString("fr-FR")}`
+                              : "Aucune date de livraison"}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold tabular-nums text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                            {formatFcfa(c.du)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => choisirCredit(c)}
+                            className="rounded-lg bg-[#1e3a8a] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2563eb]"
+                          >
+                            Encaisser
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold tabular-nums text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                    {formatFcfa(c.du)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => choisirCredit(c)}
-                    className="rounded-lg bg-[#1e3a8a] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2563eb]"
-                  >
-                    Encaisser
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+              )
+            )}
+          </div>
         )}
       </section>
     </div>
