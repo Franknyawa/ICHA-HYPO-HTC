@@ -1722,3 +1722,4 @@ Le logo ICHA IMPORT (fond transparent, opacité 10 %) est imprimé en filigrane 
 ## Documents et liste commandes (2026-10-23)
 - Commandes : « Commandes du jour » toujours dépliées ; « Commandes précédentes » repliées dans un bloc avec flèche (clic pour dérouler).
 - PDF : filigrane aussi sur le bon de commande ; BL « Signature Comptable » ; lignes de signature plus basses (place pour cachets) sur tous les bons/factures ; pied de page en 3 lignes (`ENTREPRISE.piedLignes`).
+- Signatures ancrées en bas de page (`placerSignatures`), 45 mm minimum d'espace avant ; sinon nouvelle page.

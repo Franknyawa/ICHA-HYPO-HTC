@@ -178,6 +178,22 @@ export function dessinerBloc(
   });
 }
 
+/**
+ * Place les signatures tout en bas de la page, juste au-dessus du pied de page, pour laisser
+ * beaucoup de place aux cachets et signatures. Si le contenu laisse moins de 45 mm, elles passent
+ * sur une nouvelle page.
+ */
+export function placerSignatures(doc: jsPDF, y: number, libelles: string[]) {
+  const hauteur = doc.internal.pageSize.getHeight();
+  const bas = hauteur - HAUTEUR_PIED - 12;
+  let ligne = Math.max(y + 45, bas);
+  if (y + 45 > bas) {
+    doc.addPage();
+    ligne = bas;
+  }
+  dessinerSignatures(doc, ligne, libelles);
+}
+
 /** Ligne de signature avec légende. */
 export function dessinerSignatures(doc: jsPDF, y: number, libelles: string[]) {
   const largeur = doc.internal.pageSize.getWidth();

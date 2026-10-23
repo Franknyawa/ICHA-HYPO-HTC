@@ -14,7 +14,7 @@ import {
   dessinerEnTete,
   dessinerFiligrane,
   dessinerPieds,
-  dessinerSignatures,
+  placerSignatures,
   MARGE,
   HAUTEUR_EN_TETE,
   nomFichier,
@@ -128,8 +128,7 @@ export async function genererFacturePdf(data: FactureData) {
   y += lignesPhrase.length * 5 + 16;
 
   // --- Signatures --------------------------------------------------------------
-  y = assurerPlace(doc, y, 42);
-  dessinerSignatures(doc, y + 26, ["Signature ETS ICHA IMPORT", `Signature ${data.client.signataire || data.client.nom}`]);
+  placerSignatures(doc, y, ["Signature ETS ICHA IMPORT", `Signature ${data.client.signataire || data.client.nom}`]);
 
   dessinerFiligrane(doc);
   dessinerPieds(doc);
