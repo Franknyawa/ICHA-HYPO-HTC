@@ -1714,3 +1714,7 @@ Cumul des commandes en attente de validation et des commandes validées à livre
 
 ## Filigrane logo (2026-10-23)
 Le logo ICHA IMPORT (fond transparent, opacité 10 %) est imprimé en filigrane au centre de chaque page des factures, bons de livraison, factures d avoir et de retour (`dessinerFiligrane` dans `lib/utils/pdf-document.ts`). Réglage : paramètre `opacite`.
+
+## Bulles de notification + type « Personne physique » (2026-10-23)
+- Bulles rouges sur « Commandes » et « Prospects indécis » (barre latérale, barre mobile, menu Plus) : nombre de nouvelles commandes / nouveaux prospects depuis la dernière visite de la rubrique (`/api/notifications/count`, date mémorisée dans le navigateur, rafraîchi chaque minute).
+- Nouveau type de boutique « Personne physique » (clients individuels en détail) : à ajouter en base via `docs/migration-2026-10-23.sql` (ou Paramètres > Types de boutique).

@@ -75,6 +75,37 @@ export function AdminShell({
       .catch(() => {});
   }, [pathname]);
 
+  // Bulles « nouvelles commandes » / « nouveaux prospects indécis » : comptées depuis la dernière
+  // visite de la rubrique (date gardée dans ce navigateur), rafraîchies chaque minute.
+  const [notifs, setNotifs] = useState({ commandes: 0, prospects: 0 });
+  useEffect(() => {
+    const lire = (k: string) => {
+      try {
+        let v = localStorage.getItem(k);
+        if (!v) { v = new Date().toISOString(); localStorage.setItem(k, v); }
+        return v;
+      } catch { return new Date().toISOString(); }
+    };
+    const marquerVu = (k: string) => { try { localStorage.setItem(k, new Date().toISOString()); } catch {} };
+    if (pathname.startsWith("/admin/commandes")) marquerVu("icha_vu_commandes");
+    if (pathname.startsWith("/admin/relances")) marquerVu("icha_vu_prospects");
+    const charger = () => {
+      const q = new URLSearchParams({ commandes: lire("icha_vu_commandes"), prospects: lire("icha_vu_prospects") });
+      fetch(`/api/notifications/count?${q}`)
+        .then((r) => r.json())
+        .then((d) => setNotifs({
+          commandes: pathname.startsWith("/admin/commandes") ? 0 : d.commandes ?? 0,
+          prospects: pathname.startsWith("/admin/relances") ? 0 : d.prospects ?? 0,
+        }))
+        .catch(() => {});
+    };
+    charger();
+    const t = setInterval(charger, 60_000);
+    return () => clearInterval(t);
+  }, [pathname]);
+  const bulle = (href: string) =>
+    href === "/admin/commandes" ? notifs.commandes : href === "/admin/relances" ? notifs.prospects : 0;
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 md:flex">
       {/* Sidebar — desktop uniquement */}
@@ -102,6 +133,11 @@ export function AdminShell({
               >
                 <Icon size={18} strokeWidth={active ? 2.2 : 1.9} className={active ? "text-white" : "text-slate-400"} />
                 {item.label}
+                {bulle(item.href) > 0 && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-alert px-1 text-[10px] font-bold text-white">
+                    {bulle(item.href)}
+                  </span>
+                )}
                 {item.href === "/admin/alertes" && alertesCount > 0 && (
                   <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-alert px-1 text-[10px] font-bold text-white">
                     {alertesCount}
@@ -146,6 +182,11 @@ export function AdminShell({
               }`}
             >
               <Icon size={19} strokeWidth={active ? 2.4 : 2} />
+              {bulle(item.href) > 0 && (
+                <span className="absolute right-[22%] top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alert px-1 text-[9px] font-bold text-white">
+                  {bulle(item.href)}
+                </span>
+              )}
               {item.href === "/admin/alertes" && alertesCount > 0 && (
                 <span className="absolute right-[22%] top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alert px-1 text-[9px] font-bold text-white">
                   {alertesCount}
@@ -189,7 +230,14 @@ export function AdminShell({
                       active ? "bg-blue-50 text-brand" : "text-slate-500 dark:text-slate-400 dark:text-slate-500"
                     }`}
                   >
-                    <Icon size={20} />
+                    <span className="relative">
+                      <Icon size={20} />
+                      {bulle(item.href) > 0 && (
+                        <span className="absolute -right-2.5 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-alert px-1 text-[9px] font-bold text-white">
+                          {bulle(item.href)}
+                        </span>
+                      )}
+                    </span>
                     {item.label}
                   </Link>
                 );

@@ -35,6 +35,7 @@ async function main() {
     "Table Call Box / Kiosque",
     "Mini super marché / Supérette",
     "Grossiste",
+    "Personne physique",
   ];
   for (let i = 0; i < types.length; i++) {
     await prisma.typePointVente.upsert({
