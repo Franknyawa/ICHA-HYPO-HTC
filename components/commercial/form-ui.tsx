@@ -4,6 +4,7 @@
 // blancs, fins contours, aucune couleur d'accent décorative). Utilisé par le
 // recensement, le réassort et la rotation.
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ChevronDown, type LucideIcon } from "lucide-react";
 
@@ -262,8 +263,98 @@ export function OuiNon({
   );
 }
 
-/** Quantités d'un produit : nom, trois saisies, sous-total. */
+/**
+ * Saisie des cartons : accepte « 0,5 », « 0.5 » ou « .5 » (demi-carton) et les entiers.
+ * Le texte tapé est conservé tel quel pendant la frappe (un champ numérique qui
+ * reformate à chaque touche empêche d'écrire « 0. »), puis normalisé en quittant le champ.
+ */
+export function SaisieCartons({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [texte, setTexte] = useState(value ? String(value).replace(".", ",") : "");
+  const [focus, setFocus] = useState(false);
+
+  // Si la valeur change de l'extérieur (réinitialisation), on resynchronise le texte.
+  useEffect(() => {
+    if (!focus) setTexte(value ? String(value).replace(".", ",") : "");
+  }, [value, focus]);
+
+  function analyser(brut: string): number {
+    const n = Number(brut.replace(",", "."));
+    if (!Number.isFinite(n) || n < 0) return 0;
+    return Math.round(n * 2) / 2; // par pas de 0,5
+  }
+
+  return (
+    <Saisie
+      type="text"
+      inputMode="decimal"
+      placeholder="0 ou 0,5"
+      value={texte}
+      onFocus={() => setFocus(true)}
+      onBlur={() => {
+        setFocus(false);
+        const n = analyser(texte);
+        setTexte(n ? String(n).replace(".", ",") : "");
+        onChange(n);
+      }}
+      onChange={(e) => {
+        const t = e.target.value.replace(/[^0-9.,]/g, "");
+        setTexte(t);
+        onChange(analyser(t));
+      }}
+    />
+  );
+}
+
+/** Commande en cartons : nom du produit, une seule saisie (0,5 = demi-carton), sous-total. */
 export function QuantitesProduit({
+  nom,
+  valeur,
+  onChange,
+  sousTotal,
+}: {
+  nom: string;
+  /** Conservé pour compatibilité des appels : les filets ne se prennent plus qu'en vente au détail. */
+  avecFilets?: boolean;
+  valeur: { sachets: number; filets: number; cartons: number };
+  onChange: (champ: "sachets" | "filets" | "cartons", v: number) => void;
+  sousTotal: number;
+}) {
+  return (
+    <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 dark:border-slate-800 dark:bg-transparent">
+      <p className="mb-3 text-sm font-bold text-slate-900 dark:text-slate-100">{nom}</p>
+      <label className="block">
+        <span className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Cartons (0,5 = demi-carton)</span>
+        <SaisieCartons value={valeur.cartons} onChange={(n) => onChange("cartons", n)} />
+      </label>
+      {sousTotal > 0 && (
+        <p className="mt-3 text-right text-sm font-semibold" style={{ color: VERT }}>
+          {sousTotal.toLocaleString("fr-FR")} FCFA
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Interrupteur « Vente en détail » : active la section sachets / filets. */
+export function CaseVenteDetail({ actif, onChange }: { actif: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
+      <input
+        type="checkbox"
+        checked={actif}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-5 w-5 rounded border-slate-300 accent-[#359980]"
+      />
+      <span>
+        <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100">Vente en détail</span>
+        <span className="block text-xs text-slate-500 dark:text-slate-400">Sachets à 100 FCFA, filets HTC à 1 000 FCFA</span>
+      </span>
+    </label>
+  );
+}
+
+/** Vente en détail d'un produit : sachets (tous les produits) et filets (produits à filets). */
+export function QuantitesDetail({
   nom,
   avecFilets,
   valeur,
@@ -276,35 +367,29 @@ export function QuantitesProduit({
   onChange: (champ: "sachets" | "filets" | "cartons", v: number) => void;
   sousTotal: number;
 }) {
-  const champs: { cle: "sachets" | "filets" | "cartons"; label: string }[] = [
-    { cle: "sachets", label: "Sachets" },
-    ...(avecFilets ? [{ cle: "filets" as const, label: "Filets" }] : []),
-    { cle: "cartons", label: "Cartons" },
+  const champs: { cle: "sachets" | "filets"; label: string }[] = [
+    { cle: "sachets", label: "Sachets (100 F)" },
+    ...(avecFilets ? [{ cle: "filets" as const, label: "Filets (1 000 F)" }] : []),
   ];
   return (
-    <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 dark:border-slate-800 dark:bg-transparent">
+    <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 dark:border-slate-800 dark:bg-transparent">
       <p className="mb-3 text-sm font-bold text-slate-900 dark:text-slate-100">{nom}</p>
-      <div className={`grid gap-3 ${champs.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+      <div className={`grid gap-3 ${champs.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
         {champs.map((c) => (
           <label key={c.cle} className="block">
             <span className="mb-1 block text-xs text-slate-500 dark:text-slate-400">{c.label}</span>
             <Saisie
               type="number"
-              inputMode={c.cle === "cartons" ? "decimal" : "numeric"}
+              inputMode="numeric"
               min={0}
-              step={c.cle === "cartons" ? 0.5 : 1}
+              step={1}
               placeholder="0"
               value={valeur[c.cle] || ""}
-              onChange={(e) => {
-                const n = Number(e.target.value) || 0;
-                // Cartons : par pas de 0,5 (demi-carton) ; sachets et filets : entiers.
-                onChange(c.cle, c.cle === "cartons" ? Math.max(0, Math.round(n * 2) / 2) : Math.max(0, Math.floor(n)));
-              }}
+              onChange={(e) => onChange(c.cle, Math.max(0, Math.floor(Number(e.target.value) || 0)))}
             />
           </label>
         ))}
       </div>
-      <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">Cartons : 0,5 = demi-carton.</p>
       {sousTotal > 0 && (
         <p className="mt-3 text-right text-sm font-semibold" style={{ color: VERT }}>
           {sousTotal.toLocaleString("fr-FR")} FCFA

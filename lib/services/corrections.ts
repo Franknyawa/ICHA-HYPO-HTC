@@ -65,7 +65,7 @@ async function construireLignes(commandeId: string, demandees: QuantitesLigne[])
       },
       lignes: {
         select: {
-          id: true, produitId: true, nbSachets: true, nbFilets: true, nbCartons: true,
+          id: true, produitId: true, nbSachets: true, nbFilets: true, nbCartons: true, detail: true,
           prixSachet: true, prixFilet: true, prixCarton: true, montant: true,
           produit: { select: { code: true, nom: true, designation: true, sachetsParCarton: true, volumeMl: true, sachetsParFilet: true } },
         },
@@ -74,7 +74,7 @@ async function construireLignes(commandeId: string, demandees: QuantitesLigne[])
   }) as unknown as {
     id: string; montantTotal: unknown; statut: string; client: { nom: string } | null;
     pointVente: { nom: string; repere: string | null; telephoneVendeur: string | null; ville: { nom: string } | null; quartier: { nom: string } | null };
-    lignes: { id: string; produitId: string; nbSachets: number; nbFilets: number; nbCartons: number; prixSachet: unknown; prixFilet: unknown; prixCarton: unknown; montant: unknown; produit: { code: string; nom: string; designation: string | null; sachetsParCarton: number; volumeMl: number | null; sachetsParFilet: number | null } }[];
+    lignes: { id: string; produitId: string; nbSachets: number; nbFilets: number; nbCartons: number; detail: boolean; prixSachet: unknown; prixFilet: unknown; prixCarton: unknown; montant: unknown; produit: { code: string; nom: string; designation: string | null; sachetsParCarton: number; volumeMl: number | null; sachetsParFilet: number | null } }[];
   } | null;
   if (!commande) throw new CorrectionError("Commande introuvable.");
   if (commande.statut !== "EN_LIVRAISON" && commande.statut !== "LIVREE") {
@@ -102,7 +102,7 @@ async function construireLignes(commandeId: string, demandees: QuantitesLigne[])
       throw new CorrectionError(`Quantité supérieure à ce qui reste facturé pour ${l.produit.nom}.`);
     }
     const pc = prixUnite(l, "carton"), pf = prixUnite(l, "filet"), ps = prixUnite(l, "sachet");
-    const m = sousTotal({ carton: pc, filet: pf, sachet: ps }, { cartons: d.nbCartons, filets: d.nbFilets, sachets: d.nbSachets }, l.produit);
+    const m = sousTotal({ carton: pc, filet: pf, sachet: ps }, { cartons: d.nbCartons, filets: d.nbFilets, sachets: d.nbSachets }, l.produit, l.detail);
     montant += m;
     sortie.push({
       ligneId: l.id,
@@ -117,6 +117,7 @@ async function construireLignes(commandeId: string, demandees: QuantitesLigne[])
         nbCartons: d.nbCartons, nbFilets: d.nbFilets, nbSachets: d.nbSachets,
         prixCarton: pc || null, prixFilet: pf || null, prixSachet: ps || null,
         montant: m,
+        detail: l.detail,
       },
     });
   }

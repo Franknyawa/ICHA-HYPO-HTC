@@ -22,6 +22,8 @@ const venteLigneSchema = z.object({
   prixFilet: z.number().min(0).max(MAX_MONTANT).optional(),
   prixCarton: z.number().min(0).max(MAX_MONTANT).optional(),
   montant: z.number().min(0).max(MAX_MONTANT).optional(),
+  // Vente au détail (sachets 100 F / filets 1 000 F), distincte de la règle carton / demi-carton.
+  detail: z.boolean().default(false),
 });
 
 // Modes de paiement réels du terrain (Victor) : le crédit fait directement
@@ -54,6 +56,8 @@ const commandeLigneSchema = z.object({
   prixFilet: z.number().min(0).max(MAX_MONTANT).optional(),
   prixCarton: z.number().min(0).max(MAX_MONTANT).optional(),
   montant: z.number().min(0).max(MAX_MONTANT).optional(),
+  // Vente au détail (sachets 100 F / filets 1 000 F), distincte de la règle carton / demi-carton.
+  detail: z.boolean().default(false),
 });
 
 const commandeSchema = z.object({

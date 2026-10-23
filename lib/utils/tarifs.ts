@@ -101,7 +101,9 @@ export function normaliserCartons(q: Quantites, conv?: ConversionTarif): Quantit
  * demi-carton (56 sachets HYPO, 60 sachets ou 6 filets HTC) est facturé au demi-prix du carton
  * (4 500 / 4 800 FCFA), pas au sachet. Le reste (moins d'un demi-carton) est facturé à l'unité.
  */
-export function sousTotal(prix: PrixUnitaires, q: Quantites, conv?: ConversionTarif): number {
+export function sousTotal(prix: PrixUnitaires, q: Quantites, conv?: ConversionTarif, detail = false): number {
+  // Vente au détail : chaque sachet / filet à son prix unitaire, sans regroupement en demi-cartons.
+  if (detail) return Math.round(q.sachets * prix.sachet + q.filets * prix.filet + q.cartons * prix.carton);
   const demi = sachetsDemiCarton(conv);
   const spf = conv?.sachetsParFilet ?? 0;
   if (demi === null) return Math.round(q.sachets * prix.sachet + q.filets * prix.filet + q.cartons * prix.carton);
@@ -121,11 +123,22 @@ export function sousTotal(prix: PrixUnitaires, q: Quantites, conv?: ConversionTa
   );
 }
 
+/** Prix de la vente au détail, identiques pour tous les produits : sachet 100 F, filet 1 000 F. */
+export const PRIX_DETAIL = { sachet: 100, filet: 1000 } as const;
+
+/** Ligne de vente au détail : sachets (tous produits) et filets (produits à filets), prix fixes. */
+export function calculerLigneDetail(q: { sachets: number; filets: number }) {
+  const prix = { sachet: PRIX_DETAIL.sachet, filet: PRIX_DETAIL.filet, carton: 0 };
+  const quantites = { sachets: q.sachets, filets: q.filets, cartons: 0 };
+  return { prix, montant: sousTotal(prix, quantites, undefined, true), quantites };
+}
+
 /** Valeur d'une ligne au prix catalogue du produit (estimations, rapports). */
 export function valeurCatalogueLigne(
-  l: { nbSachets: number; nbFilets: number; nbCartons: number },
+  l: { nbSachets: number; nbFilets: number; nbCartons: number; detail?: boolean },
   p: ConversionTarif & { prixSachet: unknown; prixFilet: unknown; prixCarton: unknown }
 ): number {
+  if (l.detail) return calculerLigneDetail({ sachets: l.nbSachets, filets: l.nbFilets }).montant;
   return sousTotal(
     { sachet: Number(p.prixSachet), filet: Number(p.prixFilet ?? 0), carton: Number(p.prixCarton) },
     { sachets: l.nbSachets, filets: l.nbFilets, cartons: l.nbCartons },

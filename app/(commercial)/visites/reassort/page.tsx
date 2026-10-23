@@ -20,6 +20,8 @@ import {
   Saisie,
   ZoneTexte,
   QuantitesProduit,
+  QuantitesDetail,
+  CaseVenteDetail,
   BarreAction,
   BoutonPrincipal,
   BlocPaiement,
@@ -43,6 +45,8 @@ function ReassortContent() {
   const [prixParType, setPrixParType] = useState<PrixTypeTarif[]>([]);
   const [paliers, setPaliers] = useState<PalierTarif[]>([]);
   const [quantites, setQuantites] = useState<QuantitesParCode>({});
+  const [detailActif, setDetailActif] = useState(false);
+  const [quantitesDetail, setQuantitesDetail] = useState<QuantitesParCode>({});
 
   const [acompte, setAcompte] = useState(0);
   const [modePaiement, setModePaiement] = useState<ModePaiementTerrain>("ESPECES");
@@ -98,6 +102,13 @@ function ReassortContent() {
     }
   }, [pointVenteIdPrefill]);
 
+  function updateQtyDetail(code: string, field: "sachets" | "filets" | "cartons", value: number) {
+    setQuantitesDetail((prev) => {
+      const base = prev[code] ?? { sachets: 0, filets: 0, cartons: 0 };
+      return { ...prev, [code]: { ...base, [field]: value } };
+    });
+  }
+
   function updateQty(code: string, field: "sachets" | "filets" | "cartons", value: number) {
     setQuantites((prev) => {
       const base = prev[code] ?? { sachets: 0, filets: 0, cartons: 0 };
@@ -106,11 +117,9 @@ function ReassortContent() {
   }
 
   // Prix : base → type de boutique du point de vente → grille tarifaire.
-  const commande = preparerCommande(produits, quantites, {
-    typeId: pointVente?.typeId ?? null,
-    prixParType,
-    paliers,
-  });
+  const ctxPrix = { typeId: pointVente?.typeId ?? null, prixParType, paliers };
+  const commande = preparerCommande(produits, quantites, ctxPrix, detailActif ? quantitesDetail : undefined);
+  const sousTotauxDetail = preparerCommande(produits, {}, ctxPrix, quantitesDetail).sousTotauxDetail;
   const lignes = commande.lignes;
   const montantCalcule = commande.total;
 
@@ -275,13 +284,27 @@ function ReassortContent() {
                     <QuantitesProduit
                       key={p.id}
                       nom={p.nom || p.code}
-                      avecFilets={p.prixFilet !== null}
                       valeur={quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }}
                       onChange={(champ, v) => updateQty(p.code, champ, v)}
                       sousTotal={commande.sousTotaux.get(p.code) ?? 0}
                     />
                   ))}
                 </div>
+                <CaseVenteDetail actif={detailActif} onChange={setDetailActif} />
+                {detailActif && (
+                  <div className="space-y-3">
+                    {produits.map((p) => (
+                      <QuantitesDetail
+                        key={p.id}
+                        nom={p.nom || p.code}
+                        avecFilets={p.prixFilet !== null}
+                        valeur={quantitesDetail[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }}
+                        onChange={(champ, v) => updateQtyDetail(p.code, champ, v)}
+                        sousTotal={sousTotauxDetail.get(p.code) ?? 0}
+                      />
+                    ))}
+                  </div>
+                )}
                 <Champ label="Date de livraison prévue">
                   <Saisie type="date" value={dateLivraison} onChange={(e) => setDateLivraison(e.target.value)} />
                 </Champ>

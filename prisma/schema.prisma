@@ -555,6 +555,8 @@ model VenteLigne {
   nbFilets   Int     @default(0) @map("nb_filets")
   nbCartons  Int     @default(0) @map("nb_cartons")
   montant    Decimal @default(0) @db.Decimal(12, 2)
+  // Vente au détail (sachets 100 F, filets 1000 F) : ne suit pas la règle du carton / demi-carton.
+  detail     Boolean @default(false)
   // Prix unitaires appliqués au moment de la saisie (figés pour la facture).
   prixSachet Decimal? @map("prix_sachet") @db.Decimal(10, 2)
   prixFilet  Decimal? @map("prix_filet") @db.Decimal(10, 2)
@@ -613,6 +615,8 @@ model CommandeLigne {
   nbFilets   Int      @default(0) @map("nb_filets")
   nbCartons  Int      @default(0) @map("nb_cartons")
   montant    Decimal  @default(0) @db.Decimal(12, 2)
+  // Vente au détail (sachets 100 F, filets 1000 F) : ne suit pas la règle du carton / demi-carton.
+  detail     Boolean  @default(false)
   prixSachet Decimal? @map("prix_sachet") @db.Decimal(10, 2)
   prixFilet  Decimal? @map("prix_filet") @db.Decimal(10, 2)
   prixCarton Decimal? @map("prix_carton") @db.Decimal(10, 2)

@@ -1700,3 +1700,10 @@ Cumul des commandes en attente de validation et des commandes validées à livre
 - Moteur commun : `lib/utils/tarifs.ts` (`sousTotal`, `normaliserCartons`, `valeurCatalogueLigne`), utilisé par le serveur, le terrain hors ligne, les avoirs/retours, les estimations.
 - Mise à jour des données existantes : Paramètres > Tarifs > « Règle du demi-carton » (Simuler puis Mettre à jour). Aucun SQL.
 - Mise en conformité automatique : à l'ouverture des pages Commandes, Caisse, Tableau de bord, Rapports, profil client et à la génération des documents, les montants des lignes avec sachets/filets sont recalculés selon la règle du demi-carton (`lib/services/recalcul-prix.ts`, au plus 1 fois / minute). Le bouton des Paramètres reste disponible.
+
+### Vente au détail (23/10/2026)
+- **SQL requis** : `docs/migration-2026-10-22.sql` (colonne `detail` sur `commandes_lignes` et `ventes_lignes`) — à passer AVANT le déploiement.
+- Commande : uniquement en cartons, `0,5` accepté (« 0,5 », « 0.5 » ou « .5 »). Filets et sachets retirés de la commande.
+- Case « Vente en détail » (formulaire de visite, réassort, nouvelle commande bureau/superviseur) : sachets à 100 F pour tous les produits, filets HTC à 1 000 F. Lignes séparées (`detail = true`), sans règle de demi-carton ; les prix du carton et du demi-carton ne changent pas.
+- Factures, bons de commande/livraison, avoirs/retours : lignes détail imprimées « vente au détail (sachet/filet) » avec prix unitaire.
+- Prix du détail : constantes `PRIX_DETAIL` dans `lib/utils/tarifs.ts`.

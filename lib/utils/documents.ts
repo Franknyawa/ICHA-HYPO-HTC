@@ -52,7 +52,8 @@ export function designationProduit(p: ProduitDesignation): string {
 
 /** « 5 cartons », « 1 filet », « 12 sachets » : l'unité est toujours écrite. */
 export function texteQuantite(unite: "carton" | "filet" | "sachet", n: number): string {
-  return `${n} ${unite}${n > 1 ? "s" : ""}`;
+  const r = Math.round(n * 100) / 100;
+  return `${r.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} ${unite}${r > 1 ? "s" : ""}`;
 }
 
 export type LigneSource = {
@@ -72,6 +73,8 @@ export type LigneSource = {
   prixCartonBase?: number | null;
   /** Montant total enregistré pour la ligne produit (sert à retrouver un prix manquant). */
   montant?: number | null;
+  /** Vente au détail : sachets / filets facturés à l'unité (100 F / 1 000 F). */
+  detail?: boolean;
 };
 
 export type LigneDocument = {
@@ -94,39 +97,9 @@ export type LigneDocument = {
  * quantité « 5 » sans mention de sachet ni de filet.
  */
 export function lignesDocument(sources: LigneSource[]): LigneDocument[] {
-  const lignes: LigneDocument[] = [];
-  for (const s of sources) {
-    const base = designationProduit({
-      nom: s.produitNom,
-      designation: s.designation,
-      sachetsParCarton: s.sachetsParCarton,
-      volumeMl: s.volumeMl,
-    });
-    const unites: { unite: LigneDocument["unite"]; qte: number; prix: number | null | undefined }[] = [
-      { unite: "carton", qte: s.nbCartons, prix: s.prixCarton },
-      { unite: "filet", qte: s.nbFilets, prix: s.prixFilet },
-      { unite: "sachet", qte: s.nbSachets, prix: s.prixSachet },
-    ];
-    const utilisees = unites.filter((u) => u.qte > 0);
-    for (const u of utilisees) {
-      let prix: number | null = u.prix ?? null;
-      // Ancienne ligne sans prix enregistré : si une seule unité est utilisée,
-      // le prix se déduit du montant de la ligne.
-      if ((prix === null || prix === 0) && utilisees.length === 1 && s.montant) {
-        prix = Math.round(s.montant / u.qte);
-      }
-      lignes.push({
-        reference: s.produitCode,
-        designation: u.unite === "carton" ? base : `${base} — vente au ${u.unite}`,
-        quantite: u.qte,
-        quantiteTexte: texteQuantite(u.unite, u.qte),
-        unite: u.unite,
-        prixUnitaire: prix,
-        total: prix === null ? null : Math.round(prix * u.qte),
-      });
-    }
-  }
-  return lignes;
+  return lignesCartons(sources).map((l) =>
+    l.unite === "carton" ? { ...l, quantiteTexte: texteQuantite("carton", l.quantite) } : l
+  );
 }
 
 export function totalLignes(lignes: LigneDocument[]): number {
@@ -159,7 +132,9 @@ export function formaterCartons(n: number): string {
  * 24 = 0,5 carton). Une ligne par produit ; le total reste la somme exacte
  * des montants d'origine, le prix unitaire est le prix du carton équivalent.
  */
-export function lignesCartons(sources: LigneSource[]): LigneDocument[] {
+export function lignesCartons(toutes: LigneSource[]): LigneDocument[] {
+  const sources = toutes.filter((x) => !x.detail);
+  const detail = toutes.filter((x) => x.detail);
   const parProduit = new Map<string, { source: LigneSource; cartons: number; total: number | null; pur: boolean }>();
   for (const s of sources) {
     const parCarton = s.sachetsParCarton && s.sachetsParCarton > 0 ? s.sachetsParCarton : 1;
@@ -184,7 +159,29 @@ export function lignesCartons(sources: LigneSource[]): LigneDocument[] {
       parProduit.set(cle, { source: s, cartons, total, pur: purCarton });
     }
   }
-  return Array.from(parProduit.values()).map(({ source, cartons, total, pur }) => {
+  const lignesDetail: LigneDocument[] = [];
+  for (const s of detail) {
+    const base = designationProduit({ nom: s.produitNom, designation: s.designation, sachetsParCarton: s.sachetsParCarton, volumeMl: s.volumeMl });
+    const unites: { unite: "filet" | "sachet"; qte: number; prix: number }[] = [
+      { unite: "sachet", qte: s.nbSachets, prix: s.prixSachet ?? 100 },
+      { unite: "filet", qte: s.nbFilets, prix: s.prixFilet ?? 1000 },
+    ];
+    for (const u of unites.filter((x) => x.qte > 0)) {
+      lignesDetail.push({
+        reference: s.produitCode,
+        designation: `${base} — vente au détail (${u.unite})`,
+        quantite: u.qte,
+        quantiteTexte: texteQuantite(u.unite, u.qte),
+        unite: u.unite,
+        prixUnitaire: u.prix,
+        total: Math.round(u.prix * u.qte),
+        remisePct: null,
+        prixReference: null,
+      });
+    }
+  }
+
+  const lignesGros = Array.from(parProduit.values()).map(({ source, cartons, total, pur }) => {
     const prixUnitaire = total === null ? null : Math.round(total / cartons);
     // Remise de palier : uniquement HYPO, sur des CARTONS entiers (la grille ne s'applique pas
     // aux sachets ni aux filets), quand le prix du carton tombe sous le prix catalogue.
@@ -210,4 +207,5 @@ export function lignesCartons(sources: LigneSource[]): LigneDocument[] {
       prixReference: remise !== null ? base : null,
     };
   });
+  return [...lignesGros, ...lignesDetail];
 }

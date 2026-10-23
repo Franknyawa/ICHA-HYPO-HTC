@@ -268,6 +268,7 @@ export async function POST(req: NextRequest) {
                   prixFilet: l.prixFilet,
                   prixCarton: l.prixCarton,
                   montant: l.montant ?? 0,
+                  detail: l.detail,
                 };
               }),
             },
@@ -302,6 +303,7 @@ export async function POST(req: NextRequest) {
                   prixFilet: l.prixFilet,
                   prixCarton: l.prixCarton,
                   montant: l.montant ?? 0,
+                  detail: l.detail,
                 };
               }),
             },
@@ -338,6 +340,7 @@ export async function POST(req: NextRequest) {
                   prixFilet: l.prixFilet,
                   prixCarton: l.prixCarton,
                   montant: l.montant ?? 0,
+                  detail: l.detail,
                 };
               }),
             },

@@ -13,7 +13,7 @@ export async function recalculerMontants(appliquer: boolean, seulementDetail = f
   const produitSel = { sachetsParCarton: true, sachetsParFilet: true, prixSachet: true, prixFilet: true, prixCarton: true } as const;
 
   const calcul = (l: {
-    nbSachets: number; nbFilets: number; nbCartons: number;
+    nbSachets: number; nbFilets: number; nbCartons: number; detail: boolean;
     prixSachet: unknown; prixFilet: unknown; prixCarton: unknown;
     produit: { sachetsParCarton: number; sachetsParFilet: number | null; prixSachet: unknown; prixFilet: unknown; prixCarton: unknown };
   }) =>
@@ -24,7 +24,8 @@ export async function recalculerMontants(appliquer: boolean, seulementDetail = f
         carton: Number(l.prixCarton ?? l.produit.prixCarton),
       },
       { sachets: l.nbSachets, filets: l.nbFilets, cartons: l.nbCartons },
-      l.produit
+      l.produit,
+      l.detail
     );
 
   let lignesModifiees = 0;
@@ -37,7 +38,7 @@ export async function recalculerMontants(appliquer: boolean, seulementDetail = f
     select: {
       id: true,
       montantTotal: true,
-      lignes: { select: { id: true, montant: true, nbSachets: true, nbFilets: true, nbCartons: true, prixSachet: true, prixFilet: true, prixCarton: true, produit: { select: produitSel } } },
+      lignes: { select: { id: true, montant: true, nbSachets: true, nbFilets: true, nbCartons: true, detail: true, prixSachet: true, prixFilet: true, prixCarton: true, produit: { select: produitSel } } },
     },
   });
   for (const c of commandes) {
@@ -61,7 +62,7 @@ export async function recalculerMontants(appliquer: boolean, seulementDetail = f
     select: {
       id: true,
       montantTotal: true,
-      lignes: { select: { id: true, montant: true, nbSachets: true, nbFilets: true, nbCartons: true, prixSachet: true, prixFilet: true, prixCarton: true, produit: { select: produitSel } } },
+      lignes: { select: { id: true, montant: true, nbSachets: true, nbFilets: true, nbCartons: true, detail: true, prixSachet: true, prixFilet: true, prixCarton: true, produit: { select: produitSel } } },
     },
   });
   for (const v of ventes) {

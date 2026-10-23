@@ -25,6 +25,8 @@ import {
   FOND_PAGE,
   OuiNon,
   QuantitesProduit,
+  QuantitesDetail,
+  CaseVenteDetail,
   Encart,
   BarreAction,
   BoutonPrincipal,
@@ -161,6 +163,11 @@ export default function NouvelleVisitePage() {
 
   // « Le client veut commander » (achat du jour) et « commander plus tard »
   // (commande à livrer) : deux questions Oui/Non indépendantes.
+  // Vente en détail (sachets / filets) : section activée par une case à cocher.
+  const [detailActif, setDetailActif] = useState(false);
+  const [quantitesDetail, setQuantitesDetail] = useState<
+    Record<string, { sachets: number; filets: number; cartons: number }>
+  >({});
   const [veutCommander, setVeutCommander] = useState<boolean | null>(null);
   const [commanderPlusTard, setCommanderPlusTard] = useState<boolean | null>(null);
   const [quantitesCommande, setQuantitesCommande] = useState<
@@ -268,11 +275,18 @@ export default function NouvelleVisitePage() {
   // commandés). Les prix appliqués sont figés sur chaque ligne et servent à
   // la facture. Toutes les valeurs viennent des référentiels (jamais codées).
   const ctxPrix = { typeId, prixParType, paliers };
-  const achat = preparerCommande(achatActif ? produits : [], quantites, ctxPrix);
+  // La vente en détail fait partie de l'achat du jour (même paiement, même bon de commande).
+  const achat = preparerCommande(
+    achatActif || detailActif ? produits : [],
+    achatActif ? quantites : {},
+    ctxPrix,
+    detailActif ? quantitesDetail : undefined
+  );
   const commandeFuture = preparerCommande(commandeActive ? produits : [], quantitesCommande, ctxPrix);
   // Sous-totaux affichés sous chaque produit (même quand le bloc est replié).
   const sousTotauxParProduit = preparerCommande(produits, quantites, ctxPrix).sousTotaux;
   const sousTotauxCommandeParProduit = preparerCommande(produits, quantitesCommande, ctxPrix).sousTotaux;
+  const sousTotauxDetailParProduit = preparerCommande(produits, {}, ctxPrix, quantitesDetail).sousTotauxDetail;
   const lignesVente = achat.lignes;
   const commandeLignes = commandeFuture.lignes;
   const montantCalcule = achat.total;
@@ -288,15 +302,15 @@ export default function NouvelleVisitePage() {
   // (plus limité à HYPO/HTC), on marque "Oui" automatiquement. Reste
   // modifiable ensuite — c'est une suggestion, pas un verrou.
   useEffect(() => {
-    const unProduitQualifie = achatActif && Object.values(quantites).some(
-      (q) => q.sachets > 30 && q.cartons > 1
-    );
+    const unProduitQualifie =
+      achatActif &&
+      Object.entries(quantites).some(([code, q]) => q.cartons > 1 && (quantitesDetail[code]?.sachets ?? 0) > 30);
     if (unProduitQualifie && presentoir !== true) {
       setPresentoir(true);
       setPresentoirAuto(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quantites, achatActif]);
+  }, [quantites, quantitesDetail, achatActif]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -731,28 +745,44 @@ export default function NouvelleVisitePage() {
           </Champ>
 
           {achatActif && (
-            <>
-              <div className="space-y-3">
-                {produits.map((p) => (
-                  <QuantitesProduit
-                    key={p.id}
-                    nom={p.nom || p.code}
-                    avecFilets={p.prixFilet !== null}
-                    valeur={quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }}
-                    onChange={(champ, v) => updateQuantite(setQuantites, p.code, champ, v)}
-                    sousTotal={sousTotauxParProduit.get(p.code) ?? 0}
-                  />
-                ))}
-              </div>
+            <div className="space-y-3">
+              {produits.map((p) => (
+                <QuantitesProduit
+                  key={p.id}
+                  nom={p.nom || p.code}
+                  valeur={quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }}
+                  onChange={(champ, v) => updateQuantite(setQuantites, p.code, champ, v)}
+                  sousTotal={sousTotauxParProduit.get(p.code) ?? 0}
+                />
+              ))}
+            </div>
+          )}
 
-              <BlocPaiement
-                mode={modePaiement}
-                onMode={setModePaiement}
-                montant={montantCalcule}
-                acompte={montantRecu}
-                onAcompte={setMontantRecu}
-              />
-            </>
+          <CaseVenteDetail actif={detailActif} onChange={setDetailActif} />
+
+          {detailActif && (
+            <div className="space-y-3">
+              {produits.map((p) => (
+                <QuantitesDetail
+                  key={p.id}
+                  nom={p.nom || p.code}
+                  avecFilets={p.prixFilet !== null}
+                  valeur={quantitesDetail[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }}
+                  onChange={(champ, v) => updateQuantite(setQuantitesDetail, p.code, champ, v)}
+                  sousTotal={sousTotauxDetailParProduit.get(p.code) ?? 0}
+                />
+              ))}
+            </div>
+          )}
+
+          {(achatActif || detailActif) && (
+            <BlocPaiement
+              mode={modePaiement}
+              onMode={setModePaiement}
+              montant={montantCalcule}
+              acompte={montantRecu}
+              onAcompte={setMontantRecu}
+            />
           )}
 
           <Champ label="Veut-il commander plus tard ?">
@@ -766,7 +796,6 @@ export default function NouvelleVisitePage() {
                   <QuantitesProduit
                     key={p.id}
                     nom={p.nom || p.code}
-                    avecFilets={p.prixFilet !== null}
                     valeur={quantitesCommande[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }}
                     onChange={(champ, v) => updateQuantite(setQuantitesCommande, p.code, champ, v)}
                     sousTotal={sousTotauxCommandeParProduit.get(p.code) ?? 0}

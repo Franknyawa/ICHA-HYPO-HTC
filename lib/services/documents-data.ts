@@ -46,6 +46,7 @@ const selectLigne = {
   prixFilet: true,
   prixCarton: true,
   montant: true,
+  detail: true,
   produit: { select: { code: true, nom: true, designation: true, prixCarton: true, sachetsParCarton: true, sachetsParFilet: true, volumeMl: true } },
 } as const;
 
@@ -66,6 +67,7 @@ type LigneBrute = {
   prixFilet: unknown;
   prixCarton: unknown;
   montant: unknown;
+  detail?: boolean;
   produit: { code: string; nom: string; designation: string | null; prixCarton?: unknown; sachetsParCarton: number; sachetsParFilet: number | null; volumeMl: number | null };
 };
 
@@ -85,6 +87,7 @@ function versSources(lignes: LigneBrute[]): LigneSource[] {
     prixCarton: l.prixCarton == null ? null : num(l.prixCarton),
     prixCartonBase: l.produit.prixCarton == null ? null : num(l.produit.prixCarton),
     montant: num(l.montant),
+    detail: l.detail ?? false,
   }));
 }
 

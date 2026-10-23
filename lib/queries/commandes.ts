@@ -60,7 +60,7 @@ export async function listCommandes(params: ListCommandesParams) {
         },
         client: { select: { nom: true } },
         commercial: { select: { nom: true, prenom: true } },
-        lignes: { select: { nbSachets: true, nbFilets: true, nbCartons: true, produit: { select: { code: true, sachetsParCarton: true, filetsParCarton: true } } } },
+        lignes: { select: { nbSachets: true, nbFilets: true, nbCartons: true, detail: true, produit: { select: { code: true, sachetsParCarton: true, sachetsParFilet: true, filetsParCarton: true } } } },
       },
     }),
     prisma.commande.count({ where }),

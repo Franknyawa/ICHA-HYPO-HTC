@@ -7,7 +7,7 @@ import { Search, UserPlus, X } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/client/apiFetch";
 import { preparerCommande, type ProduitForm, type QuantitesParCode } from "@/lib/utils/commande-terrain";
 import type { PalierTarif, PrixTypeTarif } from "@/lib/utils/tarifs";
-import { BlocPaiement, type ModePaiementTerrain } from "@/components/commercial/form-ui";
+import { BlocPaiement, QuantitesProduit, QuantitesDetail, CaseVenteDetail, type ModePaiementTerrain } from "@/components/commercial/form-ui";
 import { formatFcfa } from "@/lib/utils/format";
 
 type PV = {
@@ -73,6 +73,8 @@ export function NouvelleCommandeForm({
   const [typeId, setTypeId] = useState("");
 
   const [quantites, setQuantites] = useState<QuantitesParCode>({});
+  const [detailActif, setDetailActif] = useState(false);
+  const [quantitesDetail, setQuantitesDetail] = useState<QuantitesParCode>({});
   const [modePaiement, setModePaiement] = useState<ModePaiementTerrain>("ESPECES");
   const [acompte, setAcompte] = useState(0);
   const [livraison, setLivraison] = useState("");
@@ -96,9 +98,17 @@ export function NouvelleCommandeForm({
 
   const typeEffectif = mode === "EXISTANT" ? choisi?.typeId ?? null : typeId || null;
   const commande = useMemo(
-    () => preparerCommande(produits, quantites, { typeId: typeEffectif, prixParType, paliers }),
-    [produits, quantites, typeEffectif, prixParType, paliers]
+    () => preparerCommande(produits, quantites, { typeId: typeEffectif, prixParType, paliers }, detailActif ? quantitesDetail : undefined),
+    [produits, quantites, typeEffectif, prixParType, paliers, detailActif, quantitesDetail]
   );
+  const sousTotauxDetail = useMemo(
+    () => preparerCommande(produits, {}, { typeId: typeEffectif, prixParType, paliers }, quantitesDetail).sousTotauxDetail,
+    [produits, typeEffectif, prixParType, paliers, quantitesDetail]
+  );
+
+  function majDetail(code: string, cle: "sachets" | "filets" | "cartons", v: number) {
+    setQuantitesDetail((prev) => ({ ...prev, [code]: { ...(prev[code] ?? { sachets: 0, filets: 0, cartons: 0 }), [cle]: v } }));
+  }
 
   function majQuantite(code: string, cle: "sachets" | "filets" | "cartons", v: number) {
     setQuantites((prev) => ({ ...prev, [code]: { ...(prev[code] ?? { sachets: 0, filets: 0, cartons: 0 }), [cle]: v } }));
@@ -136,6 +146,7 @@ export function NouvelleCommandeForm({
             nbSachets: l.nbSachets,
             nbFilets: l.nbFilets,
             nbCartons: l.nbCartons,
+            detail: l.detail ?? false,
           })),
           modePaiement,
           dateLivraisonPrevue: livraison ? new Date(livraison).toISOString() : undefined,
@@ -260,36 +271,31 @@ export function NouvelleCommandeForm({
           )}
         </Section>
 
-        <Section titre="Produits commandés" aide="Les prix sont appliqués automatiquement : prix de base, type de boutique, puis grille par quantité.">
+        <Section titre="Produits commandés" aide="En cartons (0,5 = demi-carton). Les prix sont appliqués automatiquement : prix de base, type de boutique, puis grille par quantité.">
           <div className="space-y-3">
-            {produits.map((p) => {
-              const q = quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 };
-              const montant = commande.sousTotaux.get(p.code) ?? 0;
-              return (
-                <div key={p.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-                  <div className="mb-2 flex items-baseline justify-between gap-2">
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{p.nom}</p>
-                    {montant > 0 && <p className="text-sm font-semibold tabular-nums text-[#359980]">{formatFcfa(montant)}</p>}
-                  </div>
-                  <div className={`grid gap-3 ${p.prixFilet !== null ? "grid-cols-3" : "grid-cols-2"}`}>
-                    {(["sachets", ...(p.prixFilet !== null ? ["filets"] : []), "cartons"] as ("sachets" | "filets" | "cartons")[]).map((cle) => (
-                      <Etiquette key={cle} texte={cle === "sachets" ? "Sachets" : cle === "filets" ? "Filets" : "Cartons"}>
-                        <input
-                          type="number"
-                          min={0}
-                          inputMode="numeric"
-                          placeholder="0"
-                          className={champ}
-                          value={q[cle] || ""}
-                          onChange={(e) => majQuantite(p.code, cle, Math.max(0, Math.floor(Number(e.target.value) || 0)))}
-                          onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                        />
-                      </Etiquette>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+            {produits.map((p) => (
+              <QuantitesProduit
+                key={p.id}
+                nom={p.nom}
+                valeur={quantites[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }}
+                onChange={(cle, v) => majQuantite(p.code, cle, v)}
+                sousTotal={commande.sousTotaux.get(p.code) ?? 0}
+              />
+            ))}
+          </div>
+          <div className="mt-4 space-y-3">
+            <CaseVenteDetail actif={detailActif} onChange={setDetailActif} />
+            {detailActif &&
+              produits.map((p) => (
+                <QuantitesDetail
+                  key={p.id}
+                  nom={p.nom}
+                  avecFilets={p.prixFilet !== null}
+                  valeur={quantitesDetail[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }}
+                  onChange={(cle, v) => majDetail(p.code, cle, v)}
+                  sousTotal={sousTotauxDetail.get(p.code) ?? 0}
+                />
+              ))}
           </div>
         </Section>
       </div>
