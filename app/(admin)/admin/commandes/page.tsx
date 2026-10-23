@@ -30,7 +30,7 @@ function waUrl(tel: string | null) {
 const CONFIG_STATUT: Record<StatutCommandeFiltre, { label: string; cls: string; icon: React.ElementType }> = {
   EN_ATTENTE: { label: "En attente", cls: "bg-amber-50 text-amber-700", icon: Clock },
   EN_LIVRAISON: { label: "En livraison", cls: "bg-blue-50 text-brand", icon: Truck },
-  LIVREE: { label: "Livrée", cls: "bg-green-50 text-green-700", icon: CheckCircle2 },
+  LIVREE: { label: "Livrée", cls: "bg-emerald-600 text-white", icon: CheckCircle2 },
   ANNULEE: { label: "Annulée", cls: "bg-red-50 text-alert", icon: XCircle },
 };
 
@@ -192,7 +192,7 @@ export default async function CommandesPage({
                     </span>
                   </div>
                 )}
-              <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+              <div className={`rounded-2xl p-4 shadow-sm ring-1 ${c.statut === "LIVREE" ? "bg-emerald-50 ring-emerald-200 dark:bg-emerald-950/40 dark:ring-emerald-900" : "bg-white ring-slate-100 dark:bg-slate-900 dark:ring-slate-800"}`}>
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold text-slate-800 dark:text-slate-100">
@@ -268,7 +268,7 @@ export default async function CommandesPage({
                 </div>
 
                 {peutModifier(session.role) && (
-                  <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-slate-800/60">
+                  <div className={`mt-3 rounded-xl px-3 py-2.5 ${c.statut === "LIVREE" ? "bg-emerald-100/70 dark:bg-emerald-900/30" : "bg-slate-50 dark:bg-slate-800/60"}`}>
                     <CommandeStatusActions id={c.id} statut={c.statut} dateLivraisonPrevue={c.dateLivraisonPrevue?.toISOString() ?? null} />
                   </div>
                 )}
