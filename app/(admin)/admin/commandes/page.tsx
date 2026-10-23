@@ -1,8 +1,11 @@
 import { listerVilles } from "@/lib/geo/synchro-villes";
+import { Fragment } from "react";
 import Link from "next/link";
 import { Plus, Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { listCommandes, countCommandesParStatut, type StatutCommandeFiltre } from "@/lib/queries/commandes";
 import { prisma } from "@/lib/prisma";
+import { jourDouala } from "@/lib/utils/periode";
+import { formatFcfa } from "@/lib/utils/format";
 import { cartonsEq, libelleCartons, detailQte } from "@/lib/utils/cartons-equiv";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { CommandeStatusActions } from "@/components/admin/CommandeStatusActions";
@@ -62,6 +65,7 @@ export default async function CommandesPage({
   };
 }) {
   const session = await requireAdminPage("commandes");
+  const aujourdhui = jourDouala();
   const peutArchiver = peutAcceder(session.role, "archives");
   const page = Number(searchParams.page ?? "1") || 1;
   const statut = (searchParams.statut as StatutCommandeFiltre | undefined) ?? undefined;
@@ -170,10 +174,25 @@ export default async function CommandesPage({
 
         {/* Liste */}
         <div className="space-y-2">
-          {data.map((c) => {
+          {data.map((c, idx) => {
             const wa = waUrl(c.pointVente.telephoneVendeur);
+            const duJour = jourDouala(c.dateCommande) === aujourdhui;
+            const livraisonAujourdhui = !!c.dateLivraisonPrevue && jourDouala(c.dateLivraisonPrevue) === aujourdhui;
+            const premiereDuGroupe = idx === 0 || (jourDouala(data[idx - 1].dateCommande) === aujourdhui) !== duJour;
+            const groupe = data.filter((x) => (jourDouala(x.dateCommande) === aujourdhui) === duJour);
             return (
-              <div key={c.id} className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
+              <Fragment key={c.id}>
+                {premiereDuGroupe && (
+                  <div className={`flex items-center justify-between gap-3 px-1 ${idx === 0 ? "" : "pt-4"}`}>
+                    <h2 className={`text-xs font-bold uppercase tracking-wide ${duJour ? "text-[#1e3a8a] dark:text-blue-300" : "text-slate-500 dark:text-slate-400"}`}>
+                      {duJour ? "Commandes du jour" : "Commandes précédentes"} ({groupe.length})
+                    </h2>
+                    <span className="text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400">
+                      {formatFcfa(groupe.reduce((t, x) => t + Number(x.montantTotal), 0))}
+                    </span>
+                  </div>
+                )}
+              <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold text-slate-800 dark:text-slate-100">
@@ -218,7 +237,14 @@ export default async function CommandesPage({
                   <div>
                     <p>Commandée le {new Date(c.dateCommande).toLocaleDateString("fr-FR")}</p>
                     {c.dateLivraisonPrevue && (
-                      <p>Livraison prévue le {new Date(c.dateLivraisonPrevue).toLocaleDateString("fr-FR")}</p>
+                      <p>
+                        Livraison prévue le {new Date(c.dateLivraisonPrevue).toLocaleDateString("fr-FR")}
+                        {livraisonAujourdhui && (
+                          <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                            Aujourd&apos;hui
+                          </span>
+                        )}
+                      </p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
@@ -247,6 +273,7 @@ export default async function CommandesPage({
                   </div>
                 )}
               </div>
+              </Fragment>
             );
           })}
           {data.length === 0 && (

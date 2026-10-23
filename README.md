@@ -1707,3 +1707,5 @@ Cumul des commandes en attente de validation et des commandes validées à livre
 - Case « Vente en détail » (formulaire de visite, réassort, nouvelle commande bureau/superviseur) : sachets à 100 F pour tous les produits, filets HTC à 1 000 F. Lignes séparées (`detail = true`), sans règle de demi-carton ; les prix du carton et du demi-carton ne changent pas.
 - Factures, bons de commande/livraison, avoirs/retours : lignes détail imprimées « vente au détail (sachet/filet) » avec prix unitaire.
 - Prix du détail : constantes `PRIX_DETAIL` dans `lib/utils/tarifs.ts`.
+
+- Page Commandes : sections « Commandes du jour » / « Commandes précédentes » (avec nombre et montant), pastille « Aujourd'hui » sur les livraisons prévues le jour même.
