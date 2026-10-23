@@ -113,8 +113,10 @@ export function dessinerPieds(doc: jsPDF) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(...C.grisTexte);
-    const lignes = doc.splitTextToSize(ENTREPRISE.pied, largeur - 2 * MARGE);
-    doc.text(lignes, largeur / 2, hauteur - HAUTEUR_PIED + 5, { align: "center" });
+    // Trois lignes, chacune d'un seul tenant (jamais coupée en deux).
+    ENTREPRISE.piedLignes.forEach((l, k) => {
+      doc.text(l, largeur / 2, hauteur - HAUTEUR_PIED + 5.5 + k * 4.2, { align: "center" });
+    });
     if (n > 1) {
       doc.setTextColor(...C.grisLeger);
       doc.text(`Page ${i} / ${n}`, largeur - MARGE, hauteur - 4, { align: "right" });

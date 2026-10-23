@@ -10,6 +10,7 @@ import {
   dessinerBloc,
   dessinerEnTete,
   dessinerPieds,
+  dessinerFiligrane,
   dessinerSignatures,
   HAUTEUR_EN_TETE,
   MARGE,
@@ -110,9 +111,10 @@ export async function genererBonCommandePdf(data: BonCommandeData) {
   doc.setTextColor(...C.encre);
   doc.text(formatFcfa(totalGeneral), largeur - MARGE, y + 1, { align: "right" });
 
-  y = assurerPlace(doc, y + 18, 24);
-  dessinerSignatures(doc, y + 12, [`Signature ${data.client.signataire || data.client.nom}`, `Signature ${data.commercialNom}`]);
+  y = assurerPlace(doc, y + 18, 44);
+  dessinerSignatures(doc, y + 28, [`Signature ${data.client.signataire || data.client.nom}`, `Signature ${data.commercialNom}`]);
 
+  dessinerFiligrane(doc);
   dessinerPieds(doc);
   doc.save(nomFichier("bon-commande", data.reference, data.client.nom));
 }

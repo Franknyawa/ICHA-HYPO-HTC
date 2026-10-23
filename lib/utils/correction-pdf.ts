@@ -86,8 +86,8 @@ export async function genererCorrectionPdf(data: CorrectionJson) {
   doc.text(l, MARGE, y);
   y += l.length * 5 + 16;
 
-  y = assurerPlace(doc, y, 22);
-  dessinerSignatures(doc, y + 10, ["Signature ETS ICHA IMPORT", `Signature ${data.client.signataire || data.client.nom}`]);
+  y = assurerPlace(doc, y, 42);
+  dessinerSignatures(doc, y + 26, ["Signature ETS ICHA IMPORT", `Signature ${data.client.signataire || data.client.nom}`]);
 
   dessinerFiligrane(doc);
   dessinerPieds(doc);

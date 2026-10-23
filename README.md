@@ -1718,3 +1718,7 @@ Le logo ICHA IMPORT (fond transparent, opacité 10 %) est imprimé en filigrane 
 ## Bulles de notification + type « Personne physique » (2026-10-23)
 - Bulles rouges sur « Commandes » et « Prospects indécis » (barre latérale, barre mobile, menu Plus) : nombre de nouvelles commandes / nouveaux prospects depuis la dernière visite de la rubrique (`/api/notifications/count`, date mémorisée dans le navigateur, rafraîchi chaque minute).
 - Nouveau type de boutique « Personne physique » (clients individuels en détail) : à ajouter en base via `docs/migration-2026-10-23.sql` (ou Paramètres > Types de boutique).
+
+## Documents et liste commandes (2026-10-23)
+- Commandes : « Commandes du jour » toujours dépliées ; « Commandes précédentes » repliées dans un bloc avec flèche (clic pour dérouler).
+- PDF : filigrane aussi sur le bon de commande ; BL « Signature Comptable » ; lignes de signature plus basses (place pour cachets) sur tous les bons/factures ; pied de page en 3 lignes (`ENTREPRISE.piedLignes`).

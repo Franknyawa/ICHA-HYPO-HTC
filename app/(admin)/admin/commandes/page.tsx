@@ -1,7 +1,7 @@
 import { listerVilles } from "@/lib/geo/synchro-villes";
 import { Fragment } from "react";
 import Link from "next/link";
-import { Plus, Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { listCommandes, countCommandesParStatut, type StatutCommandeFiltre } from "@/lib/queries/commandes";
 import { prisma } from "@/lib/prisma";
 import { jourDouala } from "@/lib/utils/periode";
@@ -174,108 +174,127 @@ export default async function CommandesPage({
 
         {/* Liste */}
         <div className="space-y-2">
-          {data.map((c, idx) => {
-            const wa = waUrl(c.pointVente.telephoneVendeur);
-            const duJour = jourDouala(c.dateCommande) === aujourdhui;
-            const livraisonAujourdhui = !!c.dateLivraisonPrevue && jourDouala(c.dateLivraisonPrevue) === aujourdhui;
-            const premiereDuGroupe = idx === 0 || (jourDouala(data[idx - 1].dateCommande) === aujourdhui) !== duJour;
-            const groupe = data.filter((x) => (jourDouala(x.dateCommande) === aujourdhui) === duJour);
-            return (
-              <Fragment key={c.id}>
-                {premiereDuGroupe && (
-                  <div className={`flex items-center justify-between gap-3 px-1 ${idx === 0 ? "" : "pt-4"}`}>
-                    <h2 className={`text-xs font-bold uppercase tracking-wide ${duJour ? "text-[#1e3a8a] dark:text-blue-300" : "text-slate-500 dark:text-slate-400"}`}>
-                      {duJour ? "Commandes du jour" : "Commandes précédentes"} ({groupe.length})
-                    </h2>
-                    <span className="text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400">
-                      {formatFcfa(groupe.reduce((t, x) => t + Number(x.montantTotal), 0))}
-                    </span>
-                  </div>
-                )}
-              <div className={`rounded-2xl p-4 shadow-sm ring-1 ${c.statut === "LIVREE" ? "bg-emerald-50 ring-emerald-200 dark:bg-emerald-950/40 dark:ring-emerald-900" : "bg-white ring-slate-100 dark:bg-slate-900 dark:ring-slate-800"}`}>
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-semibold text-slate-800 dark:text-slate-100">
-                      {c.client?.nom ?? c.pointVente.nom}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
-                      {c.pointVente.nom} · {c.pointVente.ville?.nom ?? "—"} · {c.commercial.prenom} {c.commercial.nom}
-                    </p>
-                  </div>
-                  <StatutBadge statut={c.statut} />
-                </div>
+          {(() => {
+            const carte = (c: (typeof data)[number]) => {
+              const wa = waUrl(c.pointVente.telephoneVendeur);
+              const livraisonAujourdhui = !!c.dateLivraisonPrevue && jourDouala(c.dateLivraisonPrevue) === aujourdhui;
+              return (
+                <Fragment key={c.id}>
+                  <div className={`rounded-2xl p-4 shadow-sm ring-1 ${c.statut === "LIVREE" ? "bg-emerald-50 ring-emerald-200 dark:bg-emerald-950/40 dark:ring-emerald-900" : "bg-white ring-slate-100 dark:bg-slate-900 dark:ring-slate-800"}`}>
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-slate-800 dark:text-slate-100">
+                          {c.client?.nom ?? c.pointVente.nom}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                          {c.pointVente.nom} · {c.pointVente.ville?.nom ?? "—"} · {c.commercial.prenom} {c.commercial.nom}
+                        </p>
+                      </div>
+                      <StatutBadge statut={c.statut} />
+                    </div>
 
-                <div className="mb-2 flex flex-wrap gap-2">
-                  {c.lignes.map((l, i) => (
-                    <span
-                      key={i}
-                      className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
-                        l.produit.code === "HYPO" ? "bg-blue-50 text-blue-700" : "bg-teal-50 text-teal-700"
-                      }`}
-                    >
-                      {l.produit.code} —{" "}
-                      {l.detail
-                        ? `détail : ${detailQte(l)}`
-                        : libelleCartons(cartonsEq(l, l.produit))}
-                    </span>
-                  ))}
-                </div>
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {c.lignes.map((l, i) => (
+                        <span
+                          key={i}
+                          className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
+                            l.produit.code === "HYPO" ? "bg-blue-50 text-blue-700" : "bg-teal-50 text-teal-700"
+                          }`}
+                        >
+                          {l.produit.code} —{" "}
+                          {l.detail
+                            ? `détail : ${detailQte(l)}`
+                            : libelleCartons(cartonsEq(l, l.produit))}
+                        </span>
+                      ))}
+                    </div>
 
-                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="font-bold tabular-nums text-slate-800 dark:text-slate-100">
-                    {Number(c.montantTotal).toLocaleString("fr-FR")} FCFA
-                  </span>
-                  <ModePaiementSelect
-                    type="COMMANDE"
-                    id={c.id}
-                    valeur={c.modePaiement}
-                    modifiable={peutModifier(session.role)}
-                  />
-                </div>
+                    <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+                      <span className="font-bold tabular-nums text-slate-800 dark:text-slate-100">
+                        {Number(c.montantTotal).toLocaleString("fr-FR")} FCFA
+                      </span>
+                      <ModePaiementSelect
+                        type="COMMANDE"
+                        id={c.id}
+                        valeur={c.modePaiement}
+                        modifiable={peutModifier(session.role)}
+                      />
+                    </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
-                  <div>
-                    <p>Commandée le {new Date(c.dateCommande).toLocaleDateString("fr-FR")}</p>
-                    {c.dateLivraisonPrevue && (
-                      <p>
-                        Livraison prévue le {new Date(c.dateLivraisonPrevue).toLocaleDateString("fr-FR")}
-                        {livraisonAujourdhui && (
-                          <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                            Aujourd&apos;hui
-                          </span>
+                    <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
+                      <div>
+                        <p>Commandée le {new Date(c.dateCommande).toLocaleDateString("fr-FR")}</p>
+                        {c.dateLivraisonPrevue && (
+                          <p>
+                            Livraison prévue le {new Date(c.dateLivraisonPrevue).toLocaleDateString("fr-FR")}
+                            {livraisonAujourdhui && (
+                              <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                Aujourd&apos;hui
+                              </span>
+                            )}
+                          </p>
                         )}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {wa && (
-                      <a href={wa} target="_blank" rel="noopener noreferrer" className="text-green-600">
-                        <Phone size={15} />
-                      </a>
-                    )}
-                    {c.statut !== "ANNULEE" && peutModifier(session.role) && <BonCommandeButton commandeId={c.id} />}
-                    {/* Facture et bon de livraison : seulement une fois la commande validée par l'admin. */}
-                    {(c.statut === "EN_LIVRAISON" || c.statut === "LIVREE") && peutModifier(session.role) && (
-                      <>
-                        <BonLivraisonButton commandeId={c.id} />
-                        <FactureButton type="COMMANDE" id={c.id} />
-                      </>
-                    )}
-                    {peutArchiver && (c.statut === "LIVREE" || c.statut === "ANNULEE") && (
-                      <ArchiveButton url={`/api/commandes/${c.id}/archiver`} archive compact />
-                    )}
-                  </div>
-                </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {wa && (
+                          <a href={wa} target="_blank" rel="noopener noreferrer" className="text-green-600">
+                            <Phone size={15} />
+                          </a>
+                        )}
+                        {c.statut !== "ANNULEE" && peutModifier(session.role) && <BonCommandeButton commandeId={c.id} />}
+                        {/* Facture et bon de livraison : seulement une fois la commande validée par l'admin. */}
+                        {(c.statut === "EN_LIVRAISON" || c.statut === "LIVREE") && peutModifier(session.role) && (
+                          <>
+                            <BonLivraisonButton commandeId={c.id} />
+                            <FactureButton type="COMMANDE" id={c.id} />
+                          </>
+                        )}
+                        {peutArchiver && (c.statut === "LIVREE" || c.statut === "ANNULEE") && (
+                          <ArchiveButton url={`/api/commandes/${c.id}/archiver`} archive compact />
+                        )}
+                      </div>
+                    </div>
 
-                {peutModifier(session.role) && (
-                  <div className={`mt-3 rounded-xl px-3 py-2.5 ${c.statut === "LIVREE" ? "bg-emerald-100/70 dark:bg-emerald-900/30" : "bg-slate-50 dark:bg-slate-800/60"}`}>
-                    <CommandeStatusActions id={c.id} statut={c.statut} dateLivraisonPrevue={c.dateLivraisonPrevue?.toISOString() ?? null} />
+                    {peutModifier(session.role) && (
+                      <div className={`mt-3 rounded-xl px-3 py-2.5 ${c.statut === "LIVREE" ? "bg-emerald-100/70 dark:bg-emerald-900/30" : "bg-slate-50 dark:bg-slate-800/60"}`}>
+                        <CommandeStatusActions id={c.id} statut={c.statut} dateLivraisonPrevue={c.dateLivraisonPrevue?.toISOString() ?? null} />
+                      </div>
+                    )}
                   </div>
+                </Fragment>
+              );
+            };
+            const duJourListe = data.filter((c) => jourDouala(c.dateCommande) === aujourdhui);
+            const precedentes = data.filter((c) => jourDouala(c.dateCommande) !== aujourdhui);
+            const total = (l: typeof data) => formatFcfa(l.reduce((t, x) => t + Number(x.montantTotal), 0));
+            return (
+              <>
+                {duJourListe.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between gap-3 px-1">
+                      <h2 className="text-xs font-bold uppercase tracking-wide text-[#1e3a8a] dark:text-blue-300">
+                        Commandes du jour ({duJourListe.length})
+                      </h2>
+                      <span className="text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400">{total(duJourListe)}</span>
+                    </div>
+                    {duJourListe.map(carte)}
+                  </>
                 )}
-              </div>
-              </Fragment>
+                {precedentes.length > 0 && (
+                  <details className="group pt-2">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 [&::-webkit-details-marker]:hidden">
+                      <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
+                        Commandes précédentes ({precedentes.length})
+                      </span>
+                      <span className="text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400">{total(precedentes)}</span>
+                    </summary>
+                    <div className="mt-2 space-y-2">{precedentes.map(carte)}</div>
+                  </details>
+                )}
+              </>
             );
-          })}
+          })()}
           {data.length === 0 && (
             <p className="rounded-2xl bg-white dark:bg-slate-900 py-10 text-center text-sm text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
               Aucune commande trouvée.

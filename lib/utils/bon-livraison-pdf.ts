@@ -87,8 +87,8 @@ export async function genererBonLivraisonPdf(data: BonLivraisonData) {
   doc.setTextColor(...C.grisTexte);
   doc.text("Marchandise reçue conforme à la commande ci-dessus.", MARGE + 7, y - 0.8);
 
-  y = assurerPlace(doc, y + 14, 24);
-  dessinerSignatures(doc, y + 12, ["Signature Magasinier", "Signature Commercial / Transporteur", "Signature ETS ICHA IMPORT"]);
+  y = assurerPlace(doc, y + 14, 44);
+  dessinerSignatures(doc, y + 28, ["Signature Magasinier", "Signature Commercial / Transporteur", "Signature Comptable"]);
 
   dessinerFiligrane(doc);
   dessinerPieds(doc);

@@ -6,6 +6,11 @@ import { sousTotal } from "./tarifs";
 export const ENTREPRISE = {
   nom: "ICHA IMPORT",
   activites: "Importation, Commerce Général, Prestation de Services",
+  piedLignes: [
+    "ICHA IMPORT - Immeuble le CAURIS BP 7367 Douala Cameroun",
+    "NC : M012216966656, RC/DLA/2022/A/333",
+    "TEL : + (237) 690 98 81 33 / + (237) 696 48 70 22. Email : secretcameroun@gmail.com",
+  ],
   pied:
     "ICHA IMPORT - Immeuble le CAURIS BP 7367 Douala Cameroun. NC : M012216966656, RC/DLA/2022/A/333. " +
     "TEL : + (237) 690 98 81 33 / + (237) 696 48 70 22. Email : secretcameroun@gmail.com",
