@@ -94,11 +94,13 @@ export async function PATCH(
       }
     }
 
-    // Le stock est débité dès que l'admin valide (EN_LIVRAISON / LIVREE) et
-    // remis en stock si la commande est annulée ou réactivée. On compare ce
+    // Le stock n'est débité que lorsque l'admin clique sur « Livrée » (la marchandise
+    // reste disponible tant qu'elle n'est pas partie) ; il est remis en stock si la
+    // commande est annulée ou réactivée. On compare ce
     // qui est déjà sorti (mouvements de cette commande) à ce qui doit l'être :
     // l'opération est donc idempotente et ne débite jamais deux fois.
-    const doitEtreSortie = ["EN_LIVRAISON", "LIVREE"].includes(statutCible);
+    const doitEtreSortie = statutCible === "LIVREE";
+    const doitEtreValidee = ["EN_LIVRAISON", "LIVREE"].includes(statutCible);
 
     let commande;
     try {
@@ -142,7 +144,7 @@ export async function PATCH(
             quantiteSachets: Math.abs(ecart),
             referenceType: "COMMANDE",
             referenceId: params.id,
-            note: ecart > 0 ? "Validation de commande" : "Annulation / réactivation de commande",
+            note: ecart > 0 ? "Livraison de commande" : "Annulation / réactivation de commande",
           });
         }
 
@@ -152,7 +154,7 @@ export async function PATCH(
             statut: statutCible,
             ...(nouvelleDate !== undefined ? { dateLivraisonPrevue: nouvelleDate } : {}),
             // Date de la 1re validation ; effacée si la commande redevient « en attente » ou est annulée.
-            valideeAt: doitEtreSortie ? (existante.valideeAt ?? new Date()) : null,
+            valideeAt: doitEtreValidee ? (existante.valideeAt ?? new Date()) : null,
           },
           select: { id: true, statut: true },
         });
@@ -160,7 +162,7 @@ export async function PATCH(
     } catch (e) {
       if (e instanceof InsufficientStockError) {
         return NextResponse.json(
-          { error: "Stock insuffisant pour valider cette commande. Réapprovisionnez le stock puis réessayez." },
+          { error: "Stock insuffisant pour livrer cette commande. Réapprovisionnez le stock puis réessayez." },
           { status: 409 }
         );
       }

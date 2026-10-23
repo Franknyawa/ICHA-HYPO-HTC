@@ -87,7 +87,7 @@ export function CommandeStatusActions({
         <button
           onClick={() => updateStatut("EN_LIVRAISON")}
           disabled={saving}
-          title="Valider : autorise la livraison, débite le stock et notifie le commercial"
+          title="Valider : autorise la livraison et notifie le commercial (le stock est débité à la livraison)"
           className="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-brand disabled:opacity-50"
         >
           <CheckCircle2 size={13} />
@@ -111,6 +111,7 @@ export function CommandeStatusActions({
         <button
           onClick={() => updateStatut("LIVREE")}
           disabled={saving}
+          title="Livrée : débite le stock"
           className="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 disabled:opacity-50"
         >
           <Truck size={13} />

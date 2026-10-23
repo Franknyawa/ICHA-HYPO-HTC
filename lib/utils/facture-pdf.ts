@@ -12,6 +12,7 @@ import {
   C,
   dessinerBloc,
   dessinerEnTete,
+  dessinerFiligrane,
   dessinerPieds,
   dessinerSignatures,
   MARGE,
@@ -130,6 +131,7 @@ export async function genererFacturePdf(data: FactureData) {
   y = assurerPlace(doc, y, 22);
   dessinerSignatures(doc, y + 10, ["Signature ETS ICHA IMPORT", `Signature ${data.client.signataire || data.client.nom}`]);
 
+  dessinerFiligrane(doc);
   dessinerPieds(doc);
   doc.save(nomFichier("facture", data.numero, data.client.nom));
 }

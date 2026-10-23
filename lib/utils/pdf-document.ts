@@ -4,6 +4,7 @@
 
 import type { jsPDF } from "jspdf";
 import { dessinerEcuMarque } from "@/lib/utils/pdf-marque";
+import { LOGO_FILIGRANE_DATA_URL, LOGO_FILIGRANE_RATIO } from "@/lib/brand-logo-filigrane";
 import { ENTREPRISE } from "@/lib/utils/documents";
 
 export type RVB = [number, number, number];
@@ -73,6 +74,30 @@ export function dessinerEnTete(doc: jsPDF, largeur: number, dateHeure: Date) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.text(`à ${heure}`, largeur - MARGE, 24, { align: "right" });
+}
+
+/**
+ * Logo ICHA IMPORT en filigrane (fin mais visible) au centre de chaque page, sous l'en-tête
+ * et au-dessus du pied de page. Dessiné translucide : le texte reste net et lisible.
+ * À appeler une fois le contenu terminé, juste avant `dessinerPieds`.
+ */
+export function dessinerFiligrane(doc: jsPDF, opacite = 0.1) {
+  const largeur = doc.internal.pageSize.getWidth();
+  const hauteur = doc.internal.pageSize.getHeight();
+  const w = largeur * 0.62;
+  const h = w / LOGO_FILIGRANE_RATIO;
+  const x = (largeur - w) / 2;
+  const zoneHaut = HAUTEUR_EN_TETE;
+  const zoneBas = hauteur - HAUTEUR_PIED;
+  const y = zoneHaut + (zoneBas - zoneHaut - h) / 2;
+  const n = doc.getNumberOfPages();
+  for (let i = 1; i <= n; i++) {
+    doc.setPage(i);
+    doc.saveGraphicsState();
+    doc.setGState(new (doc as any).GState({ opacity: opacite }));
+    doc.addImage(LOGO_FILIGRANE_DATA_URL, "PNG", x, y, w, h);
+    doc.restoreGraphicsState();
+  }
 }
 
 /** Pied de page légal, répété sur chaque page du document. */

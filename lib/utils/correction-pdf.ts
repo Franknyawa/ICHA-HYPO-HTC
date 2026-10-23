@@ -10,6 +10,7 @@ import {
   C,
   dessinerBloc,
   dessinerEnTete,
+  dessinerFiligrane,
   dessinerPieds,
   dessinerSignatures,
   HAUTEUR_EN_TETE,
@@ -88,6 +89,7 @@ export async function genererCorrectionPdf(data: CorrectionJson) {
   y = assurerPlace(doc, y, 22);
   dessinerSignatures(doc, y + 10, ["Signature ETS ICHA IMPORT", `Signature ${data.client.signataire || data.client.nom}`]);
 
+  dessinerFiligrane(doc);
   dessinerPieds(doc);
   doc.save(nomFichier(estAvoir ? "avoir" : "retour", data.numero, data.client.nom));
 }

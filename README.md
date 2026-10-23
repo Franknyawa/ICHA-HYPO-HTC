@@ -1709,3 +1709,8 @@ Cumul des commandes en attente de validation et des commandes validées à livre
 - Prix du détail : constantes `PRIX_DETAIL` dans `lib/utils/tarifs.ts`.
 
 - Page Commandes : sections « Commandes du jour » / « Commandes précédentes » (avec nombre et montant), pastille « Aujourd'hui » sur les livraisons prévues le jour même.
+
+- Stock : débité uniquement au clic sur « Livrée » (plus à la validation). Annuler / réactiver remet en stock ce qui a été sorti. Les retours ne sont possibles qu'après livraison ; les avoirs restent possibles dès la validation. Les commandes déjà validées (stock déjà débité) ne sont pas débitées une 2e fois.
+
+## Filigrane logo (2026-10-23)
+Le logo ICHA IMPORT (fond transparent, opacité 10 %) est imprimé en filigrane au centre de chaque page des factures, bons de livraison, factures d avoir et de retour (`dessinerFiligrane` dans `lib/utils/pdf-document.ts`). Réglage : paramètre `opacite`.

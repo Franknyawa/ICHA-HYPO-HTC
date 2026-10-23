@@ -184,6 +184,10 @@ export async function creerRetour(params: {
 }): Promise<{ retour: CorrectionJson & { remboursement: number }; avoir: CorrectionJson | null }> {
   const { commande, lignes, montant } = await construireLignes(params.commandeId, params.lignes);
   if (lignes.length === 0) throw new CorrectionError("Indiquez au moins une quantité retournée.");
+  // Le stock n'est débité qu'à la livraison : un retour n'a de sens (et ne remet en stock) qu'après.
+  if (commande.statut !== "LIVREE") {
+    throw new CorrectionError("Un retour n'est possible qu'une fois la commande livrée (le stock n'est débité qu'à la livraison). Utilisez une facture d'avoir pour corriger avant.");
+  }
   // Le retour est un crédit sur le compte du client : avoirs + retours ne peuvent pas dépasser la facture.
   const avant = await creditsCommande(prisma, params.commandeId);
   if (avant.credits + montant > avant.total + 0.5) {

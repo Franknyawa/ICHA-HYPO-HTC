@@ -7,6 +7,7 @@ import {
   C,
   dessinerBloc,
   dessinerEnTete,
+  dessinerFiligrane,
   dessinerPieds,
   dessinerSignatures,
   HAUTEUR_EN_TETE,
@@ -89,6 +90,7 @@ export async function genererBonLivraisonPdf(data: BonLivraisonData) {
   y = assurerPlace(doc, y + 14, 24);
   dessinerSignatures(doc, y + 12, ["Signature Magasinier", "Signature Commercial / Transporteur", "Signature ETS ICHA IMPORT"]);
 
+  dessinerFiligrane(doc);
   dessinerPieds(doc);
   doc.save(nomFichier("bon-livraison", data.numero, data.client.nom));
 }
