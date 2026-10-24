@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
               select: { montantTotal: true, statut: true, paiements: { select: { montant: true } } },
             });
       if (!doc) return { erreur: "Commande introuvable.", statut: 404 } as const;
-      if (type === "COMMANDE" && "statut" in doc && !["EN_LIVRAISON", "LIVREE"].includes(String(doc.statut))) {
-        return { erreur: "Cette commande n'est pas validée : validez-la avant d'encaisser.", statut: 409 } as const;
+      if (type === "COMMANDE" && "statut" in doc && doc.statut !== "LIVREE") {
+        return { erreur: "Cette commande n'est pas encore livrée : l'encaissement est possible après « Livrée ».", statut: 409 } as const;
       }
 
       const paye = doc.paiements.reduce((s, p) => s + Number(p.montant), 0);

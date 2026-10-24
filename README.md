@@ -1723,3 +1723,6 @@ Le logo ICHA IMPORT (fond transparent, opacité 10 %) est imprimé en filigrane 
 - Commandes : « Commandes du jour » toujours dépliées ; « Commandes précédentes » repliées dans un bloc avec flèche (clic pour dérouler).
 - PDF : filigrane aussi sur le bon de commande ; BL « Signature Comptable » ; lignes de signature plus basses (place pour cachets) sur tous les bons/factures ; pied de page en 3 lignes (`ENTREPRISE.piedLignes`).
 - Signatures ancrées en bas de page (`placerSignatures`), 45 mm minimum d'espace avant ; sinon nouvelle page.
+
+## Encaissements après « Livrée » (2026-10-24)
+Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois passée à « Livrée » (stock sorti). Validée / en livraison = pas encore d'encaissement possible (l'API refuse). S'applique aussi aux commandes précédentes (basé sur le statut, aucun SQL). Les alertes « Encaissement à faire » des commandes non livrées sont closes automatiquement au prochain passage du cron / « Générer maintenant ».

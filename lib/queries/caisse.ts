@@ -116,7 +116,8 @@ export async function getCreditsAEncaisser(): Promise<CreditAEncaisser[]> {
       WHERE oc.type::text = 'DEPENSE' AND oc.reference_type IN ('AVOIR', 'RETOUR')
       GROUP BY x.commande_id
     ) rb ON rb.commande_id = c.id
-    WHERE c.statut IN ('EN_LIVRAISON', 'LIVREE')
+    -- le montant n'est à encaisser qu'une fois la commande livrée (stock sorti)
+    WHERE c.statut = 'LIVREE'
       AND c.montant_total > 0
       AND c.montant_total - COALESCE(av.credit, 0) - (COALESCE(p.paye, 0) - COALESCE(rb.rembourse, 0)) > 0.5
     ORDER BY c.date_livraison_prevue ASC NULLS LAST, c.created_at ASC`;

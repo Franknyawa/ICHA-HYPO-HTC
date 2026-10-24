@@ -170,7 +170,7 @@ export function CaisseView({
             <KpiCard
               label="Commandes à encaisser"
               valeur={formatFcfa(c.creditsTotal)}
-              sous={`${c.credits.length} commande${c.credits.length > 1 ? "s" : ""} · toutes périodes`}
+              sous={`${c.credits.length} commande${c.credits.length > 1 ? "s" : ""} livrée${c.credits.length > 1 ? "s" : ""} · toutes périodes`}
               icone={HandCoins}
               ton="ambre"
             />

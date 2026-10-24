@@ -147,7 +147,7 @@ export async function rafraichirAlerteLivraison(commandeId: string) {
 }
 
 /**
- * Encaissements de la journée non faits : une commande validée dont la date de
+ * Encaissements de la journée non faits : une commande LIVRÉE dont la date de
  * livraison est passée (ou est aujourd'hui, après 17 h à Douala) et qui n'est
  * pas soldée. L'alerte se ferme toute seule quand l'encaissement est validé.
  */
@@ -155,6 +155,15 @@ async function genererAlertesEncaissements() {
   const aujourdhui = jourDouala();
   const heureDouala = (new Date().getUTCHours() + 1) % 24;
   const creances = await getCreditsAEncaisser();
+  // Les anciennes alertes de commandes qui ne sont plus à encaisser (pas encore livrées, soldées…) sont closes.
+  await prisma.alerte.updateMany({
+    where: {
+      type: "ENCAISSEMENT_A_FAIRE",
+      statut: { not: "RESOLUE" },
+      entiteId: { notIn: creances.map((c) => c.id) },
+    },
+    data: { statut: "RESOLUE", verifieeAt: new Date() },
+  });
   for (const c of creances) {
     if (!c.dateLivraisonPrevue) continue;
     const jour = jourDouala(c.dateLivraisonPrevue);
