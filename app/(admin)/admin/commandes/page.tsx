@@ -29,7 +29,7 @@ function waUrl(tel: string | null) {
 
 const CONFIG_STATUT: Record<StatutCommandeFiltre, { label: string; cls: string; icon: React.ElementType }> = {
   EN_ATTENTE: { label: "En attente", cls: "bg-amber-50 text-amber-700", icon: Clock },
-  EN_LIVRAISON: { label: "En livraison", cls: "bg-blue-50 text-brand", icon: Truck },
+  EN_LIVRAISON: { label: "Effectuer la livraison", cls: "bg-blue-50 text-brand", icon: Truck },
   LIVREE: { label: "Livrée", cls: "bg-emerald-600 text-white", icon: CheckCircle2 },
   ANNULEE: { label: "Annulée", cls: "bg-red-50 text-alert", icon: XCircle },
 };
@@ -141,7 +141,7 @@ export default async function CommandesPage({
           <select name="statut" defaultValue={statut ?? ""} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100">
             <option value="">Tous les statuts</option>
             <option value="EN_ATTENTE">En attente</option>
-            <option value="EN_LIVRAISON">En livraison</option>
+            <option value="EN_LIVRAISON">Effectuer la livraison</option>
             <option value="LIVREE">Livrée</option>
             <option value="ANNULEE">Annulée</option>
           </select>

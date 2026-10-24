@@ -111,11 +111,11 @@ export function CommandeStatusActions({
         <button
           onClick={() => updateStatut("LIVREE")}
           disabled={saving}
-          title="Livrée : débite le stock"
+          title="Effectuer la livraison : débite le stock et ouvre l encaissement"
           className="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 disabled:opacity-50"
         >
           <Truck size={13} />
-          Livrée
+          Effectuer la livraison
         </button>
         <button
           onClick={() => updateStatut("ANNULEE")}

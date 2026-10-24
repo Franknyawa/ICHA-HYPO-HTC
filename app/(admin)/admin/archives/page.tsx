@@ -10,7 +10,7 @@ import { Panneau } from "@/components/admin/ui";
 
 export const dynamic = "force-dynamic";
 
-const STATUTS = { EN_ATTENTE: "En attente", EN_LIVRAISON: "En livraison", LIVREE: "Livrée", ANNULEE: "Annulée" } as const;
+const STATUTS = { EN_ATTENTE: "En attente", EN_LIVRAISON: "Effectuer la livraison", LIVREE: "Livrée", ANNULEE: "Annulée" } as const;
 
 const date = (d: Date) => d.toLocaleDateString("fr-FR", { timeZone: "Africa/Douala" });
 
