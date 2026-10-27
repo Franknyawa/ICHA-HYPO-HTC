@@ -62,6 +62,7 @@ export default async function CommandesPage({
     binomeId?: string;
     dateFrom?: string;
     dateTo?: string;
+    vue?: string;
   };
 }) {
   const session = await requireAdminPage("commandes");
@@ -90,7 +91,8 @@ export default async function CommandesPage({
   ]);
 
   // Livraisons à venir (hors du jour) : chargées à part, sur la 1re page seulement.
-  const aVenirListe = page === 1 ? (await listCommandes({ pageSize: 100, statut, ...filtresSansStatut, livraison: "avenir" })).data : [];
+  const vueAvenir = searchParams.vue === "avenir";
+  const aVenirListe = (await listCommandes({ pageSize: 100, statut, ...filtresSansStatut, livraison: "avenir" })).data;
 
   const baseQuery = { statut, villeId, commercialId, binomeId, dateFrom, dateTo };
 
@@ -116,6 +118,27 @@ export default async function CommandesPage({
             <Plus size={15} /> Nouvelle commande
           </Link>
         )}
+        {/* Bouton « Livraisons à venir » (couleur à part) / retour */}
+        <div className="mb-4">
+          {vueAvenir ? (
+            <Link
+              href={`/admin/commandes?${buildQuery({ ...filtresSansStatut })}`}
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 dark:bg-slate-700"
+            >
+              <ChevronLeft size={16} /> Retour aux commandes
+            </Link>
+          ) : (
+            <Link
+              href={`/admin/commandes?${buildQuery({ ...filtresSansStatut, vue: "avenir" })}`}
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-600"
+            >
+              <CalendarClock size={16} />
+              Livraisons à venir
+              <span className="rounded-full bg-white/25 px-2 py-0.5 text-xs font-bold tabular-nums">{aVenirListe.length}</span>
+            </Link>
+          )}
+        </div>
+
         {/* Pastilles de filtre rapide par statut */}
         <div className="mb-4 flex flex-wrap gap-2">
           <Link
@@ -305,31 +328,25 @@ export default async function CommandesPage({
               const j = jourDouala(c.dateLivraisonPrevue!);
               parJour.set(j, [...(parJour.get(j) ?? []), c]);
             }
-            return (
-              <>
-                {duJourListe.length > 0 && (
-                  <>
-                    <div className="flex items-center justify-between gap-3 px-1">
-                      <h2 className="text-xs font-bold uppercase tracking-wide text-[#1e3a8a] dark:text-blue-300">
-                        Commandes du jour ({duJourListe.length})
-                      </h2>
-                      <span className="text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400">{total(duJourListe)}</span>
-                    </div>
-                    {duJourListe.map((c) => carte(c))}
-                  </>
+            if (vueAvenir) {
+              return (
+                <>
+                {aVenirListe.length === 0 && (
+                  <p className="rounded-2xl bg-white py-10 text-center text-sm text-slate-400 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:text-slate-500 dark:ring-slate-800">
+                    Aucune livraison à venir.
+                  </p>
                 )}
                 {aVenirListe.length > 0 && (
-                  <details open className="group rounded-2xl border border-amber-200 bg-amber-50/40 p-2 dark:border-amber-900/60 dark:bg-amber-950/10">
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-2 py-2 [&::-webkit-details-marker]:hidden">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-2 dark:border-amber-900/60 dark:bg-amber-950/10">
+                    <div className="flex items-center justify-between gap-3 rounded-xl px-2 py-2">
                       <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
                         <CalendarClock size={16} />
                         Livraisons à venir ({aVenirListe.length})
-                        <ChevronDown size={15} className="transition-transform group-open:rotate-180" />
                       </span>
                       <span className="text-xs font-semibold tabular-nums text-amber-800/80 dark:text-amber-300/80">{total(aVenirListe)}</span>
-                    </summary>
+                    </div>
                     <p className="px-2 pb-2 text-[11px] text-amber-800/80 dark:text-amber-300/70">
-                      Elles passent dans « Commandes du jour » le jour de la livraison.
+                      Chaque commande passe dans « Commandes du jour » le jour de sa livraison.
                     </p>
                     <div className="space-y-3">
                       {[...parJour.entries()].map(([j, liste]) => (
@@ -345,7 +362,23 @@ export default async function CommandesPage({
                         </div>
                       ))}
                     </div>
-                  </details>
+                  </div>
+                )}
+                </>
+              );
+            }
+            return (
+              <>
+                {duJourListe.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between gap-3 px-1">
+                      <h2 className="text-xs font-bold uppercase tracking-wide text-[#1e3a8a] dark:text-blue-300">
+                        Commandes du jour ({duJourListe.length})
+                      </h2>
+                      <span className="text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400">{total(duJourListe)}</span>
+                    </div>
+                    {duJourListe.map((c) => carte(c))}
+                  </>
                 )}
                 {precedentes.length > 0 && (
                   <details className="group pt-2">
@@ -362,7 +395,7 @@ export default async function CommandesPage({
               </>
             );
           })()}
-          {data.length === 0 && aVenirListe.length === 0 && (
+          {!vueAvenir && data.length === 0 && (
             <p className="rounded-2xl bg-white dark:bg-slate-900 py-10 text-center text-sm text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
               Aucune commande trouvée.
             </p>
