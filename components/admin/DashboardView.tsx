@@ -130,7 +130,7 @@ export function DashboardView({
             <KpiCard
               label="Commandes en attente"
               valeur={kpis.commandesEnAttente}
-              sous={kpis.commandesEnAttente > 0 ? "à préparer et livrer" : "rien en attente"}
+              sous={`${kpis.commandesEnAttente > 0 ? "à valider" : "rien en attente"}${kpis.livraisonsAVenir > 0 ? ` · ${kpis.livraisonsAVenir} livraison(s) à venir` : ""}`}
               icone={Truck}
               ton={kpis.commandesEnAttente > 0 ? "rose" : "ardoise"}
               href="/admin/commandes?statut=EN_ATTENTE"
@@ -143,7 +143,7 @@ export function DashboardView({
           <TitreSection ton="rose">Commandes en cours</TitreSection>
           <Panneau
             titre={`${enCours.reduce((s, b) => s + b.nbCommandes, 0)} commande(s) en cours · ${fmtCartons(enCours.reduce((s, b) => s + b.cartons, 0))} cartons`}
-            sousTitre={`Valeur totale : ${formatFcfa(enCours.reduce((s, b) => s + b.montant, 0))}`}
+            sousTitre={`Valeur totale : ${formatFcfa(enCours.reduce((s, b) => s + b.montant, 0))}${kpis.livraisonsAVenir > 0 ? ` · hors ${kpis.livraisonsAVenir} livraison(s) à venir` : ""}`}
             icone={Truck}
             ton="rose"
           >

@@ -6,6 +6,14 @@ import { ajouterJours, debutJour, finJour, jourDouala } from "@/lib/utils/period
 
 // « Aujourd'hui » = la journée du Cameroun (UTC+1), quel que soit le fuseau
 // du serveur (Vercel tourne en UTC : sans cela, la journée commence à 1 h).
+/** Livraison prévue un autre jour qu'aujourd'hui, pour une commande pas encore partie. */
+function livraisonAVenir() {
+  return {
+    dateLivraisonPrevue: { gt: finJour(jourDouala()) },
+    statut: { in: ["EN_ATTENTE", "EN_LIVRAISON"] as ("EN_ATTENTE" | "EN_LIVRAISON")[] },
+  };
+}
+
 function todayRange() {
   const jour = jourDouala();
   return { gte: debutJour(jour), lte: finJour(jour) };
@@ -34,9 +42,9 @@ export async function getDashboardKpis() {
 
   // « Ventes » = commandes VALIDÉES aujourd'hui par l'admin (pas la prise de commande terrain).
   const validees = { valideeAt: today, statut: { in: ["EN_LIVRAISON", "LIVREE"] as ("EN_LIVRAISON" | "LIVREE")[] } };
-  const [commandesValidees, commandesEnAttente, lignesValidees, indecisARelancer] = await Promise.all([
+  const [commandesValidees, commandesEnAttente, lignesValidees, indecisARelancer, livraisonsAVenir] = await Promise.all([
     prisma.commande.count({ where: validees }),
-    prisma.commande.count({ where: { statut: "EN_ATTENTE", archivedAt: null } }),
+    prisma.commande.count({ where: { statut: "EN_ATTENTE", archivedAt: null, NOT: livraisonAVenir() } }),
     prisma.commandeLigne.findMany({
       where: { commande: validees },
       select: {
@@ -47,6 +55,7 @@ export async function getDashboardKpis() {
       },
     }),
     prisma.prospectIndecis.count({ where: { statut: "A_RELANCER" } }),
+    prisma.commande.count({ where: { archivedAt: null, ...livraisonAVenir() } }),
   ]);
 
   // « Chiffre d'affaires » = argent réellement encaissé aujourd'hui.
@@ -84,6 +93,7 @@ export async function getDashboardKpis() {
     clientsTotal,
     ventesAujourdhui: commandesValidees,
     commandesEnAttente,
+    livraisonsAVenir,
     cartonsHypo,
     cartonsHtc,
     caAujourdhui: encaissements,
@@ -240,7 +250,7 @@ export type BilanCommandesEnCours = {
 export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
   await assurerMontantsConformes();
   const commandes = await prisma.commande.findMany({
-    where: { statut: { in: ["EN_ATTENTE", "EN_LIVRAISON"] }, archivedAt: null },
+    where: { statut: { in: ["EN_ATTENTE", "EN_LIVRAISON"] }, archivedAt: null, NOT: livraisonAVenir() },
     select: {
       statut: true,
       montantTotal: true,
