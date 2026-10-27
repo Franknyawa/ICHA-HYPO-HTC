@@ -71,7 +71,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       }
 
       // 2. Caisse : chaque encaissement de cette commande est neutralisé par une sortie liée au doublon.
-      const paiements = await tx.paiement.findMany({ where: { commandeId: params.id }, select: { montant: true, modePaiement: true } });
+      const paiements = await tx.paiement.findMany({ where: { commandeId: params.id }, select: { montant: true, modePaiement: true, datePaiement: true } });
       let montantNeutralise = 0;
       for (const p of paiements) {
         const m = Number(p.montant);
@@ -86,6 +86,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             referenceType: "DOUBLON",
             referenceId: params.id,
             createdById: session.userId,
+            // Daté du jour de l'encaissement annulé : la journée du jour n'est pas faussée.
+            dateOperation: p.datePaiement,
           },
         });
         montantNeutralise += m;
