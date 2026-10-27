@@ -1,7 +1,7 @@
 import { listerVilles } from "@/lib/geo/synchro-villes";
 import { Fragment } from "react";
 import Link from "next/link";
-import { Plus, Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Pencil, UserCog } from "lucide-react";
+import { Plus, Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Pencil, UserCog, CalendarClock } from "lucide-react";
 import { listCommandes, countCommandesParStatut, type StatutCommandeFiltre } from "@/lib/queries/commandes";
 import { prisma } from "@/lib/prisma";
 import { jourDouala } from "@/lib/utils/periode";
@@ -78,7 +78,7 @@ export default async function CommandesPage({
   const filtresSansStatut = { villeId, commercialId, binomeId, dateFrom, dateTo };
 
   const [{ data, pagination }, { parStatut, total: totalToutStatut }, villes, commerciaux, binomes] = await Promise.all([
-    listCommandes({ page, statut, ...filtresSansStatut }),
+    listCommandes({ page, statut, ...filtresSansStatut, livraison: "courantes" }),
     countCommandesParStatut(filtresSansStatut),
     listerVilles(),
     prisma.user.findMany({
@@ -89,11 +89,14 @@ export default async function CommandesPage({
     prisma.binome.findMany({ orderBy: { nom: "asc" }, select: { id: true, nom: true } }),
   ]);
 
+  // Livraisons à venir (hors du jour) : chargées à part, sur la 1re page seulement.
+  const aVenirListe = page === 1 ? (await listCommandes({ pageSize: 100, statut, ...filtresSansStatut, livraison: "avenir" })).data : [];
+
   const baseQuery = { statut, villeId, commercialId, binomeId, dateFrom, dateTo };
 
   return (
     <main>
-      <AdminPageHeader title="Commandes" subtitle={`${pagination.total} au total`} action={
+      <AdminPageHeader title="Commandes" subtitle={`${totalToutStatut} au total`} action={
           <div className="flex items-center gap-2">
             {(
               <Link href="/admin/commandes/nouvelle" className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#2563eb]">
@@ -175,7 +178,7 @@ export default async function CommandesPage({
         {/* Liste */}
         <div className="space-y-2">
           {(() => {
-            const carte = (c: (typeof data)[number]) => {
+            const carte = (c: (typeof data)[number], dansJours?: number) => {
               const wa = waUrl(c.pointVente.telephoneVendeur);
               const livraisonAujourdhui = !!c.dateLivraisonPrevue && jourDouala(c.dateLivraisonPrevue) === aujourdhui;
               return (
@@ -183,6 +186,11 @@ export default async function CommandesPage({
                   <div className={`rounded-2xl p-4 shadow-sm ring-1 ${c.statut === "LIVREE" ? "bg-emerald-50 ring-emerald-200 dark:bg-emerald-950/40 dark:ring-emerald-900" : "bg-white ring-slate-100 dark:bg-slate-900 dark:ring-slate-800"}`}>
                     <div className="mb-2 flex items-start justify-between gap-2">
                       <div>
+                        {dansJours !== undefined && (
+                          <p className="mb-1 flex w-fit items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                            <CalendarClock size={11} /> {dansJours === 1 ? "Demain" : `Dans ${dansJours} jours`}
+                          </p>
+                        )}
                         <p className="font-semibold text-slate-800 dark:text-slate-100">
                           {c.client?.nom ?? c.pointVente.nom}
                         </p>
@@ -283,9 +291,20 @@ export default async function CommandesPage({
                 </Fragment>
               );
             };
-            const duJourListe = data.filter((c) => jourDouala(c.dateCommande) === aujourdhui);
-            const precedentes = data.filter((c) => jourDouala(c.dateCommande) !== aujourdhui);
+            // Section principale : commandes prises aujourd'hui + livraisons prévues aujourd'hui.
+            const duJourListe = data.filter(
+              (c) => jourDouala(c.dateCommande) === aujourdhui || (!!c.dateLivraisonPrevue && jourDouala(c.dateLivraisonPrevue) === aujourdhui)
+            );
+            const precedentes = data.filter((c) => !duJourListe.includes(c));
             const total = (l: typeof data) => formatFcfa(l.reduce((t, x) => t + Number(x.montantTotal), 0));
+            const nbJoursAvant = (d: Date) =>
+              Math.round((new Date(`${jourDouala(d)}T00:00:00Z`).getTime() - new Date(`${aujourdhui}T00:00:00Z`).getTime()) / 86_400_000);
+            // Livraisons à venir regroupées par jour de livraison.
+            const parJour = new Map<string, typeof aVenirListe>();
+            for (const c of aVenirListe) {
+              const j = jourDouala(c.dateLivraisonPrevue!);
+              parJour.set(j, [...(parJour.get(j) ?? []), c]);
+            }
             return (
               <>
                 {duJourListe.length > 0 && (
@@ -296,8 +315,37 @@ export default async function CommandesPage({
                       </h2>
                       <span className="text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400">{total(duJourListe)}</span>
                     </div>
-                    {duJourListe.map(carte)}
+                    {duJourListe.map((c) => carte(c))}
                   </>
+                )}
+                {aVenirListe.length > 0 && (
+                  <details open className="group rounded-2xl border border-amber-200 bg-amber-50/40 p-2 dark:border-amber-900/60 dark:bg-amber-950/10">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-2 py-2 [&::-webkit-details-marker]:hidden">
+                      <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                        <CalendarClock size={16} />
+                        Livraisons à venir ({aVenirListe.length})
+                        <ChevronDown size={15} className="transition-transform group-open:rotate-180" />
+                      </span>
+                      <span className="text-xs font-semibold tabular-nums text-amber-800/80 dark:text-amber-300/80">{total(aVenirListe)}</span>
+                    </summary>
+                    <p className="px-2 pb-2 text-[11px] text-amber-800/80 dark:text-amber-300/70">
+                      Elles passent dans « Commandes du jour » le jour de la livraison.
+                    </p>
+                    <div className="space-y-3">
+                      {[...parJour.entries()].map(([j, liste]) => (
+                        <div key={j} className="space-y-2">
+                          <div className="flex items-center justify-between gap-3 px-2">
+                            <h3 className="text-xs font-bold capitalize text-slate-700 dark:text-slate-200">
+                              {new Date(`${j}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}
+                              <span className="ml-2 font-medium text-slate-500">{liste.length} commande{liste.length > 1 ? "s" : ""}</span>
+                            </h3>
+                            <span className="text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400">{total(liste)}</span>
+                          </div>
+                          {liste.map((c) => carte(c, nbJoursAvant(c.dateLivraisonPrevue!)))}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 )}
                 {precedentes.length > 0 && (
                   <details className="group pt-2">
@@ -308,13 +356,13 @@ export default async function CommandesPage({
                       </span>
                       <span className="text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400">{total(precedentes)}</span>
                     </summary>
-                    <div className="mt-2 space-y-2">{precedentes.map(carte)}</div>
+                    <div className="mt-2 space-y-2">{precedentes.map((c) => carte(c))}</div>
                   </details>
                 )}
               </>
             );
           })()}
-          {data.length === 0 && (
+          {data.length === 0 && aVenirListe.length === 0 && (
             <p className="rounded-2xl bg-white dark:bg-slate-900 py-10 text-center text-sm text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800">
               Aucune commande trouvée.
             </p>

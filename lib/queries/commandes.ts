@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { assurerMontantsConformes } from "@/lib/services/recalcul-prix";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import type { Prisma } from "@prisma/client";
+import { finJour, jourDouala } from "@/lib/utils/periode";
 
 export type StatutCommandeFiltre = "EN_ATTENTE" | "EN_LIVRAISON" | "LIVREE" | "ANNULEE";
 
@@ -16,6 +17,8 @@ export type ListCommandesParams = {
   binomeId?: string;
   dateFrom?: string;
   dateTo?: string;
+  /** « avenir » : livraisons prévues après aujourd'hui (à traiter ou en livraison) ; « courantes » : tout le reste. */
+  livraison?: "avenir" | "courantes";
 };
 
 export async function listCommandes(params: ListCommandesParams) {
@@ -25,8 +28,14 @@ export async function listCommandes(params: ListCommandesParams) {
   if (params.pageSize) sp.set("pageSize", String(params.pageSize));
   const { page, pageSize, skip, take } = getPaginationParams(sp);
 
+  // Livraison prévue un autre jour que le jour même, pour une commande pas encore partie.
+  const aVenir: Prisma.CommandeWhereInput = {
+    dateLivraisonPrevue: { gt: finJour(jourDouala()) },
+    statut: { in: ["EN_ATTENTE", "EN_LIVRAISON"] },
+  };
   const where: Prisma.CommandeWhereInput = {
     archivedAt: null,
+    ...(params.livraison === "avenir" ? { AND: [aVenir] } : params.livraison === "courantes" ? { NOT: aVenir } : {}),
     ...(params.statut ? { statut: params.statut } : params.statuts ? { statut: { in: params.statuts } } : {}),
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),
     ...(params.commercialId ? { commercialId: params.commercialId } : {}),
@@ -47,7 +56,7 @@ export async function listCommandes(params: ListCommandesParams) {
       where,
       skip,
       take,
-      orderBy: { dateCommande: "desc" },
+      orderBy: params.livraison === "avenir" ? [{ dateLivraisonPrevue: "asc" }, { dateCommande: "asc" }] : { dateCommande: "desc" },
       include: {
         pointVente: {
           select: {

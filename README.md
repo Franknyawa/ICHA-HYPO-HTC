@@ -1733,3 +1733,7 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Formulaires (terrain, admin, superviseur) : **HYPO avant HTC** (`lib/utils/produits-ordre.ts`).
 - Tableau de bord : « Cartons vendus par jour » (14 jours, HYPO / HTC / total / dont détail / commandes / montant + total).
 - **Client divers** : toute vente au détail (sachets / filets), terrain comme bureau, est portée par le point de vente `CLIENT DIVERS` (créé automatiquement) sur UNE commande par jour (`lib/services/client-divers.ts`), cumulée jusqu'à sa validation → une seule facture récapitulative par jour. La vente du commercial garde ses lignes détail (statistiques/objectifs). Une vente uniquement au détail saisie au bureau ne demande aucun client.
+
+## Carte des points de vente + livraisons à venir (2026-10-27)
+- Tracking > onglet **Points de vente** : tous les points de vente géolocalisés (hors CLIENT DIVERS), colorés Client / Prospect indécis / Sans commande, filtres ville, type, statut, ajouté par ; compteur des points sans GPS (`getPointsVenteCarte`, `PointsVenteMap`).
+- Commandes : section **Livraisons à venir** (livraison prévue après aujourd'hui, commande non livrée), groupée par jour avec « Demain / Dans N jours » ; elle passe dans « Commandes du jour » le jour de la livraison (`listCommandes({ livraison: "avenir" | "courantes" })`).

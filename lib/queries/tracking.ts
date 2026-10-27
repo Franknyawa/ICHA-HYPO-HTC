@@ -75,3 +75,69 @@ export async function getPositionsActuelles(filters: { binomeId?: string }) {
     positionAt: u.dernierePositionAt!.toISOString(),
   }));
 }
+
+export type PointVenteCarte = {
+  id: string;
+  nom: string;
+  latitude: number;
+  longitude: number;
+  vendeur: string | null;
+  telephone: string | null;
+  ville: string | null;
+  quartier: string | null;
+  type: string | null;
+  /** client = au moins une commande validée ; indecis = à relancer ; prospect = renseigné sans commande. */
+  statut: "client" | "indecis" | "prospect";
+  nbCommandes: number;
+  commercial: string;
+};
+
+/** Tous les points de vente renseignés (non archivés), avec leur position GPS quand elle existe. */
+export async function getPointsVenteCarte(filters: { villeId?: string; typeId?: string; statut?: string; commercialId?: string }) {
+  const where: Prisma.PointVenteWhereInput = {
+    archivedAt: null,
+    nom: { not: "CLIENT DIVERS" },
+    ...(filters.villeId ? { villeId: filters.villeId } : {}),
+    ...(filters.typeId ? { OR: [{ typeId: filters.typeId }, { typesIds: { has: filters.typeId } }] } : {}),
+    ...(filters.commercialId ? { createdById: filters.commercialId } : {}),
+  };
+  const lignes = await prisma.pointVente.findMany({
+    where,
+    select: {
+      id: true,
+      nom: true,
+      vendeur: true,
+      telephoneVendeur: true,
+      latitude: true,
+      longitude: true,
+      ville: { select: { nom: true } },
+      quartier: { select: { nom: true } },
+      type: { select: { nom: true } },
+      createdBy: { select: { nom: true, prenom: true } },
+      commandes: { where: { valideeAt: { not: null }, statut: { not: "ANNULEE" } }, select: { id: true } },
+      prospectsIndecis: { where: { statut: "A_RELANCER" }, select: { id: true } },
+    },
+    orderBy: { nom: "asc" },
+  });
+
+  const tous = lignes.map((p) => {
+    const statut: PointVenteCarte["statut"] = p.commandes.length > 0 ? "client" : p.prospectsIndecis.length > 0 ? "indecis" : "prospect";
+    return {
+      id: p.id,
+      nom: p.nom,
+      latitude: p.latitude === null ? NaN : Number(p.latitude),
+      longitude: p.longitude === null ? NaN : Number(p.longitude),
+      vendeur: p.vendeur,
+      telephone: p.telephoneVendeur,
+      ville: p.ville?.nom ?? null,
+      quartier: p.quartier?.nom ?? null,
+      type: p.type?.nom ?? null,
+      statut,
+      nbCommandes: p.commandes.length,
+      commercial: `${p.createdBy.prenom} ${p.createdBy.nom}`,
+    };
+  });
+  const filtres = filters.statut === "client" || filters.statut === "indecis" || filters.statut === "prospect" ? tous.filter((p) => p.statut === filters.statut) : tous;
+  const geolocalises = filtres.filter((p) => Number.isFinite(p.latitude) && Number.isFinite(p.longitude));
+  return { points: geolocalises as PointVenteCarte[], total: filtres.length, sansPosition: filtres.length - geolocalises.length };
+}
