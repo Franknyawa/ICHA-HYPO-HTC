@@ -11,6 +11,9 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   try {
     await requireModule("caisse");
     const op = await prisma.operationCaisse.findUnique({ where: { id: params.id }, select: { referenceType: true, type: true, canal: true, montant: true } });
+    if (op?.referenceType === "DOUBLON") {
+      return NextResponse.json({ error: "Cette écriture neutralise un encaissement en doublon : elle ne peut pas être supprimée." }, { status: 409 });
+    }
     if (op?.referenceType === "AVOIR" || op?.referenceType === "RETOUR") {
       return NextResponse.json(
         { error: "Ce remboursement est lié à une facture d'avoir ou de retour : il ne peut pas être supprimé ici." },

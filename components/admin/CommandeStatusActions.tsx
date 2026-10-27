@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Truck, XCircle, RotateCcw } from "lucide-react";
+import { CheckCircle2, Truck, XCircle, RotateCcw, Copy } from "lucide-react";
 
 type Statut = "EN_ATTENTE" | "EN_LIVRAISON" | "LIVREE" | "ANNULEE";
 
@@ -56,6 +56,28 @@ export function CommandeStatusActions({
     setSaving(false);
   }
 
+  async function annulerDoublon() {
+    if (!confirm("Annuler cette commande comme DOUBLON déjà livré ?\n\n- le stock sorti est remis en place ;\n- l'encaissement est neutralisé par une écriture de caisse (rien n'est supprimé) ;\n- les statistiques du commercial ne changent pas.")) return;
+    setSaving(true);
+    setErreur(null);
+    const res = await fetch(`/api/commandes/${id}/annuler-doublon`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    if (res.ok) router.refresh();
+    else setErreur((await res.json().catch(() => ({}))).error ?? "Action impossible.");
+    setSaving(false);
+  }
+
+  const boutonDoublon = (
+    <button
+      onClick={annulerDoublon}
+      disabled={saving}
+      title="Commande en double déjà livrée : remet le stock et neutralise l'encaissement, sans rien supprimer"
+      className="flex items-center gap-1 rounded-lg bg-violet-50 px-2.5 py-1.5 text-xs font-semibold text-violet-700 disabled:opacity-50 dark:bg-violet-950 dark:text-violet-300"
+    >
+      <Copy size={13} />
+      Annuler un doublon livré
+    </button>
+  );
+
   const champDate =
     statut === "EN_ATTENTE" || statut === "EN_LIVRAISON" ? (
       <div className="flex items-end gap-2">
@@ -107,7 +129,7 @@ export function CommandeStatusActions({
 
   if (statut === "EN_LIVRAISON") {
     return (
-      <div className="flex gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
         <button
           onClick={() => updateStatut("LIVREE")}
           disabled={saving}
@@ -125,19 +147,23 @@ export function CommandeStatusActions({
           <XCircle size={13} />
           Annuler
         </button>
+        {boutonDoublon}
       </div>
     );
   }
 
   return (
-    <button
-      onClick={() => updateStatut("EN_ATTENTE")}
-      disabled={saving}
-      className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 disabled:opacity-50"
-    >
-      <RotateCcw size={13} />
-      Réactiver
-    </button>
+    <div className="flex flex-wrap gap-1.5">
+      <button
+        onClick={() => updateStatut("EN_ATTENTE")}
+        disabled={saving}
+        className="flex items-center gap-1 rounded-lg bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 disabled:opacity-50"
+      >
+        <RotateCcw size={13} />
+        Réactiver
+      </button>
+      {statut === "LIVREE" && boutonDoublon}
+    </div>
   );
   })();
 

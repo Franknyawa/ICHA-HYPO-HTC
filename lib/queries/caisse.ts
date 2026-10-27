@@ -231,7 +231,7 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
     if (o.type === "RECETTE") {
       autresRecettes += m;
       parCanalPeriode[o.canal].entrees += m;
-    } else if (o.referenceType === "AVOIR" || o.referenceType === "RETOUR") {
+    } else if (o.referenceType === "AVOIR" || o.referenceType === "RETOUR" || o.referenceType === "DOUBLON") {
       remboursements += m;
       parCanalPeriode[o.canal].sorties += m;
     } else {
@@ -271,7 +271,7 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
       detail: o.note ?? "",
       canal: o.canal,
       montant: num(o.montant),
-      supprimable: o.referenceType !== "AVOIR" && o.referenceType !== "RETOUR",
+      supprimable: o.referenceType !== "AVOIR" && o.referenceType !== "RETOUR" && o.referenceType !== "DOUBLON",
     })),
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -325,7 +325,7 @@ export async function getCaisseResume(debut: Date, fin: Date) {
   const somme = (g: { type: string; _sum: { montant: unknown } }[], t: string) =>
     g.filter((x) => x.type === t).reduce((s, x) => s + num(x._sum.montant), 0);
   const remboursementsJour = oJour
-    .filter((x) => x.type === "DEPENSE" && (x.referenceType === "AVOIR" || x.referenceType === "RETOUR"))
+    .filter((x) => x.type === "DEPENSE" && (x.referenceType === "AVOIR" || x.referenceType === "RETOUR" || x.referenceType === "DOUBLON"))
     .reduce((s, x) => s + num(x._sum.montant), 0);
   return {
     solde: num(pTotal._sum.montant) + somme(oTotal, "RECETTE") - somme(oTotal, "DEPENSE"),
