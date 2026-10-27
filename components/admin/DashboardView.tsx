@@ -1,4 +1,4 @@
-import type { DashboardKpis, VisitesParJour, BilanCommandesEnCours } from "@/lib/queries/dashboard";
+import type { DashboardKpis, VisitesParJour, BilanCommandesEnCours, BilanValidees } from "@/lib/queries/dashboard";
 import type { getCaisseResume } from "@/lib/queries/caisse";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -41,6 +41,7 @@ export function DashboardView({
   jour,
   kpis,
   enCours,
+  bilan,
   visites,
   caisse,
   parBinome,
@@ -57,6 +58,7 @@ export function DashboardView({
   jour: string;
   kpis: DashboardKpis;
   enCours: BilanCommandesEnCours;
+  bilan: BilanValidees;
   visites: VisitesParJour;
   caisse: Awaited<ReturnType<typeof getCaisseResume>>;
   parBinome: { nom: string; montant: number }[];
@@ -102,7 +104,7 @@ export function DashboardView({
             <KpiCard
               label="Ventes validées"
               valeur={kpis.ventesAujourdhui}
-              sous={`${String(Math.round((kpis.cartonsHypo + kpis.cartonsHtc) * 10) / 10).replace(".", ",")} cartons (commandes validées)`}
+              sous={`${fmtCartons(bilan.aujourdhui.cartons)} cartons · ${bilan.livrees.nb} livrée(s), ${bilan.aLivrer.nb} à livrer`}
               icone={ShoppingBag}
               ton="violet"
               href={`/admin/factures?dateFrom=${jour}&dateTo=${jour}`}
@@ -145,6 +147,24 @@ export function DashboardView({
             icone={Truck}
             ton="rose"
           >
+            <div className="mb-5 grid gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <p className="font-semibold text-slate-800 dark:text-slate-100">Validées aujourd&apos;hui</p>
+                <p className="tabular-nums">{bilan.aujourdhui.nb} cmd · {fmtCartons(bilan.aujourdhui.cartons)} cartons · {formatFcfa(bilan.aujourdhui.montant)}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-800 dark:text-slate-100">dont livrées</p>
+                <p className="tabular-nums">{bilan.livrees.nb} cmd · {fmtCartons(bilan.livrees.cartons)} cartons · {formatFcfa(bilan.livrees.montant)}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-800 dark:text-slate-100">dont à livrer</p>
+                <p className="tabular-nums">{bilan.aLivrer.nb} cmd · {fmtCartons(bilan.aLivrer.cartons)} cartons · {formatFcfa(bilan.aLivrer.montant)}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-slate-800 dark:text-slate-100">Validées avant aujourd&apos;hui, à livrer</p>
+                <p className="tabular-nums">{bilan.avant.nb} cmd · {fmtCartons(bilan.avant.cartons)} cartons · {formatFcfa(bilan.avant.montant)}</p>
+              </div>
+            </div>
             <div className="grid gap-6 md:grid-cols-2">
               {enCours.map((b) => (
                 <div key={b.statut}>
@@ -275,20 +295,20 @@ export function DashboardView({
             ) : (
               <ul className="space-y-3.5">
                 {caisse.stock.slice(0, 6).map((s) => {
-                  const bas = s.seuilCartons > 0 && s.cartons < s.seuilCartons;
-                  const ref = Math.max(s.seuilCartons * 3, s.cartons, 1);
+                  const bas = s.seuilCartons > 0 && s.cartonsExact < s.seuilCartons;
+                  const ref = Math.max(s.seuilCartons * 3, s.cartonsExact, 1);
                   return (
                     <li key={s.produitId}>
                       <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
                         <span className="min-w-0 truncate font-medium text-slate-800 dark:text-slate-100">{s.nom}</span>
                         <span className={`shrink-0 text-xs font-bold tabular-nums ${bas ? "text-red-600" : "text-slate-600 dark:text-slate-300"}`}>
-                          {s.cartons} cartons{bas ? " · faible" : ""}
+                          {fmtCartons(s.cartonsExact)} cartons{bas ? " · faible" : ""}
                         </span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                         <div
                           className={`h-full rounded-full ${bas ? "bg-red-500/80" : "bg-slate-500"}`}
-                          style={{ width: `${Math.max(4, (s.cartons / ref) * 100)}%` }}
+                          style={{ width: `${Math.max(4, (s.cartonsExact / ref) * 100)}%` }}
                         />
                       </div>
                     </li>
@@ -303,7 +323,8 @@ export function DashboardView({
             <ul className="divide-y divide-slate-100 dark:divide-slate-800">
               {[
                 { label: "Clients", value: kpis.clientsTotal, href: "/admin/clients" },
-                { label: "Prospects", value: kpis.prospectsTotal, href: undefined },
+                { label: "Prospects à suivre", value: kpis.prospectsTotal, href: undefined },
+                { label: "Indécis à relancer", value: kpis.indecisARelancer, href: "/admin/relances" as string | undefined },
                 ...(peutCaisse
                   ? [
                       {

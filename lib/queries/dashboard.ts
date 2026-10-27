@@ -24,7 +24,8 @@ export async function getDashboardKpis() {
   // lancement. 3 est un compromis raisonnable pour le volume actuel.
   const [visitesAujourdhui, prospectsTotal, clientsTotal] = await Promise.all([
     prisma.visite.count({ where: { dateVisite: today } }),
-    prisma.prospect.count(),
+    // Prospects encore à travailler (hors convertis / abandonnés).
+    prisma.prospect.count({ where: { statut: { in: ["NOUVEAU", "A_RELANCER"] } } }),
     // « Clients » = points de vente ayant au moins une commande validée.
     prisma.pointVente.count({
       where: { archivedAt: null, commandes: { some: { valideeAt: { not: null }, statut: { not: "ANNULEE" } } } },
@@ -33,7 +34,7 @@ export async function getDashboardKpis() {
 
   // « Ventes » = commandes VALIDÉES aujourd'hui par l'admin (pas la prise de commande terrain).
   const validees = { valideeAt: today, statut: { in: ["EN_LIVRAISON", "LIVREE"] as ("EN_LIVRAISON" | "LIVREE")[] } };
-  const [commandesValidees, commandesEnAttente, lignesValidees] = await Promise.all([
+  const [commandesValidees, commandesEnAttente, lignesValidees, indecisARelancer] = await Promise.all([
     prisma.commande.count({ where: validees }),
     prisma.commande.count({ where: { statut: "EN_ATTENTE", archivedAt: null } }),
     prisma.commandeLigne.findMany({
@@ -45,6 +46,7 @@ export async function getDashboardKpis() {
         produit: { select: { code: true, ...SELECT_CONV } },
       },
     }),
+    prisma.prospectIndecis.count({ where: { statut: "A_RELANCER" } }),
   ]);
 
   // « Chiffre d'affaires » = argent réellement encaissé aujourd'hui.
@@ -78,6 +80,7 @@ export async function getDashboardKpis() {
   return {
     visitesAujourdhui,
     prospectsTotal,
+    indecisARelancer,
     clientsTotal,
     ventesAujourdhui: commandesValidees,
     commandesEnAttente,
@@ -352,4 +355,66 @@ export async function getCartonsParJour(nbJours = 14): Promise<CartonsJour[]> {
     detail: arrondiCartons(g.detail),
     montant: Math.round(g.montant),
   }));
+}
+
+
+export type LotValide = { nb: number; cartons: number; montant: number };
+export type BilanValidees = {
+  /** Validées aujourd'hui (livrées ou non) : c'est le chiffre « Ventes validées ». */
+  aujourdhui: LotValide;
+  /** … dont déjà livrées aujourd'hui (stock sorti, encaissement ouvert). */
+  livrees: LotValide;
+  /** … dont encore à livrer. */
+  aLivrer: LotValide;
+  /** Validées un jour précédent et toujours à livrer. */
+  avant: LotValide;
+  /** Total « Validées, à livrer » = aLivrer + avant. */
+  totalALivrer: LotValide;
+};
+
+/**
+ * Réconcilie les validées du jour avec « Validées, à livrer » :
+ * validées aujourd'hui = livrées + à livrer ; à livrer total = à livrer aujourd'hui + validées avant.
+ */
+export async function getBilanValidees(): Promise<BilanValidees> {
+  await assurerMontantsConformes();
+  const debut = debutJour(jourDouala());
+  const commandes = await prisma.commande.findMany({
+    where: {
+      OR: [
+        { valideeAt: { gte: debut }, statut: { in: ["EN_LIVRAISON", "LIVREE"] } },
+        { statut: "EN_LIVRAISON", archivedAt: null },
+      ],
+    },
+    select: {
+      statut: true,
+      valideeAt: true,
+      montantTotal: true,
+      lignes: { select: { nbSachets: true, nbFilets: true, nbCartons: true, produit: { select: SELECT_CONV } } },
+    },
+  });
+  const vide = () => ({ nb: 0, cartons: 0, montant: 0 });
+  const r = { aujourdhui: vide(), livrees: vide(), aLivrer: vide(), avant: vide(), totalALivrer: vide() };
+  const ajoute = (lot: LotValide, cartons: number, montant: number) => {
+    lot.nb += 1;
+    lot.cartons += cartons;
+    lot.montant += montant;
+  };
+  for (const c of commandes) {
+    const cartons = c.lignes.reduce((s, l) => s + cartonsEq(l, l.produit), 0);
+    const montant = Number(c.montantTotal);
+    const aujourdhui = !!c.valideeAt && c.valideeAt >= debut;
+    if (aujourdhui) {
+      ajoute(r.aujourdhui, cartons, montant);
+      ajoute(c.statut === "LIVREE" ? r.livrees : r.aLivrer, cartons, montant);
+    } else {
+      ajoute(r.avant, cartons, montant);
+    }
+    if (c.statut === "EN_LIVRAISON") ajoute(r.totalALivrer, cartons, montant);
+  }
+  for (const lot of Object.values(r)) {
+    lot.cartons = arrondiCartons(lot.cartons);
+    lot.montant = Math.round(lot.montant);
+  }
+  return r;
 }

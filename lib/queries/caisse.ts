@@ -42,6 +42,8 @@ export type LigneStock = {
   nom: string;
   code: string;
   cartons: number;
+  /** Cartons avec une décimale (ex. 2474,9), pour l'affichage. */
+  cartonsExact: number;
   prixCarton: number;
   coutCarton: number | null;
   valeurVente: number;
@@ -152,6 +154,7 @@ export async function getStockValorise(): Promise<LigneStock[]> {
       nom: s.produit.nom,
       code: s.produit.code,
       cartons: Math.floor(cartons),
+      cartonsExact: Math.round(cartons * 10) / 10,
       prixCarton,
       coutCarton: cout,
       valeurVente: Math.round(cartons * prixCarton),
@@ -314,13 +317,18 @@ export type DonneesCaisse = Awaited<ReturnType<typeof getCaisse>>;
 export async function getCaisseResume(debut: Date, fin: Date) {
   await assurerMontantsConformes();
   const plage = { gte: debut, lte: fin };
-  const [pTotal, oTotal, pJour, oJour, credits, stock] = await Promise.all([
+  const [pTotal, oTotal, pJour, oJour, credits, stock, regulJour] = await Promise.all([
     prisma.paiement.aggregate({ _sum: { montant: true } }),
     prisma.operationCaisse.groupBy({ by: ["type"], _sum: { montant: true } }),
     prisma.paiement.aggregate({ where: { datePaiement: plage }, _sum: { montant: true } }),
     prisma.operationCaisse.groupBy({ by: ["type", "referenceType"], where: { dateOperation: plage }, _sum: { montant: true } }),
     getCreditsAEncaisser(),
     getStockValorise(),
+    // Les régularisations (remise à niveau de la caisse) ne sont pas des ventes du jour.
+    prisma.operationCaisse.aggregate({
+      where: { type: "RECETTE", dateOperation: plage, note: { startsWith: "Régularisation", mode: "insensitive" } },
+      _sum: { montant: true },
+    }),
   ]);
   const somme = (g: { type: string; _sum: { montant: unknown } }[], t: string) =>
     g.filter((x) => x.type === t).reduce((s, x) => s + num(x._sum.montant), 0);
@@ -329,7 +337,7 @@ export async function getCaisseResume(debut: Date, fin: Date) {
     .reduce((s, x) => s + num(x._sum.montant), 0);
   return {
     solde: num(pTotal._sum.montant) + somme(oTotal, "RECETTE") - somme(oTotal, "DEPENSE"),
-    recettesJour: num(pJour._sum.montant) + somme(oJour, "RECETTE") - remboursementsJour,
+    recettesJour: num(pJour._sum.montant) + somme(oJour, "RECETTE") - num(regulJour._sum.montant) - remboursementsJour,
     depensesJour: somme(oJour, "DEPENSE") - remboursementsJour,
     creditsTotal: credits.reduce((s, c) => s + c.du, 0),
     nbCredits: credits.length,

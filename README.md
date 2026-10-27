@@ -1740,3 +1740,10 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Livraisons à venir : bouton ambre en haut de la page Commandes (`?vue=avenir`) avec compteur ; la vue affiche toutes les livraisons à venir groupées par jour, bouton « Retour aux commandes ».
 - Liste principale : une commande prise aujourd'hui reste toujours dans « Commandes du jour », même avec une livraison future ; le bouton « Livraisons à venir » liste toutes les livraisons futures (planning).
 - **Annuler un doublon livré** (`POST /api/commandes/[id]/annuler-doublon`, admin) : commande validée/livrée en double → stock remis (entrée « Annulation doublon livré »), encaissement neutralisé par une sortie de caisse `DOUBLON` (comptée comme un remboursement, rien n'est supprimé), commande passée en Annulée ; ventes/statistiques du commercial intactes.
+
+### Mise à jour 27/10 (soir) — cohérence du tableau de bord
+- Bloc « Commandes en cours » : bandeau de réconciliation (validées aujourd'hui = livrées + à livrer ; validées avant aujourd'hui encore à livrer), calculé par `getBilanValidees()`.
+- « Ventes validées » : sous-titre « X livrées, Y à livrer » (mêmes commandes que le tableau « Cartons vendus par jour »).
+- « Encaissé en caisse » du jour : les recettes dont la note commence par « Régularisation » ne comptent plus comme ventes du jour (le solde cumulé les garde).
+- Stock du tableau de bord : cartons avec une décimale (2474,9 au lieu de 2474).
+- Réseau : « Prospects à suivre » (hors convertis/abandonnés) et « Indécis à relancer » (réels).
