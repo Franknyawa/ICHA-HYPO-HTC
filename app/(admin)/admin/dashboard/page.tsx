@@ -12,6 +12,7 @@ import { Suspense } from "react";
 import { peutAcceder } from "@/lib/auth/permissions";
 import { TerritoiresSection, TerritoiresSkeleton } from "@/components/admin/TerritoiresSection";
 import { DashboardView } from "@/components/admin/DashboardView";
+import { CartonsParJourSection, CartonsParJourSkeleton } from "@/components/admin/CartonsParJourSection";
 import { VentesParProduitSection, VentesParProduitSkeleton } from "@/components/admin/VentesParProduitSection";
 
 // Données live (base de données) : jamais pré-généré statiquement au build
@@ -56,6 +57,11 @@ export default async function AdminDashboardPage() {
       territoiresSlot={
         <Suspense fallback={<TerritoiresSkeleton />}>
           <TerritoiresSection />
+        </Suspense>
+      }
+      cartonsJourSlot={
+        <Suspense fallback={<CartonsParJourSkeleton />}>
+          <CartonsParJourSection />
         </Suspense>
       }
       ventesSlot={

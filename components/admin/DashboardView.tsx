@@ -47,6 +47,7 @@ export function DashboardView({
   parVendeur,
   observations,
   ventesSlot,
+  cartonsJourSlot,
   territoiresSlot,
   peutCaisse = true,
   peutStock = true,
@@ -62,6 +63,7 @@ export function DashboardView({
   parVendeur: { nom: string; montant: number }[];
   observations: React.ComponentProps<typeof ObservationsTerrain>["observations"];
   ventesSlot: ReactNode;
+  cartonsJourSlot: ReactNode;
   territoiresSlot: ReactNode;
   peutCaisse?: boolean;
   peutStock?: boolean;
@@ -348,6 +350,9 @@ export function DashboardView({
             <CaChart title="CA encaissé par vendeur" items={parVendeur} color="#359980" />
           </div>
         </section>
+
+        {/* Cartons vendus par jour : chargé en streaming */}
+        <section>{cartonsJourSlot}</section>
 
         {/* Ventes par produit : chargé en streaming */}
         <section>{ventesSlot}</section>

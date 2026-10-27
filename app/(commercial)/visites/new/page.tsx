@@ -1,5 +1,6 @@
 "use client";
 
+import { trierProduits } from "@/lib/utils/produits-ordre";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, Camera, CheckCircle2, Clock, Download, Store, ShoppingCart, MessageSquareText } from "lucide-react";
@@ -199,7 +200,7 @@ export default function NouvelleVisitePage() {
       .then((d) => {
         setVilles(d.villes ?? []);
         setTypes(d.types ?? []);
-        setProduits(d.produits ?? []);
+        setProduits(trierProduits(d.produits ?? []));
         setPrixParType(d.prixParType ?? []);
         setPaliers(d.paliers ?? []);
       })

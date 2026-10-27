@@ -6,6 +6,7 @@ import { handleApiError } from "@/lib/api-errors";
 import { applyStockMovement, InsufficientStockError } from "@/lib/services/stock";
 import { convertToSachets } from "@/lib/services/produits";
 import { rafraichirAlerteLivraison } from "@/lib/jobs/alertes";
+import { calculerLignesCommande, ErreurCalcul } from "@/lib/services/commande-calcul";
 
 export const runtime = "nodejs";
 
@@ -190,6 +191,91 @@ export async function PATCH(
 
     return NextResponse.json(commande);
   } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+
+const QTE = z.number().int().min(0).max(100_000).default(0);
+const QTE_CARTONS = z.number().min(0).max(100_000).multipleOf(0.5).default(0);
+const schemaModif = z.object({
+  lignes: z.array(z.object({ produitCode: z.string(), nbSachets: QTE, nbFilets: QTE, nbCartons: QTE_CARTONS, detail: z.boolean().optional() })).min(1),
+  modePaiement: z.enum(["ESPECES", "MOBILE_MONEY", "CREDIT_PARTIEL", "CREDIT_TOTAL"]).nullable().optional(),
+  dateLivraisonPrevue: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  commercialId: z.string().uuid().optional(),
+});
+
+/**
+ * Modification d'une commande par l'admin (quantités, mode de paiement, date de livraison, commercial).
+ * Possible tant que la commande n'est pas livrée ni annulée et qu'aucun paiement, avoir ou retour n'existe :
+ * ensuite, la correction passe par une facture d'avoir. Les prix sont recalculés côté serveur.
+ */
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    await requireModule("commandes");
+    const parsed = schemaModif.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Données invalides." }, { status: 400 });
+    }
+    const d = parsed.data;
+
+    const existante = await prisma.commande.findUnique({
+      where: { id: params.id },
+      select: { id: true, statut: true, venteId: true, pointVenteId: true, pointVente: { select: { typeId: true } } },
+    });
+    if (!existante) return NextResponse.json({ error: "Commande introuvable." }, { status: 404 });
+    if (existante.statut === "LIVREE" || existante.statut === "ANNULEE") {
+      return NextResponse.json(
+        { error: "Une commande livrée ou annulée ne se modifie plus : établissez une facture d'avoir ou de retour." },
+        { status: 409 }
+      );
+    }
+    const [nbPaiements, nbAvoirs, nbRetours] = await Promise.all([
+      prisma.paiement.count({ where: { commandeId: params.id } }),
+      prisma.factureAvoir.count({ where: { commandeId: params.id } }),
+      prisma.factureRetour.count({ where: { commandeId: params.id } }),
+    ]);
+    if (nbPaiements + nbAvoirs + nbRetours > 0) {
+      return NextResponse.json({ error: "Cette commande a déjà des paiements, avoirs ou retours : elle ne peut plus être modifiée." }, { status: 409 });
+    }
+
+    const [produits, prixParType, paliers] = await Promise.all([
+      prisma.produit.findMany({ where: { actif: true } }),
+      prisma.prixParType.findMany(),
+      prisma.palierPrix.findMany(),
+    ]);
+    const lignes = calculerLignesCommande(d.lignes, { produits, prixParType, paliers, typeId: existante.pointVente.typeId });
+    if (lignes.length === 0) return NextResponse.json({ error: "Indiquez au moins une quantité." }, { status: 400 });
+    const total = lignes.reduce((t, l) => t + l.montant, 0);
+
+    const maj = await prisma.$transaction(async (tx) => {
+      await tx.commandeLigne.deleteMany({ where: { commandeId: params.id } });
+      const c = await tx.commande.update({
+        where: { id: params.id },
+        data: {
+          montantTotal: total,
+          ...(d.modePaiement !== undefined ? { modePaiement: d.modePaiement } : {}),
+          ...(d.commercialId ? { commercialId: d.commercialId } : {}),
+          ...(d.dateLivraisonPrevue !== undefined
+            ? { dateLivraisonPrevue: d.dateLivraisonPrevue ? new Date(`${d.dateLivraisonPrevue}T12:00:00`) : null }
+            : {}),
+          lignes: { create: lignes },
+        },
+        select: { id: true, montantTotal: true },
+      });
+      // Les statistiques du commercial (vente d'origine) suivent la commande corrigée ; ses lignes au détail sont conservées.
+      if (existante.venteId) {
+        await tx.venteLigne.deleteMany({ where: { venteId: existante.venteId, detail: false } });
+        await tx.venteLigne.createMany({ data: lignes.filter((l) => !l.detail).map((l) => ({ ...l, venteId: existante.venteId! })) });
+        const t = await tx.venteLigne.aggregate({ where: { venteId: existante.venteId }, _sum: { montant: true } });
+        await tx.vente.update({ where: { id: existante.venteId }, data: { montantTotal: t._sum.montant ?? 0 } });
+      }
+      return c;
+    });
+    await rafraichirAlerteLivraison(params.id);
+    return NextResponse.json({ id: maj.id, montantTotal: Number(maj.montantTotal) });
+  } catch (error) {
+    if (error instanceof ErreurCalcul) return NextResponse.json({ error: error.message }, { status: error.statut });
     return handleApiError(error);
   }
 }

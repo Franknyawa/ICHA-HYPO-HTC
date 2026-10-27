@@ -1,7 +1,7 @@
 import { listerVilles } from "@/lib/geo/synchro-villes";
 import { Fragment } from "react";
 import Link from "next/link";
-import { Plus, Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { Plus, Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Pencil, UserCog } from "lucide-react";
 import { listCommandes, countCommandesParStatut, type StatutCommandeFiltre } from "@/lib/queries/commandes";
 import { prisma } from "@/lib/prisma";
 import { jourDouala } from "@/lib/utils/periode";
@@ -186,6 +186,16 @@ export default async function CommandesPage({
                         <p className="font-semibold text-slate-800 dark:text-slate-100">
                           {c.client?.nom ?? c.pointVente.nom}
                         </p>
+                        {c.saisiePar && (
+                          <p className="mt-0.5 flex w-fit items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+                            <UserCog size={11} /> Saisie au bureau : {c.saisiePar}
+                          </p>
+                        )}
+                        {c.pointVente.nom === "CLIENT DIVERS" && (
+                          <p className="mt-0.5 w-fit rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                            Ventes au détail de la journée : une seule facture
+                          </p>
+                        )}
                         <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
                           {c.pointVente.nom} · {c.pointVente.ville?.nom ?? "—"} · {c.commercial.prenom} {c.commercial.nom}
                         </p>
@@ -223,7 +233,7 @@ export default async function CommandesPage({
 
                     <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
                       <div>
-                        <p>Commandée le {new Date(c.dateCommande).toLocaleDateString("fr-FR")}</p>
+                        <p>Commandée le {new Date(c.dateCommande).toLocaleDateString("fr-FR", { timeZone: "Africa/Douala" })} à {new Date(c.dateCommande).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Douala" })}</p>
                         {c.dateLivraisonPrevue && (
                           <p>
                             Livraison prévue le {new Date(c.dateLivraisonPrevue).toLocaleDateString("fr-FR")}
@@ -240,6 +250,15 @@ export default async function CommandesPage({
                           <a href={wa} target="_blank" rel="noopener noreferrer" className="text-green-600">
                             <Phone size={15} />
                           </a>
+                        )}
+                        {(c.statut === "EN_ATTENTE" || c.statut === "EN_LIVRAISON") && peutModifier(session.role) && (
+                          <Link
+                            href={`/admin/commandes/${c.id}/modifier`}
+                            className="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200"
+                            title="Modifier la commande"
+                          >
+                            <Pencil size={13} /> Modifier
+                          </Link>
                         )}
                         {c.statut !== "ANNULEE" && peutModifier(session.role) && <BonCommandeButton commandeId={c.id} />}
                         {/* Facture et bon de livraison : seulement une fois la commande validée par l'admin. */}

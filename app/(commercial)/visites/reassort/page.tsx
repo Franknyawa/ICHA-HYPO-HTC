@@ -1,5 +1,6 @@
 "use client";
 
+import { trierProduits } from "@/lib/utils/produits-ordre";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Clock, Download, Search, ShoppingCart, Wallet, MessageSquareText } from "lucide-react";
@@ -64,7 +65,7 @@ function ReassortContent() {
   useEffect(() => {
     chargerReferentiels()
       .then((d) => {
-        setProduits(d.produits ?? []);
+        setProduits(trierProduits(d.produits ?? []));
         setPrixParType(d.prixParType ?? []);
         setPaliers(d.paliers ?? []);
       })

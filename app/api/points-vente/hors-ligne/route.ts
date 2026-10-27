@@ -15,6 +15,7 @@ export async function GET() {
     await requireAuth();
 
     const points = await prisma.pointVente.findMany({
+      where: { nom: { not: "CLIENT DIVERS" } },
       take: MAX_POINTS,
       orderBy: { nom: "asc" },
       select: {

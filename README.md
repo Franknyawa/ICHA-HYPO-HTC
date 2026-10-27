@@ -1726,3 +1726,10 @@ Le logo ICHA IMPORT (fond transparent, opacité 10 %) est imprimé en filigrane 
 
 ## Encaissements après « Livrée » (2026-10-24)
 Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois passée à « Livrée » (stock sorti). Validée / en livraison = pas encore d'encaissement possible (l'API refuse). S'applique aussi aux commandes précédentes (basé sur le statut, aucun SQL). Les alertes « Encaissement à faire » des commandes non livrées sont closes automatiquement au prochain passage du cron / « Générer maintenant ».
+
+## Modifications du 27/10/2026
+- **SQL à passer** : `docs/migration-2026-10-27.sql` (colonne `commandes.saisie_par`).
+- Liste des commandes : heure de la commande (Douala), badge « Saisie au bureau : Admin/Superviseur · Nom » (colonne `saisie_par`), bouton **Modifier** (admin) tant que la commande n'est ni livrée ni annulée et sans paiement/avoir/retour : `/admin/commandes/[id]/modifier` → `PUT /api/commandes/[id]` (prix recalculés côté serveur, vente d'origine mise à jour).
+- Formulaires (terrain, admin, superviseur) : **HYPO avant HTC** (`lib/utils/produits-ordre.ts`).
+- Tableau de bord : « Cartons vendus par jour » (14 jours, HYPO / HTC / total / dont détail / commandes / montant + total).
+- **Client divers** : toute vente au détail (sachets / filets), terrain comme bureau, est portée par le point de vente `CLIENT DIVERS` (créé automatiquement) sur UNE commande par jour (`lib/services/client-divers.ts`), cumulée jusqu'à sa validation → une seule facture récapitulative par jour. La vente du commercial garde ses lignes détail (statistiques/objectifs). Une vente uniquement au détail saisie au bureau ne demande aucun client.

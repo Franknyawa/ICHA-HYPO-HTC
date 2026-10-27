@@ -5,6 +5,7 @@ import { handleApiError } from "@/lib/api-errors";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import { createVisiteSchema } from "@/lib/validations/visite";
 import { InsufficientStockError } from "@/lib/services/stock";
+import { ajouterVentesDetail } from "@/lib/services/client-divers";
 import { uploadPhoto, isTrustedPhotoUrl } from "@/lib/services/storage";
 import type { Prisma } from "@prisma/client";
 
@@ -280,6 +281,31 @@ export async function POST(req: NextRequest) {
         // le back office (l'admin autorise la livraison : le stock baisse à
         // ce moment-là, puis la créance arrive en caisse). La vente reste
         // l'enregistrement des statistiques.
+        // Les ventes au détail (sachets / filets) ne vont pas sur la commande du client : elles sont
+        // regroupées sur la facture unique « CLIENT DIVERS » de la journée.
+        const lignesCommande = input.vente.lignes.filter((l) => !l.detail);
+        const lignesDetail = input.vente.lignes.filter((l) => l.detail);
+        if (lignesDetail.length > 0) {
+          await ajouterVentesDetail(tx, {
+            commercialId: session.userId,
+            userId: session.userId,
+            date: new Date(input.dateVisite),
+            lignes: lignesDetail.map((l) => {
+              const produit = produitParCode.get(l.produitCode);
+              if (!produit) throw new Error(`Produit inconnu : ${l.produitCode}`);
+              return {
+                produitId: produit.id,
+                nbSachets: l.nbSachets,
+                nbFilets: l.nbFilets,
+                prixSachet: l.prixSachet ?? 0,
+                prixFilet: l.prixFilet ?? 0,
+                prixCarton: l.prixCarton ?? Number(produit.prixCarton),
+                montant: l.montant ?? 0,
+              };
+            }),
+          });
+        }
+        if (lignesCommande.length > 0) {
         commandeDeVente = await tx.commande.create({
           data: {
             uuidClient: `${input.vente.uuidClient}:cmd`,
@@ -288,10 +314,10 @@ export async function POST(req: NextRequest) {
             clientId: input.vente.clientId,
             commercialId: session.userId,
             dateCommande: new Date(input.dateVisite),
-            montantTotal: input.vente.montantTotal,
+            montantTotal: lignesCommande.reduce((t, l) => t + (l.montant ?? 0), 0),
             modePaiement: input.vente.paiement?.modePaiement,
             lignes: {
-              create: input.vente.lignes.map((l) => {
+              create: lignesCommande.map((l) => {
                 const produit = produitParCode.get(l.produitCode);
                 if (!produit) throw new Error(`Produit inconnu : ${l.produitCode}`);
                 return {
@@ -310,6 +336,7 @@ export async function POST(req: NextRequest) {
           },
           select: { id: true },
         });
+        }
       }
 
       // 5. Commande (livraison future — distincte de la vente immédiate)
@@ -351,7 +378,7 @@ export async function POST(req: NextRequest) {
       // 6. Bon de commande numéroté (BCICHA 0000X), un par visite avec commande.
       let bonCommande: { numero: number } | null = null;
       const commandeLiee = commandeDeVente?.id ?? commande?.id ?? null;
-      if (commandeLiee || vente) {
+      if (commandeLiee) {
         const bon = await tx.bonCommande.create({
           data: { commandeId: commandeLiee ?? undefined, venteId: commandeDeVente ? vente?.id : undefined },
           select: { numero: true },

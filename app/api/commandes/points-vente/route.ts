@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
     const data = await prisma.pointVente.findMany({
       where: {
         archivedAt: null,
+        nom: { not: "CLIENT DIVERS" },
         OR: [
           { nom: { contains: q, mode: "insensitive" } },
           { vendeur: { contains: q, mode: "insensitive" } },

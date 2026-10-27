@@ -9,6 +9,7 @@ import { preparerCommande, type ProduitForm, type QuantitesParCode } from "@/lib
 import type { PalierTarif, PrixTypeTarif } from "@/lib/utils/tarifs";
 import { BlocPaiement, QuantitesProduit, QuantitesDetail, CaseVenteDetail, type ModePaiementTerrain } from "@/components/commercial/form-ui";
 import { formatFcfa } from "@/lib/utils/format";
+import { trierProduits } from "@/lib/utils/produits-ordre";
 
 type PV = {
   id: string;
@@ -46,9 +47,10 @@ export function NouvelleCommandeForm({
   villes,
   types,
   commerciaux,
-  produits,
+  produits: produitsRecus,
   prixParType,
   paliers,
+  modif,
 }: {
   villes: { id: string; nom: string }[];
   types: { id: string; nom: string }[];
@@ -56,13 +58,24 @@ export function NouvelleCommandeForm({
   produits: ProduitForm[];
   prixParType: PrixTypeTarif[];
   paliers: PalierTarif[];
+  /** Mode modification d'une commande existante (client non modifiable). */
+  modif?: {
+    id: string;
+    pv: PV;
+    quantites: QuantitesParCode;
+    quantitesDetail: QuantitesParCode;
+    modePaiement: string | null;
+    livraison: string;
+    commercialId: string;
+  };
 }) {
   const router = useRouter();
+  const produits = useMemo(() => trierProduits(produitsRecus), [produitsRecus]);
 
   const [mode, setMode] = useState<"EXISTANT" | "NOUVEAU">("EXISTANT");
   const [recherche, setRecherche] = useState("");
   const [resultats, setResultats] = useState<PV[]>([]);
-  const [choisi, setChoisi] = useState<PV | null>(null);
+  const [choisi, setChoisi] = useState<PV | null>(modif?.pv ?? null);
 
   const [nom, setNom] = useState("");
   const [contact, setContact] = useState("");
@@ -72,13 +85,13 @@ export function NouvelleCommandeForm({
   const [repere, setRepere] = useState("");
   const [typeId, setTypeId] = useState("");
 
-  const [quantites, setQuantites] = useState<QuantitesParCode>({});
-  const [detailActif, setDetailActif] = useState(false);
-  const [quantitesDetail, setQuantitesDetail] = useState<QuantitesParCode>({});
-  const [modePaiement, setModePaiement] = useState<ModePaiementTerrain>("ESPECES");
+  const [quantites, setQuantites] = useState<QuantitesParCode>(modif?.quantites ?? {});
+  const [detailActif, setDetailActif] = useState(Object.keys(modif?.quantitesDetail ?? {}).length > 0);
+  const [quantitesDetail, setQuantitesDetail] = useState<QuantitesParCode>(modif?.quantitesDetail ?? {});
+  const [modePaiement, setModePaiement] = useState<ModePaiementTerrain>((modif?.modePaiement as ModePaiementTerrain | null) ?? "ESPECES");
   const [acompte, setAcompte] = useState(0);
-  const [livraison, setLivraison] = useState("");
-  const [commercialId, setCommercialId] = useState("");
+  const [livraison, setLivraison] = useState(modif?.livraison ?? "");
+  const [commercialId, setCommercialId] = useState(modif?.commercialId ?? "");
 
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -117,17 +130,23 @@ export function NouvelleCommandeForm({
   async function valider(e: React.FormEvent) {
     e.preventDefault();
     setErreur(null);
-    if (mode === "EXISTANT" && !choisi) return setErreur("Choisissez le point de vente dans la liste.");
-    if (mode === "NOUVEAU" && (nom.trim().length < 2 || !villeId)) return setErreur("Indiquez le nom du client et sa ville.");
     if (commande.lignes.length === 0) return setErreur("Indiquez au moins une quantité.");
+    // Une vente uniquement au détail va sur le « client divers » : pas de client à choisir.
+    const soloDetail = !modif && commande.lignes.every((l) => l.detail);
+    if (!soloDetail && !modif) {
+      if (mode === "EXISTANT" && !choisi) return setErreur("Choisissez le point de vente dans la liste.");
+      if (mode === "NOUVEAU" && (nom.trim().length < 2 || !villeId)) return setErreur("Indiquez le nom du client et sa ville.");
+    }
 
     setEnvoi(true);
     try {
-      await apiFetch("/api/commandes", {
-        method: "POST",
+      await apiFetch(modif ? `/api/commandes/${modif.id}` : "/api/commandes", {
+        method: modif ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...(mode === "EXISTANT"
+          ...(modif || soloDetail
+            ? {}
+            : mode === "EXISTANT"
             ? { pointVenteId: choisi!.id }
             : {
                 nouveauPointVente: {
@@ -149,7 +168,9 @@ export function NouvelleCommandeForm({
             detail: l.detail ?? false,
           })),
           modePaiement,
-          dateLivraisonPrevue: livraison ? new Date(livraison).toISOString() : undefined,
+          ...(modif
+            ? { dateLivraisonPrevue: livraison || null }
+            : { dateLivraisonPrevue: livraison ? new Date(livraison).toISOString() : undefined }),
         }),
       });
       router.push("/admin/commandes");
@@ -163,7 +184,13 @@ export function NouvelleCommandeForm({
   return (
     <form onSubmit={valider} className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-[1.4fr_1fr]">
       <div className="space-y-4">
-        <Section titre="Client" aide="Un nouveau client est ajouté automatiquement à la liste des points de vente.">
+        <Section titre="Client" aide={modif ? "Le client d'une commande ne se change pas : annulez-la et saisissez-en une nouvelle si besoin." : "Un nouveau client est ajouté automatiquement à la liste des points de vente. Une vente uniquement au détail se facture au « CLIENT DIVERS » : aucun client à choisir."}>
+          {modif ? (
+            <div className="rounded-xl bg-blue-50 px-4 py-3 dark:bg-slate-800">
+              <p className="font-semibold text-slate-800 dark:text-slate-100">{modif.pv.nom}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{[modif.pv.vendeur, modif.pv.quartierNom, modif.pv.villeNom].filter(Boolean).join(" · ")}</p>
+            </div>
+          ) : (<>
           <div className="mb-4 grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
             {([
               ["EXISTANT", "Point de vente existant", Search],
@@ -269,6 +296,7 @@ export function NouvelleCommandeForm({
               </div>
             </div>
           )}
+          </>)}
         </Section>
 
         <Section titre="Produits commandés" aide="En cartons (0,5 = demi-carton). Les prix sont appliqués automatiquement : prix de base, type de boutique, puis grille par quantité.">
@@ -332,7 +360,7 @@ export function NouvelleCommandeForm({
             disabled={envoi}
             className="mt-4 w-full rounded-xl bg-white py-3 text-sm font-bold text-[#1e3a8a] disabled:opacity-60"
           >
-            {envoi ? "Enregistrement…" : "Enregistrer la commande"}
+            {envoi ? "Enregistrement…" : modif ? "Enregistrer les modifications" : "Enregistrer la commande"}
           </button>
           <Link href="/admin/commandes" className="mt-2 block text-center text-xs text-white/80 underline">
             Annuler

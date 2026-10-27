@@ -591,6 +591,8 @@ model Commande {
   // Vente terrain à l'origine de cette commande (statistiques) — null pour une commande « à livrer plus tard » ou saisie au bureau.
   valideeAt           DateTime?      @map("validee_at") // 1re validation par l'admin (autorise la livraison)
   venteId             String?        @unique @map("vente_id")
+  // Qui a saisi la commande au bureau (« Admin · Prénom Nom » / « Superviseur · … ») ; null = commande venue du terrain.
+  saisiePar           String?        @map("saisie_par")
   archivedAt          DateTime?      @map("archived_at")
   createdAt           DateTime       @default(now()) @map("created_at")
 

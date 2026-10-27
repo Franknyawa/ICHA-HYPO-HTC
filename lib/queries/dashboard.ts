@@ -294,3 +294,62 @@ export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
     };
   });
 }
+
+export type CartonsJour = {
+  jour: string;
+  hypo: number;
+  htc: number;
+  total: number;
+  /** Part de la vente au détail, exprimée en cartons. */
+  detail: number;
+  commandes: number;
+  montant: number;
+};
+
+/**
+ * Cartons vendus par jour (commandes validées ce jour-là par l'admin), sur les `nbJours` derniers jours,
+ * du plus récent au plus ancien. Les sachets / filets sont convertis en cartons.
+ */
+export async function getCartonsParJour(nbJours = 14): Promise<CartonsJour[]> {
+  await assurerMontantsConformes();
+  const aujourdhui = jourDouala();
+  const premier = ajouterJours(aujourdhui, -(nbJours - 1));
+  const commandes = await prisma.commande.findMany({
+    where: {
+      valideeAt: { gte: debutJour(premier), lte: finJour(aujourdhui) },
+      statut: { in: ["EN_LIVRAISON", "LIVREE"] },
+    },
+    select: {
+      valideeAt: true,
+      montantTotal: true,
+      lignes: { select: { nbSachets: true, nbFilets: true, nbCartons: true, detail: true, produit: { select: { code: true, ...SELECT_CONV } } } },
+    },
+  });
+
+  const jours = new Map<string, CartonsJour>();
+  for (let i = 0; i < nbJours; i++) {
+    const j = ajouterJours(aujourdhui, -i);
+    jours.set(j, { jour: j, hypo: 0, htc: 0, total: 0, detail: 0, commandes: 0, montant: 0 });
+  }
+  for (const c of commandes) {
+    const g = jours.get(jourDouala(c.valideeAt!));
+    if (!g) continue;
+    g.commandes += 1;
+    g.montant += Number(c.montantTotal);
+    for (const l of c.lignes) {
+      const q = cartonsEq(l, l.produit);
+      if (l.produit.code === "HYPO") g.hypo += q;
+      else if (l.produit.code === "HTC") g.htc += q;
+      if (l.detail) g.detail += q;
+      g.total += q;
+    }
+  }
+  return [...jours.values()].map((g) => ({
+    ...g,
+    hypo: arrondiCartons(g.hypo),
+    htc: arrondiCartons(g.htc),
+    total: arrondiCartons(g.total),
+    detail: arrondiCartons(g.detail),
+    montant: Math.round(g.montant),
+  }));
+}

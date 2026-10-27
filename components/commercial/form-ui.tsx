@@ -347,7 +347,7 @@ export function CaseVenteDetail({ actif, onChange }: { actif: boolean; onChange:
       />
       <span>
         <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100">Vente en détail</span>
-        <span className="block text-xs text-slate-500 dark:text-slate-400">Sachets à 100 FCFA, filets HTC à 1 000 FCFA</span>
+        <span className="block text-xs text-slate-500 dark:text-slate-400">Sachets à 100 FCFA, filets HTC à 1 000 FCFA · facturé au CLIENT DIVERS (une seule facture par jour)</span>
       </span>
     </label>
   );
