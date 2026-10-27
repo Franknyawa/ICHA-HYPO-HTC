@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { assurerMontantsConformes } from "@/lib/services/recalcul-prix";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import type { Prisma } from "@prisma/client";
-import { finJour, jourDouala } from "@/lib/utils/periode";
+import { debutJour, finJour, jourDouala } from "@/lib/utils/periode";
 
 export type StatutCommandeFiltre = "EN_ATTENTE" | "EN_LIVRAISON" | "LIVREE" | "ANNULEE";
 
@@ -29,13 +29,14 @@ export async function listCommandes(params: ListCommandesParams) {
   const { page, pageSize, skip, take } = getPaginationParams(sp);
 
   // Livraison prévue un autre jour que le jour même, pour une commande pas encore partie.
+  // Dans la liste principale, une commande prise AUJOURD'HUI reste toujours visible (même avec une livraison future).
   const aVenir: Prisma.CommandeWhereInput = {
     dateLivraisonPrevue: { gt: finJour(jourDouala()) },
     statut: { in: ["EN_ATTENTE", "EN_LIVRAISON"] },
   };
   const where: Prisma.CommandeWhereInput = {
     archivedAt: null,
-    ...(params.livraison === "avenir" ? { AND: [aVenir] } : params.livraison === "courantes" ? { NOT: aVenir } : {}),
+    ...(params.livraison === "avenir" ? { AND: [aVenir] } : params.livraison === "courantes" ? { NOT: { AND: [aVenir, { dateCommande: { lt: debutJour(jourDouala()) } }] } } : {}),
     ...(params.statut ? { statut: params.statut } : params.statuts ? { statut: { in: params.statuts } } : {}),
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),
     ...(params.commercialId ? { commercialId: params.commercialId } : {}),
