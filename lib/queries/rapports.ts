@@ -48,6 +48,8 @@ export type Mesures = {
   commandes: number;
   nbVentes: number;
   cartons: number;
+  /** Sachets équivalents (cartons × sachets par carton) : le nombre de sachets réellement vendus. */
+  sachets: number;
   ca: number;
   reste: number;
 };
@@ -57,7 +59,17 @@ export type RapportTableau = {
   colonnes: string[];
   /** Nombre de colonnes de texte au début (le reste est numérique, aligné à droite) */
   nbColsTexte: number;
-  lignes: { cle: string; cellules: string[]; brut: (string | number)[] }[];
+  lignes: {
+    cle: string;
+    cellules: string[];
+    brut: (string | number)[];
+    /** Titre de section (ex. « Commandes enregistrées au bureau »). */
+    groupe?: string;
+    /** Part de la meilleure ligne du groupe (0 à 1), pour les barres. */
+    part?: number;
+    /** Rang dans son groupe (1 = meilleur). */
+    rang?: number;
+  }[];
   total?: { cellules: string[]; brut: (string | number)[] };
   totaux: Mesures;
   pagination: { page: number; pageSize: number; total: number; totalPages: number } | null;
@@ -75,6 +87,7 @@ export type ApercuRapport = {
     /** « 1/2 carton » : équivalent de la quantité saisie */
     cartonsEquiv: string;
     cartons: number;
+    sachets: number;
     ca: number;
     part: number;
   }[];
@@ -88,6 +101,7 @@ export type ApercuRapport = {
     ville: string;
     client: string | null;
     cartons: number;
+    sachets: number;
     ca: number;
     paye: number;
     reste: number;
@@ -113,9 +127,8 @@ export function formatQte(n: number): string {
   return Number.isInteger(r) ? String(r) : String(r).replace(".", ",");
 }
 
-function formatPct(x: number): string {
-  const r = Math.round(x * 10) / 10;
-  return `${Number.isInteger(r) ? r : String(r).replace(".", ",")} %`;
+function formatNombre(n: number): string {
+  return new Intl.NumberFormat("fr-FR").format(Math.round(n));
 }
 
 const fcfa = (n: number) => `${formatMontant(n)} FCFA`;
@@ -208,7 +221,7 @@ async function chargerVentes(filters: RapportFilters) {
       dateCommande: true,
       montantTotal: true,
       commercialId: true,
-      commercial: { select: { nom: true, prenom: true, binome: { select: { nom: true } } } },
+      commercial: { select: { nom: true, prenom: true, role: true, binome: { select: { nom: true } } } },
       pointVenteId: true,
       pointVente: { select: SELECT_PV },
       client: { select: { nom: true } },
@@ -258,6 +271,7 @@ export type LigneRepartie = {
   nbFilets: number;
   nbCartons: number;
   cartons: number;
+  sachets: number;
   ca: number;
   reste: number;
 };
@@ -301,6 +315,7 @@ export function repartirVente(v: VenteRepartissable): { lignes: LigneRepartie[];
     nbFilets: l.nbFilets,
     nbCartons: l.nbCartons,
     cartons: cartonsEquivalents(l, l.produit),
+    sachets: Math.round(cartonsEquivalents(l, l.produit) * l.produit.sachetsParCarton),
     ca: (total * ws[i]) / somme,
     reste: (resteVente * ws[i]) / somme,
   }));
@@ -323,6 +338,8 @@ type Evt = {
   commercialId: string;
   commercialNom: string;
   binomeNom: string | null;
+  /** COMMERCIAL, SUPERVISEUR, ADMIN… : les commandes saisies au bureau sont rangées à part. */
+  role: string;
   pvId: string | null;
   pvNom: string;
   villeId: string;
@@ -334,8 +351,9 @@ type Evt = {
   ca?: number;
   reste?: number;
   cartons?: number;
-  /** Détail par produit (code → cartons équivalents et CA) */
-  parProduit?: Map<string, { cartons: number; ca: number }>;
+  sachets?: number;
+  /** Détail par produit (code → cartons équivalents, sachets équivalents et CA) */
+  parProduit?: Map<string, { cartons: number; sachets: number; ca: number }>;
 };
 
 function moisDe(d: Date) {
@@ -359,7 +377,7 @@ async function chargerEvenements(filters: RapportFilters) {
       select: {
         dateVisite: true,
         commercialId: true,
-        commercial: { select: { nom: true, prenom: true, binome: { select: { nom: true } } } },
+        commercial: { select: { nom: true, prenom: true, role: true, binome: { select: { nom: true } } } },
         pointVenteId: true,
         pointVente: { select: SELECT_PV },
       },
@@ -375,7 +393,7 @@ async function chargerEvenements(filters: RapportFilters) {
       select: {
         dateCommande: true,
         commercialId: true,
-        commercial: { select: { nom: true, prenom: true, binome: { select: { nom: true } } } },
+        commercial: { select: { nom: true, prenom: true, role: true, binome: { select: { nom: true } } } },
         pointVenteId: true,
         pointVente: { select: SELECT_PV },
       },
@@ -391,7 +409,7 @@ async function chargerEvenements(filters: RapportFilters) {
         ...SELECT_PV,
         createdAt: true,
         createdById: true,
-        createdBy: { select: { nom: true, prenom: true, binome: { select: { nom: true } } } },
+        createdBy: { select: { nom: true, prenom: true, role: true, binome: { select: { nom: true } } } },
       },
     }),
   ]);
@@ -404,10 +422,12 @@ async function chargerEvenements(filters: RapportFilters) {
     const ca = retenues.reduce((s, l) => s + l.ca, 0);
     const reste = retenues.reduce((s, l) => s + l.reste, 0);
     const cartons = retenues.reduce((s, l) => s + l.cartons, 0);
-    const parProduit = new Map<string, { cartons: number; ca: number }>();
+    const sachets = retenues.reduce((s, l) => s + l.sachets, 0);
+    const parProduit = new Map<string, { cartons: number; sachets: number; ca: number }>();
     for (const l of retenues) {
-      const g = parProduit.get(l.code) ?? { cartons: 0, ca: 0 };
+      const g = parProduit.get(l.code) ?? { cartons: 0, sachets: 0, ca: 0 };
       g.cartons += l.cartons;
+      g.sachets += l.sachets;
       g.ca += l.ca;
       parProduit.set(l.code, g);
     }
@@ -417,6 +437,7 @@ async function chargerEvenements(filters: RapportFilters) {
       commercialId: v.commercialId,
       commercialNom: `${v.commercial.prenom} ${v.commercial.nom}`,
       binomeNom: v.commercial.binome?.nom ?? null,
+      role: v.commercial.role,
       pvId: v.pointVenteId,
       pvNom: v.pointVente.nom,
       villeId: v.pointVente.villeId,
@@ -427,6 +448,7 @@ async function chargerEvenements(filters: RapportFilters) {
       ca,
       reste,
       cartons,
+      sachets,
       parProduit,
     });
   }
@@ -435,7 +457,7 @@ async function chargerEvenements(filters: RapportFilters) {
     type: Evt["type"],
     date: Date,
     commercialId: string,
-    c: { nom: string; prenom: string; binome: { nom: string } | null },
+    c: { nom: string; prenom: string; role: string; binome: { nom: string } | null },
     pv: { id: string; nom: string; villeId: string; ville: { nom: string }; quartierId: string | null; quartier: { nom: string } | null }
   ): Evt => ({
     type,
@@ -443,6 +465,7 @@ async function chargerEvenements(filters: RapportFilters) {
     commercialId,
     commercialNom: `${c.prenom} ${c.nom}`,
     binomeNom: c.binome?.nom ?? null,
+    role: c.role,
     pvId: pv.id,
     pvNom: pv.nom,
     villeId: pv.villeId,
@@ -462,12 +485,12 @@ async function chargerEvenements(filters: RapportFilters) {
 // Regroupement par vue
 // ---------------------------------------------------------------------------
 
-type Cle = { cle: string; libelle: string; sous?: string };
+type Cle = { cle: string; libelle: string; sous?: string; bureau?: boolean };
 
 function cleDe(vue: RapportVue, e: Evt): Cle | null {
   switch (vue) {
     case "commercial":
-      return { cle: e.commercialId, libelle: e.commercialNom, sous: e.binomeNom ?? undefined };
+      return { cle: e.commercialId, libelle: e.commercialNom, sous: e.binomeNom ?? undefined, bureau: e.role !== "COMMERCIAL" };
     case "point_vente":
       return e.pvId ? { cle: e.pvId, libelle: e.pvNom, sous: `${e.villeNom}${e.quartierNom ? ` · ${e.quartierNom}` : ""}` } : null;
     case "ville":
@@ -488,7 +511,7 @@ function cleDe(vue: RapportVue, e: Evt): Cle | null {
 }
 
 function vide(): Mesures {
-  return { pointsVente: 0, visites: 0, commandes: 0, nbVentes: 0, cartons: 0, ca: 0, reste: 0 };
+  return { pointsVente: 0, visites: 0, commandes: 0, nbVentes: 0, cartons: 0, sachets: 0, ca: 0, reste: 0 };
 }
 
 function cumuler(m: Mesures, e: Evt) {
@@ -497,6 +520,7 @@ function cumuler(m: Mesures, e: Evt) {
     m.ca += e.ca ?? 0;
     m.reste += e.reste ?? 0;
     m.cartons += e.cartons ?? 0;
+    m.sachets += e.sachets ?? 0;
   } else if (e.type === "visite") m.visites += 1;
   else if (e.type === "commande") m.commandes += 1;
   else m.pointsVente += 1;
@@ -525,20 +549,19 @@ function filtresHistorique(filters: RapportFilters): RapportFilters {
   return { ...filters, dateFrom: `${a}-${m}-01`, dateTo: undefined };
 }
 
-function ligneMesures(m: Mesures, totalCa: number, avecCompteurs: boolean) {
-  const part = totalCa > 0 ? (m.ca / totalCa) * 100 : 0;
+function ligneMesures(m: Mesures, _totalCa: number, avecCompteurs: boolean) {
   const cells = avecCompteurs
     ? [String(m.pointsVente), String(m.visites), String(m.commandes)]
     : [];
   const brut: number[] = avecCompteurs ? [m.pointsVente, m.visites, m.commandes] : [];
   return {
-    cells: [...cells, formatQte(m.cartons), fcfa(m.ca), formatPct(part), fcfa(m.reste)],
-    brut: [...brut, arrondi(m.cartons), Math.round(m.ca), arrondi(part, 1), Math.round(m.reste)],
+    cells: [...cells, formatQte(m.cartons), formatNombre(m.sachets), fcfa(m.reste)],
+    brut: [...brut, arrondi(m.cartons), Math.round(m.sachets), Math.round(m.reste)],
   };
 }
 
-const COLS_MESURES = ["Points de vente recensés", "Visites", "Commandes", "Cartons vendus", "Chiffre d'affaires", "% du CA", "Reste à payer"];
-const COLS_MESURES_PRODUIT = ["Ventes", "Cartons vendus", "Chiffre d'affaires", "% du CA", "Reste à payer"];
+const COLS_MESURES = ["Points de vente recensés", "Visites", "Commandes", "Cartons vendus", "Sachets vendus", "Reste à payer"];
+const COLS_MESURES_PRODUIT = ["Ventes", "Cartons vendus", "Sachets vendus", "Reste à payer"];
 
 function totalMesures(evts: Evt[]): Mesures {
   const t = vide();
@@ -571,7 +594,7 @@ export async function getRapport(
       const r = repartirVente(v);
       const retenues = r.lignes.filter((l) => ligneRetenue(l, filters));
       const cartons = retenues.reduce((s, l) => s + l.cartons, 0);
-      const ca = retenues.reduce((s, l) => s + l.ca, 0);
+      const sachets = retenues.reduce((s, l) => s + l.sachets, 0);
       const reste = retenues.reduce((s, l) => s + l.reste, 0);
       const resume =
         retenues
@@ -581,13 +604,13 @@ export async function getRapport(
       const com = `${v.commercial.prenom} ${v.commercial.nom}`;
       return {
         cle: v.id,
-        cellules: [date, com, v.pointVente.nom, v.pointVente.ville.nom, resume, formatQte(cartons), fcfa(ca), fcfa(reste)],
-        brut: [date, com, v.pointVente.nom, v.pointVente.ville.nom, resume, arrondi(cartons), Math.round(ca), Math.round(reste)],
+        cellules: [date, com, v.pointVente.nom, v.pointVente.ville.nom, resume, formatQte(cartons), formatNombre(sachets), fcfa(reste)],
+        brut: [date, com, v.pointVente.nom, v.pointVente.ville.nom, resume, arrondi(cartons), Math.round(sachets), Math.round(reste)],
       };
     });
     return {
       vue,
-      colonnes: ["Date", "Commercial", "Point de vente", "Ville", "Produits", "Cartons vendus", "Chiffre d'affaires", "Reste à payer"],
+      colonnes: ["Date", "Commercial", "Point de vente", "Ville", "Produits", "Cartons vendus", "Sachets vendus", "Reste à payer"],
       nbColsTexte: 5,
       lignes,
       totaux,
@@ -611,18 +634,25 @@ export async function getRapport(
   if (vue === "historique") {
     // déjà du plus récent au plus ancien (ordre d'insertion)
   } else {
-    liste = liste.sort((a, b) => b.m.ca - a.m.ca || a.cle.libelle.localeCompare(b.cle.libelle));
+    // Les commerciaux d'abord ; les admins et superviseurs (commandes saisies au bureau) en dessous.
+    liste = liste.sort(
+      (a, b) =>
+        Number(!!a.cle.bureau) - Number(!!b.cle.bureau) ||
+        b.m.cartons - a.m.cartons ||
+        a.cle.libelle.localeCompare(b.cle.libelle)
+    );
   }
 
   // Détail par produit : cartons équivalents et CA de chaque produit, par ligne.
   const codes = [...new Set(evts.flatMap((e) => (e.parProduit ? [...e.parProduit.keys()] : [])))].sort();
-  const parProduitDe = new Map<string, Map<string, { cartons: number; ca: number }>>();
+  const parProduitDe = new Map<string, Map<string, { cartons: number; sachets: number; ca: number }>>();
   const ajouterProd = (k: string, e: Evt) => {
     if (!e.parProduit) return;
-    const cible = parProduitDe.get(k) ?? new Map<string, { cartons: number; ca: number }>();
+    const cible = parProduitDe.get(k) ?? new Map<string, { cartons: number; sachets: number; ca: number }>();
     for (const [code, v] of e.parProduit) {
-      const x = cible.get(code) ?? { cartons: 0, ca: 0 };
+      const x = cible.get(code) ?? { cartons: 0, sachets: 0, ca: 0 };
       x.cartons += v.cartons;
+      x.sachets += v.sachets;
       x.ca += v.ca;
       cible.set(code, x);
     }
@@ -638,16 +668,28 @@ export async function getRapport(
     const cells: string[] = [];
     const brut: number[] = [];
     for (const code of codes) {
-      const x = map?.get(code) ?? { cartons: 0, ca: 0 };
-      cells.push(formatQte(x.cartons), fcfa(x.ca));
-      brut.push(arrondi(x.cartons), Math.round(x.ca));
+      const x = map?.get(code) ?? { cartons: 0, sachets: 0, ca: 0 };
+      cells.push(formatQte(x.cartons), formatNombre(x.sachets));
+      brut.push(arrondi(x.cartons), Math.round(x.sachets));
     }
     return { cells, brut };
   };
   const NB_COMPTEURS = 3;
   const inserer = <T,>(tab: T[], ajout: T[]) => [...tab.slice(0, NB_COMPTEURS), ...ajout, ...tab.slice(NB_COMPTEURS)];
 
+  const maxParGroupe = new Map<boolean, number>();
+  for (const { cle, m } of liste) {
+    const b = !!cle.bureau;
+    maxParGroupe.set(b, Math.max(maxParGroupe.get(b) ?? 0, m.cartons));
+  }
+  const rangParGroupe = new Map<boolean, number>();
+  const ilYADuBureau = vue === "commercial" && liste.some((x) => x.cle.bureau);
+
   const lignes = liste.map(({ cle, m }) => {
+    const b = !!cle.bureau;
+    const rang = (rangParGroupe.get(b) ?? 0) + 1;
+    rangParGroupe.set(b, rang);
+    const max = maxParGroupe.get(b) ?? 0;
     const mesBase = ligneMesures(m, totaux.ca, true);
     const pc = celluleProduits(cle.cle);
     const mes = { cells: inserer(mesBase.cells, pc.cells), brut: inserer(mesBase.brut as (string | number)[], pc.brut) };
@@ -657,6 +699,13 @@ export async function getRapport(
       cle: cle.cle,
       cellules: [...texte, ...mes.cells],
       brut: [...texte, ...mes.brut],
+      ...(vue === "commercial"
+        ? {
+            groupe: ilYADuBureau ? (b ? "Commandes enregistrées au bureau (superviseurs et administrateurs)" : "Commerciaux terrain") : undefined,
+            part: max > 0 ? m.cartons / max : 0,
+            rang,
+          }
+        : {}),
     };
   });
 
@@ -668,13 +717,15 @@ export async function getRapport(
     historique: "Mois",
   }[vue] as string;
   const colSecondaire = vue === "point_vente" ? "Ville · quartier" : vue === "quartier" ? "Ville" : null;
-  const colsProduits = codes.flatMap((c) => [`${c} cartons`, `${c} CA`]);
+  const colsProduits = codes.flatMap((c) => [`${c} cartons`, `${c} sachets`]);
   const colonnes = [
     colonnePrincipale,
     ...(colSecondaire ? [colSecondaire] : []),
     ...COLS_MESURES.slice(0, NB_COMPTEURS),
     ...colsProduits,
-    ...COLS_MESURES.slice(NB_COMPTEURS).map((c) => (codes.length > 0 && c === "Cartons vendus" ? "Total cartons" : c)),
+    ...COLS_MESURES.slice(NB_COMPTEURS).map((c) =>
+      codes.length > 0 && c === "Cartons vendus" ? "Total cartons" : codes.length > 0 && c === "Sachets vendus" ? "Total sachets" : c
+    ),
   ];
   const nbColsTexte = colSecondaire ? 2 : 1;
 
@@ -700,23 +751,24 @@ async function rapportProduit(filters: RapportFilters): Promise<RapportTableau> 
   const { evts, ventes } = await chargerEvenements(filters);
   const totaux = totalMesures(evts);
 
-  const map = new Map<string, { code: string; nom: string; gamme: string; ventes: Set<string>; cartons: number; ca: number; reste: number }>();
+  const map = new Map<string, { code: string; nom: string; gamme: string; ventes: Set<string>; cartons: number; sachets: number; ca: number; reste: number }>();
   for (const v of ventes) {
     for (const l of repartirVente(v).lignes) {
       if (!ligneRetenue(l, filters)) continue;
-      const g = map.get(l.produitId) ?? { code: l.code, nom: l.nom, gamme: l.gamme, ventes: new Set<string>(), cartons: 0, ca: 0, reste: 0 };
+      const g = map.get(l.produitId) ?? { code: l.code, nom: l.nom, gamme: l.gamme, ventes: new Set<string>(), cartons: 0, sachets: 0, ca: 0, reste: 0 };
       g.ventes.add(v.id);
       g.cartons += l.cartons;
+      g.sachets += l.sachets;
       g.ca += l.ca;
       g.reste += l.reste;
       map.set(l.produitId, g);
     }
   }
-  const liste = [...map.entries()].sort((a, b) => b[1].ca - a[1].ca);
+  const liste = [...map.entries()].sort((a, b) => b[1].cartons - a[1].cartons);
   const totalCa = liste.reduce((s, [, g]) => s + g.ca, 0);
 
   const lignes = liste.map(([id, g]) => {
-    const m: Mesures = { ...vide(), nbVentes: g.ventes.size, cartons: g.cartons, ca: g.ca, reste: g.reste };
+    const m: Mesures = { ...vide(), nbVentes: g.ventes.size, cartons: g.cartons, sachets: g.sachets, ca: g.ca, reste: g.reste };
     const mes = ligneMesures(m, totalCa, false);
     return {
       cle: id,
@@ -729,6 +781,7 @@ async function rapportProduit(filters: RapportFilters): Promise<RapportTableau> 
     ...vide(),
     nbVentes: ventes.length,
     cartons: liste.reduce((s, [, g]) => s + g.cartons, 0),
+    sachets: liste.reduce((s, [, g]) => s + g.sachets, 0),
     ca: totalCa,
     reste: liste.reduce((s, [, g]) => s + g.reste, 0),
   };
@@ -740,7 +793,7 @@ async function rapportProduit(filters: RapportFilters): Promise<RapportTableau> 
     nbColsTexte: 2,
     lignes,
     total: { cellules: ["Total", "", String(tot.nbVentes), ...tm.cells], brut: ["Total", "", tot.nbVentes, ...tm.brut] },
-    totaux: { ...totaux, ca: totalCa, cartons: tot.cartons, reste: tot.reste },
+    totaux: { ...totaux, ca: totalCa, cartons: tot.cartons, sachets: tot.sachets, reste: tot.reste },
     pagination: null,
   };
 }
@@ -836,13 +889,14 @@ export async function getApercu(
           : "";
 
   // Produits
-  const prod = new Map<string, { code: string; nom: string; gamme: string; sach: number; fil: number; cart: number; cartons: number; ca: number }>();
+  const prod = new Map<string, { code: string; nom: string; gamme: string; sach: number; fil: number; cart: number; cartons: number; sachets: number; ca: number }>();
   const lignesVentes: ApercuRapport["ventes"] = [];
   for (const v of ventesFocus) {
     const r = repartirVente(v);
     const retenues = r.lignes.filter((l) => ligneRetenue(l, filters));
     for (const l of retenues) {
-      const g = prod.get(l.produitId) ?? { code: l.code, nom: l.nom, gamme: l.gamme, sach: 0, fil: 0, cart: 0, cartons: 0, ca: 0 };
+      const g = prod.get(l.produitId) ?? { code: l.code, nom: l.nom, gamme: l.gamme, sach: 0, fil: 0, cart: 0, cartons: 0, sachets: 0, ca: 0 };
+      g.sachets += l.sachets;
       g.sach += l.nbSachets;
       g.fil += l.nbFilets;
       g.cart += l.nbCartons;
@@ -859,6 +913,7 @@ export async function getApercu(
       ville: v.pointVente.ville.nom,
       client: v.client?.nom ?? null,
       cartons: arrondi(retenues.reduce((s, l) => s + l.cartons, 0)),
+      sachets: Math.round(retenues.reduce((s, l) => s + l.sachets, 0)),
       ca: Math.round(retenues.reduce((s, l) => s + l.ca, 0)),
       paye: Math.round(r.paye),
       reste: Math.round(retenues.reduce((s, l) => s + l.reste, 0)),
@@ -867,7 +922,7 @@ export async function getApercu(
 
   const totalCa = [...prod.values()].reduce((s, g) => s + g.ca, 0);
   const produits = [...prod.values()]
-    .sort((a, b) => b.ca - a.ca)
+    .sort((a, b) => b.cartons - a.cartons)
     .map((g) => ({
       code: g.code,
       nom: g.nom,
@@ -877,6 +932,7 @@ export async function getApercu(
         .join(" · ") || "—",
       cartonsEquiv: libelleCartons(g.cartons),
       cartons: arrondi(g.cartons),
+      sachets: Math.round(g.sachets),
       ca: Math.round(g.ca),
       part: totalCa > 0 ? arrondi((g.ca / totalCa) * 100, 1) : 0,
     }));

@@ -33,6 +33,10 @@ export type LigneJournal = {
   detail: string;
   canal: Canal;
   montant: number;
+  /** Qui a saisi l'opération (admin), si connu. */
+  par?: string;
+  /** Transfert entre deux comptes (espèces, OM/MoMo, banque). */
+  transfert?: boolean;
   /** Opération manuelle supprimable (les paiements viennent des ventes et ne se suppriment pas ici). */
   supprimable: boolean;
 };
@@ -226,12 +230,17 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
   }
   let autresRecettes = 0;
   let depenses = 0;
+  let transferts = 0;
   // Remboursements de clients générés par une facture d'avoir : de l'argent
   // qui sort, mais qui vient en déduction des recettes (pas une dépense).
   let remboursements = 0;
   for (const o of opsPeriode) {
     const m = num(o.montant);
-    if (o.type === "RECETTE") {
+    if (o.referenceType === "TRANSFERT") {
+      // Mouvement interne d'un compte à l'autre : ni recette ni dépense.
+      parCanalPeriode[o.canal][o.type === "RECETTE" ? "entrees" : "sorties"] += m;
+      if (o.type === "RECETTE") transferts += m;
+    } else if (o.type === "RECETTE") {
       autresRecettes += m;
       parCanalPeriode[o.canal].entrees += m;
     } else if (o.referenceType === "AVOIR" || o.referenceType === "RETOUR" || o.referenceType === "DOUBLON") {
@@ -252,6 +261,13 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
     solde[g.canal] += g.type === "RECETTE" ? m : -m;
   }
   const soldeTotal = solde.ESPECES + solde.MOBILE_MONEY + solde.BANQUE;
+
+  const ids = Array.from(new Set(opsPeriode.map((o) => o.createdById).filter((x): x is string => !!x)));
+  const users = ids.length
+    ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, prenom: true, nom: true } })
+    : [];
+  const nomUser = new Map(users.map((u) => [u.id, `${u.prenom} ${u.nom}`]));
+  const LIB: Record<Canal, string> = { ESPECES: "Espèces", MOBILE_MONEY: "OM/MoMo", BANQUE: "Banque" };
 
   const journal: LigneJournal[] = [
     ...paiementsPeriode
@@ -274,6 +290,8 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
       detail: o.note ?? "",
       canal: o.canal,
       montant: num(o.montant),
+      par: o.createdById ? nomUser.get(o.createdById) : undefined,
+      transfert: o.referenceType === "TRANSFERT",
       supprimable: o.referenceType !== "AVOIR" && o.referenceType !== "RETOUR" && o.referenceType !== "DOUBLON",
     })),
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -292,6 +310,7 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
     autresRecettes,
     remboursements,
     depenses,
+    transferts,
     resultat: recettes - depenses,
     commandesValideesMontant: num(commandesValidees._sum.montantTotal),
     commandesValideesNombre: commandesValidees._count._all,
@@ -332,13 +351,15 @@ export async function getCaisseResume(debut: Date, fin: Date) {
   ]);
   const somme = (g: { type: string; _sum: { montant: unknown } }[], t: string) =>
     g.filter((x) => x.type === t).reduce((s, x) => s + num(x._sum.montant), 0);
+  const transfertsJour = (t: string) =>
+    oJour.filter((x) => x.type === t && x.referenceType === "TRANSFERT").reduce((s, x) => s + num(x._sum.montant), 0);
   const remboursementsJour = oJour
     .filter((x) => x.type === "DEPENSE" && (x.referenceType === "AVOIR" || x.referenceType === "RETOUR" || x.referenceType === "DOUBLON"))
     .reduce((s, x) => s + num(x._sum.montant), 0);
   return {
     solde: num(pTotal._sum.montant) + somme(oTotal, "RECETTE") - somme(oTotal, "DEPENSE"),
-    recettesJour: num(pJour._sum.montant) + somme(oJour, "RECETTE") - num(regulJour._sum.montant) - remboursementsJour,
-    depensesJour: somme(oJour, "DEPENSE") - remboursementsJour,
+    recettesJour: num(pJour._sum.montant) + somme(oJour, "RECETTE") - transfertsJour("RECETTE") - num(regulJour._sum.montant) - remboursementsJour,
+    depensesJour: somme(oJour, "DEPENSE") - transfertsJour("DEPENSE") - remboursementsJour,
     creditsTotal: credits.reduce((s, c) => s + c.du, 0),
     nbCredits: credits.length,
     stock,

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, HandCoins, Plus, Search, Trash2 } from "lucide-react";
+import { CalendarClock, AlertTriangle, ArrowDownCircle, ArrowUpCircle, ArrowRightLeft, ArrowRight, HandCoins, Plus, Search, Trash2 } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/client/apiFetch";
 import { formatFcfa } from "@/lib/utils/format";
 
@@ -20,7 +20,7 @@ type Credit = {
   dateLivraisonPrevue: string | null;
 };
 
-type Onglet = "CREDIT" | "DEPENSE" | "RECETTE";
+type Onglet = "CREDIT" | "DEPENSE" | "RECETTE" | "TRANSFERT";
 type Canal = "ESPECES" | "MOBILE_MONEY" | "BANQUE";
 
 const LIBELLE_CANAL: Record<Canal, string> = { ESPECES: "Espèces", MOBILE_MONEY: "OM/MOMO", BANQUE: "Opération bancaire" };
@@ -31,7 +31,7 @@ const CATEGORIES_DEPENSE = ["Achat de stock", "Transport", "Salaires", "Carburan
 const champ =
   "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-[#359980] focus:outline-none focus:ring-2 focus:ring-[#359980]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
 
-export function CaisseOperations({ credits, jour }: { credits: Credit[]; jour: string }) {
+export function CaisseOperations({ credits, jour, soldes }: { credits: Credit[]; jour: string; soldes: Record<Canal, number> }) {
   const router = useRouter();
   const [onglet, setOnglet] = useState<Onglet>(credits.length > 0 ? "CREDIT" : "DEPENSE");
   const [canal, setCanal] = useState<Canal>("ESPECES");
@@ -39,6 +39,8 @@ export function CaisseOperations({ credits, jour }: { credits: Credit[]; jour: s
   const [note, setNote] = useState("");
   const [categorie, setCategorie] = useState(CATEGORIES_DEPENSE[0]);
   const [cleChoisie, setCleChoisie] = useState("");
+  const [versCanal, setVersCanal] = useState<Canal>("MOBILE_MONEY");
+  const [frais, setFrais] = useState<number | "">("");
   const [recherche, setRecherche] = useState("");
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -95,6 +97,18 @@ export function CaisseOperations({ credits, jour }: { credits: Credit[]; jour: s
         });
         setSucces(`${formatFcfa(m)} encaissés chez ${creditChoisi.pointVenteNom}.`);
         setCleChoisie("");
+      } else if (onglet === "TRANSFERT") {
+        if (canal === versCanal) {
+          setEnvoi(false);
+          return setErreur("Choisissez deux comptes différents.");
+        }
+        await apiFetch("/api/caisse/transferts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ de: canal, vers: versCanal, montant: m, frais: Number(frais) || undefined, note: note.trim() || undefined }),
+        });
+        setSucces(`Transfert de ${formatFcfa(m)} enregistré : ${LIBELLE_CANAL[canal]} → ${LIBELLE_CANAL[versCanal]}.`);
+        setFrais("");
       } else {
         await apiFetch("/api/caisse/operations", {
           method: "POST",
@@ -123,6 +137,7 @@ export function CaisseOperations({ credits, jour }: { credits: Credit[]; jour: s
     { id: "CREDIT", label: "Valider un encaissement", icone: <HandCoins size={15} />, actif: "bg-[#1e3a8a] text-white" },
     { id: "DEPENSE", label: "Dépense", icone: <ArrowUpCircle size={15} />, actif: "bg-red-700 text-white" },
     { id: "RECETTE", label: "Autre recette", icone: <ArrowDownCircle size={15} />, actif: "bg-[#359980] text-white" },
+    { id: "TRANSFERT", label: "Transfert", icone: <ArrowRightLeft size={15} />, actif: "bg-slate-700 text-white" },
   ];
 
   return (
@@ -133,7 +148,7 @@ export function CaisseOperations({ credits, jour }: { credits: Credit[]; jour: s
           <Plus size={16} /> Nouvelle opération
         </h2>
 
-        <div className="mb-4 grid grid-cols-3 gap-1.5 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+        <div className="mb-4 grid grid-cols-2 gap-1.5 rounded-xl sm:grid-cols-4 bg-slate-100 p-1 dark:bg-slate-800">
           {onglets.map((o) => (
             <button
               key={o.id}
@@ -220,6 +235,11 @@ export function CaisseOperations({ credits, jour }: { credits: Credit[]; jour: s
             onWheel={(e) => (e.target as HTMLInputElement).blur()}
           />
 
+          {onglet === "TRANSFERT" && (
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Depuis le compte (solde disponible : {formatFcfa(soldes[canal])})
+            </p>
+          )}
           <div className={`grid gap-2 ${"grid-cols-3"}`}>
             {(onglet === "CREDIT" ? CANAUX_CREANCE : (["ESPECES", "MOBILE_MONEY", "BANQUE"] as Canal[])).map((c) => (
               <button
@@ -237,6 +257,43 @@ export function CaisseOperations({ credits, jour }: { credits: Credit[]; jour: s
             ))}
           </div>
 
+          {onglet === "TRANSFERT" && (
+            <>
+              <p className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                <ArrowRight size={14} /> Vers le compte (solde : {formatFcfa(soldes[versCanal])})
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {(["ESPECES", "MOBILE_MONEY", "BANQUE"] as Canal[]).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setVersCanal(c)}
+                    className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all ${
+                      versCanal === c
+                        ? "border-transparent bg-[#1e3a8a] text-white shadow-sm"
+                        : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                    }`}
+                  >
+                    {LIBELLE_CANAL[c]}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                className={champ}
+                placeholder="Frais de transfert (optionnel, FCFA)"
+                value={frais}
+                onChange={(e) => setFrais(e.target.value === "" ? "" : Number(e.target.value))}
+                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+              />
+              <p className="rounded-xl bg-slate-50 px-3.5 py-2 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                À enregistrer ici quand l&apos;argent a déjà bougé en vrai (versement OM, dépôt en banque…). Ce n&apos;est ni une recette ni une dépense : les frais éventuels sont comptés en dépense.
+              </p>
+            </>
+          )}
+
           {onglet !== "CREDIT" && (
             <input className={champ} placeholder="Note (optionnel)" value={note} onChange={(e) => setNote(e.target.value)} />
           )}
@@ -253,7 +310,7 @@ export function CaisseOperations({ credits, jour }: { credits: Credit[]; jour: s
             disabled={envoi || (onglet === "CREDIT" && credits.length === 0)}
             className="w-full rounded-xl bg-[#1e3a8a] py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50"
           >
-            {envoi ? "Enregistrement…" : onglet === "CREDIT" ? "Encaisser" : "Enregistrer"}
+            {envoi ? "Enregistrement…" : onglet === "CREDIT" ? "Encaisser" : onglet === "TRANSFERT" ? "Enregistrer le transfert" : "Enregistrer"}
           </button>
         </form>
       </section>

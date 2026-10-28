@@ -14,6 +14,7 @@ import { BonCommandeButton } from "@/components/admin/BonCommandeButton";
 import { BonLivraisonButton } from "@/components/admin/BonLivraisonButton";
 import { FactureButton } from "@/components/admin/FactureButton";
 import { ModePaiementSelect } from "@/components/admin/ModePaiementSelect";
+import { OriginesDetail } from "@/components/admin/OriginesDetail";
 import { requireAdminPage } from "@/lib/auth/rbac";
 import { peutAcceder, peutModifier } from "@/lib/auth/permissions";
 
@@ -249,6 +250,8 @@ export default async function CommandesPage({
                         </span>
                       ))}
                     </div>
+
+                    {c.origines.length > 0 && <OriginesDetail origines={c.origines} />}
 
                     <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
                       <span className="font-bold tabular-nums text-slate-800 dark:text-slate-100">

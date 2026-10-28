@@ -17,7 +17,7 @@ export const PERIODES: { id: PeriodeId; label: string; jours: number | null }[] 
   { id: "tout", label: "Depuis le début", jours: null },
 ];
 
-export type Classement = { nom: string; lieu: string; cartons: number; ca: number };
+export type Classement = { nom: string; lieu: string; cartons: number; sachets: number; ca: number };
 
 export type StatProduit = {
   id: string;
@@ -25,6 +25,7 @@ export type StatProduit = {
   nom: string;
   gamme: string;
   cartons: number;
+  sachets: number;
   ca: number;
   commandes: number;
   pointsVente: number;
@@ -32,7 +33,7 @@ export type StatProduit = {
   topQuartiers: Classement[];
 };
 
-export type PointSerie = { label: string; cartons: number; ca: number };
+export type PointSerie = { label: string; cartons: number; sachets: number; ca: number };
 
 export type DonneesVentesProduit = {
   periodes: Record<PeriodeId, StatProduit[]>;
@@ -54,16 +55,17 @@ type Acc = {
   nom: string;
   gamme: string;
   cartons: number;
+  sachets: number;
   ca: number;
-  pvs: Map<string, { nom: string; lieu: string; cartons: number; ca: number }>;
-  quartiers: Map<string, { nom: string; lieu: string; cartons: number; ca: number }>;
+  pvs: Map<string, { nom: string; lieu: string; cartons: number; sachets: number; ca: number }>;
+  quartiers: Map<string, { nom: string; lieu: string; cartons: number; sachets: number; ca: number }>;
 };
 
 const top = (m: Map<string, Classement>) =>
   [...m.values()]
     .sort((a, b) => b.cartons - a.cartons || b.ca - a.ca)
     .slice(0, 5)
-    .map((x) => ({ ...x, cartons: Math.round(x.cartons * 10) / 10, ca: Math.round(x.ca) }));
+    .map((x) => ({ ...x, cartons: Math.round(x.cartons * 10) / 10, sachets: Math.round(x.sachets), ca: Math.round(x.ca) }));
 
 export async function getDonneesVentesProduit(): Promise<DonneesVentesProduit> {
   const maintenant = new Date();
@@ -145,12 +147,13 @@ export async function getDonneesVentesProduit(): Promise<DonneesVentesProduit> {
       label: `${String(j.getDate()).padStart(2, "0")}/${String(j.getMonth() + 1).padStart(2, "0")}`,
     });
   }
-  const s12 = new Map<string, Map<string, { cartons: number; ca: number }>>();
-  const s30 = new Map<string, Map<string, { cartons: number; ca: number }>>();
-  const ajouter = (m: Map<string, Map<string, { cartons: number; ca: number }>>, pid: string, cle: string, cartons: number, ca: number) => {
+  const s12 = new Map<string, Map<string, { cartons: number; sachets: number; ca: number }>>();
+  const s30 = new Map<string, Map<string, { cartons: number; sachets: number; ca: number }>>();
+  const ajouter = (m: Map<string, Map<string, { cartons: number; sachets: number; ca: number }>>, pid: string, cle: string, cartons: number, sachets: number, ca: number) => {
     const interne = m.get(pid) ?? new Map();
-    const cur = interne.get(cle) ?? { cartons: 0, ca: 0 };
+    const cur = interne.get(cle) ?? { cartons: 0, sachets: 0, ca: 0 };
     cur.cartons += cartons;
+    cur.sachets += sachets;
     cur.ca += ca;
     interne.set(cle, cur);
     m.set(pid, interne);
@@ -172,23 +175,26 @@ export async function getDonneesVentesProduit(): Promise<DonneesVentesProduit> {
         const m = accs[p.id];
         const a =
           m.get(l.produitId) ??
-          ({ id: l.produitId, code: l.code, nom: l.nom, gamme: l.gamme, cartons: 0, ca: 0, pvs: new Map(), quartiers: new Map() } as Acc);
+          ({ id: l.produitId, code: l.code, nom: l.nom, gamme: l.gamme, cartons: 0, sachets: 0, ca: 0, pvs: new Map(), quartiers: new Map() } as Acc);
         a.cartons += l.cartons;
+        a.sachets += l.sachets;
         a.ca += l.ca;
-        const ep = a.pvs.get(v.pointVenteId) ?? { nom: pv.nom, lieu: lieuPv, cartons: 0, ca: 0 };
+        const ep = a.pvs.get(v.pointVenteId) ?? { nom: pv.nom, lieu: lieuPv, cartons: 0, sachets: 0, ca: 0 };
         ep.cartons += l.cartons;
+        ep.sachets += l.sachets;
         ep.ca += l.ca;
         a.pvs.set(v.pointVenteId, ep);
-        const eq = a.quartiers.get(cleQuartier) ?? { nom: pv.quartier?.nom ?? "Sans quartier", lieu: pv.ville.nom, cartons: 0, ca: 0 };
+        const eq = a.quartiers.get(cleQuartier) ?? { nom: pv.quartier?.nom ?? "Sans quartier", lieu: pv.ville.nom, cartons: 0, sachets: 0, ca: 0 };
         eq.cartons += l.cartons;
+        eq.sachets += l.sachets;
         eq.ca += l.ca;
         a.quartiers.set(cleQuartier, eq);
         m.set(l.produitId, a);
       }
       const cm = `${date.getFullYear()}-${date.getMonth()}`;
-      if (ids12.has(cm)) ajouter(s12, l.produitId, cm, l.cartons, l.ca);
+      if (ids12.has(cm)) ajouter(s12, l.produitId, cm, l.cartons, l.sachets, l.ca);
       const cj = date.toDateString();
-      if (ids30.has(cj)) ajouter(s30, l.produitId, cj, l.cartons, l.ca);
+      if (ids30.has(cj)) ajouter(s30, l.produitId, cj, l.cartons, l.sachets, l.ca);
     }
   }
 
@@ -205,6 +211,7 @@ export async function getDonneesVentesProduit(): Promise<DonneesVentesProduit> {
       nom: a.nom,
       gamme: a.gamme || SANS_GAMME,
       cartons: Math.round(a.cartons * 10) / 10,
+      sachets: Math.round(a.sachets),
       ca: Math.round(a.ca),
       commandes: cmd.get(a.id) ?? 0,
       pointsVente: a.pvs.size,
@@ -219,6 +226,7 @@ export async function getDonneesVentesProduit(): Promise<DonneesVentesProduit> {
       out[pid] = axe.map((x) => ({
         label: x.label,
         cartons: Math.round((interne.get(x.cle)?.cartons ?? 0) * 10) / 10,
+        sachets: Math.round(interne.get(x.cle)?.sachets ?? 0),
         ca: Math.round(interne.get(x.cle)?.ca ?? 0),
       }));
     }

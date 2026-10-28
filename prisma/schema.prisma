@@ -598,6 +598,8 @@ model Commande {
 
   lignes    CommandeLigne[]
   paiements Paiement[]
+  /// Pour la facture « CLIENT DIVERS » : d'où vient chaque vente au détail (commerciale, point visité).
+  origines  CommandeDetailOrigine[]
 
   @@index([pointVenteId])
   @@index([commercialId])
@@ -605,6 +607,31 @@ model Commande {
   @@index([dateCommande])
   @@index([dateLivraisonPrevue])
   @@map("commandes")
+}
+
+/// Une vente au détail (sachets / filets) versée sur la facture unique « CLIENT DIVERS » du jour,
+/// avec son origine : qui l'a faite, chez qui, quand. Permet de retrouver l'auteur d'une erreur.
+model CommandeDetailOrigine {
+  id             String   @id @default(uuid())
+  commandeId     String   @map("commande_id")
+  commande       Commande @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+  commercialId   String   @map("commercial_id")
+  commercialNom  String   @map("commercial_nom")
+  /// Point de vente visité où le détail a été vendu (null si saisi au bureau).
+  pointVenteNom  String?  @map("point_vente_nom")
+  venteId        String?  @map("vente_id")
+  /// « Terrain » ou « Admin · Prénom Nom » / « Superviseur · … » pour une saisie au bureau.
+  source         String   @default("Terrain")
+  produitId      String   @map("produit_id")
+  produitCode    String   @map("produit_code")
+  nbSachets      Int      @default(0) @map("nb_sachets")
+  nbFilets       Int      @default(0) @map("nb_filets")
+  montant        Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([commandeId])
+  @@index([commercialId])
+  @@map("commande_detail_origines")
 }
 
 model CommandeLigne {

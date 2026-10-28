@@ -1747,3 +1747,9 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - « Encaissé en caisse » du jour : les recettes dont la note commence par « Régularisation » ne comptent plus comme ventes du jour (le solde cumulé les garde).
 - Stock du tableau de bord : cartons avec une décimale (2474,9 au lieu de 2474).
 - Réseau : « Prospects à suivre » (hors convertis/abandonnés) et « Indécis à relancer » (réels).
+
+### Mise à jour 28/10 — rapports, transferts, client divers, tableau de bord
+- Rapports : tableau « Par commercial » refait (rang + barre, cartons et sachets par produit HYPO/HTC, commerciaux d'abord puis « Commandes enregistrées au bureau » pour superviseurs/admins). Plus aucun chiffre d'affaires : tuiles « Encaissé en caisse » (période) et « Solde en caisse » (cumul) à la place. PDF/Excel suivent.
+- Caisse : onglet « Transfert » (Espèces / OM-MoMo / Banque), frais optionnels, 2 écritures liées (`referenceType = TRANSFERT`, frais `TRANSFERT_FRAIS`), ni recette ni dépense, annulation du transfert entier depuis le journal ; le journal affiche l'heure et l'auteur.
+- CLIENT DIVERS : table `commande_detail_origines` (commerciale, point visité, source terrain/bureau, produit, quantités, montant) ; bloc « Détail par commerciale » dans la liste des commandes ; SQL `docs/migration-2026-10-28.sql` (création + reprise de l'existant).
+- Tableau de bord : section « Commandes de la journée » par produit (cartons, sachets, livrés / à livrer) ; « Ventes par jour » avec sachets, barres HYPO/HTC et synthèse ; « Ventes par produit » avec indicateur Sachets.

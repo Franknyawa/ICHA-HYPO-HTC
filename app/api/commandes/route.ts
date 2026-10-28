@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
             commercialId: d.commercialId ?? session.userId,
             userId: session.userId,
             date: new Date(),
+            origine: { source: saisiePar },
           })
         : null;
       if (lignesClient.length === 0) {

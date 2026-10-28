@@ -290,6 +290,11 @@ export async function POST(req: NextRequest) {
             commercialId: session.userId,
             userId: session.userId,
             date: new Date(input.dateVisite),
+            origine: {
+              pointVenteNom: (await tx.pointVente.findUnique({ where: { id: pointVenteId }, select: { nom: true } }))?.nom ?? null,
+              venteId: vente.id,
+              source: "Terrain",
+            },
             lignes: lignesDetail.map((l) => {
               const produit = produitParCode.get(l.produitCode);
               if (!produit) throw new Error(`Produit inconnu : ${l.produitCode}`);

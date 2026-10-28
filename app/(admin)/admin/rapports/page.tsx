@@ -8,6 +8,8 @@ import { ExportCsvButton } from "@/components/admin/ExportCsvButton";
 import { ImprimerButton } from "@/components/admin/ImprimerButton";
 import { RapportTableau } from "@/components/admin/rapports/RapportTableau";
 import { formatMontant } from "@/lib/utils/format";
+import { getCaisseResume } from "@/lib/queries/caisse";
+import { debutJour, finJour, jourDouala } from "@/lib/utils/periode";
 import {
   Users2,
   Store,
@@ -93,8 +95,13 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
     dateTo: searchParams.dateTo || undefined,
   };
 
-  const [rapport, commerciaux, binomes, villes, types, produits] = await Promise.all([
+  // Caisse sur la même période que le rapport : le seul chiffre d'argent affiché ici est celui de la caisse.
+  const debutCaisse = debutJour(filters.dateFrom ?? depuisDefaut);
+  const finCaisse = finJour(filters.dateTo ?? jourDouala());
+
+  const [rapport, caisse, commerciaux, binomes, villes, types, produits] = await Promise.all([
     getRapport(filters, vue, page),
+    getCaisseResume(debutCaisse, finCaisse),
     prisma.user.findMany({
       where: { role: "COMMERCIAL" },
       orderBy: { nom: "asc" },
@@ -142,18 +149,20 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
   });
   const baseQuery = { ...filters, vue };
 
-  const tuiles: [string, string][] = [
+  const tuiles: [string, string, string?][] = [
     ["Points de vente recensés", String(totaux.pointsVente)],
     ["Visites", String(totaux.visites)],
     ["Commandes", String(totaux.commandes)],
-    ["Chiffre d'affaires (FCFA)", formatMontant(totaux.ca)],
+    ["Cartons vendus", String(Math.round(totaux.cartons * 10) / 10).replace(".", ","), `${formatMontant(totaux.sachets)} sachets`],
+    ["Encaissé en caisse", fcfa(caisse.recettesJour), "sur la période"],
+    ["Solde en caisse", fcfa(caisse.solde), "cumul à ce jour"],
   ];
 
   return (
     <main>
       <AdminPageHeader
         title="Rapports"
-        subtitle="Performance et chiffre d'affaires par commercial, produit, point de vente, ville ou quartier — historique sur 12 mois et détail des ventes."
+        subtitle="Cartons et sachets vendus par commercial, produit, point de vente, ville ou quartier — historique sur 12 mois et détail des ventes. L'argent se lit dans la caisse."
       />
 
       <div className="p-4 md:p-6">
@@ -308,8 +317,8 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
         </div>
 
         {/* Tuiles */}
-        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {tuiles.map(([label, valeur]) => (
+        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {tuiles.map(([label, valeur, sous]) => (
             <div
               key={label}
               className="rounded-2xl bg-white px-4 py-5 text-center shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800"
@@ -321,6 +330,7 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
                 {valeur}
               </p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{label}</p>
+              {sous && <p className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">{sous}</p>}
             </div>
           ))}
         </div>
@@ -333,7 +343,7 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
           vue={vue}
           colonnes={colonnes}
           nbColsTexte={nbColsTexte}
-          lignes={lignes.map((l) => ({ cle: l.cle, cellules: l.cellules }))}
+          lignes={lignes.map((l) => ({ cle: l.cle, cellules: l.cellules, groupe: l.groupe, part: l.part, rang: l.rang }))}
           total={total?.cellules}
           query={queryFiltres}
           filtreLabel={filtreLabel}
@@ -343,8 +353,7 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
         {pagination && pagination.totalPages > 1 && (
           <div className="mt-5 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 print:hidden">
             <span>
-              Page {pagination.page} / {pagination.totalPages} · {pagination.total} ventes · total de la période :{" "}
-              {fcfa(totaux.ca)}
+              Page {pagination.page} / {pagination.totalPages} · {pagination.total} ventes · {formatMontant(totaux.sachets)} sachets sur la période
             </span>
             <div className="flex gap-2">
               <Link

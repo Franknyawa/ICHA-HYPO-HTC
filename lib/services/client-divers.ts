@@ -46,7 +46,14 @@ export async function obtenirClientDivers(tx: Tx, userId: string) {
  */
 export async function ajouterVentesDetail(
   tx: Tx,
-  p: { lignes: LigneDetail[]; commercialId: string; date: Date; userId: string }
+  p: {
+    lignes: LigneDetail[];
+    commercialId: string;
+    date: Date;
+    userId: string;
+    /** D'où viennent ces ventes : point visité, vente d'origine, ou saisie au bureau. */
+    origine?: { pointVenteNom?: string | null; venteId?: string | null; source?: string };
+  }
 ) {
   if (p.lignes.length === 0) return null;
   // Verrou : deux synchronisations simultanées ne doivent pas créer deux commandes du jour.
@@ -78,6 +85,27 @@ export async function ajouterVentesDetail(
       select: { id: true },
     });
   }
+
+  // Trace de l'origine (commerciale, point visité, source) pour chaque ligne versée.
+  const commercial = await tx.user.findUnique({ where: { id: p.commercialId }, select: { prenom: true, nom: true } });
+  const commercialNom = commercial ? `${commercial.prenom} ${commercial.nom}`.trim() : "—";
+  const produits = await tx.produit.findMany({ where: { id: { in: p.lignes.map((l) => l.produitId) } }, select: { id: true, code: true } });
+  const codeDe = new Map(produits.map((x) => [x.id, x.code]));
+  await tx.commandeDetailOrigine.createMany({
+    data: p.lignes.map((l) => ({
+      commandeId: commande!.id,
+      commercialId: p.commercialId,
+      commercialNom,
+      pointVenteNom: p.origine?.pointVenteNom ?? null,
+      venteId: p.origine?.venteId ?? null,
+      source: p.origine?.source ?? "Terrain",
+      produitId: l.produitId,
+      produitCode: codeDe.get(l.produitId) ?? "?",
+      nbSachets: l.nbSachets,
+      nbFilets: l.nbFilets,
+      montant: l.montant,
+    })),
+  });
 
   for (const l of p.lignes) {
     const ligne = await tx.commandeLigne.findFirst({

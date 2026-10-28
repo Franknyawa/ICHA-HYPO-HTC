@@ -243,7 +243,7 @@ export type BilanCommandesEnCours = {
   nbCommandes: number;
   cartons: number;
   montant: number;
-  produits: { code: string; nom: string; detail: string; cartons: number; montant: number }[];
+  produits: { code: string; nom: string; detail: string; cartons: number; sachets: number; montant: number }[];
 }[];
 
 /** Commandes à traiter (en attente) et validées non livrées (en livraison), cumulées par produit. */
@@ -270,7 +270,7 @@ export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
 
   return (["EN_ATTENTE", "EN_LIVRAISON"] as const).map((statut) => {
     const liste = commandes.filter((c) => c.statut === statut);
-    const parProduit = new Map<string, { code: string; nom: string; nbCartons: number; nbFilets: number; nbSachets: number; cartons: number; montant: number }>();
+    const parProduit = new Map<string, { code: string; nom: string; nbCartons: number; nbFilets: number; nbSachets: number; cartons: number; spc: number; montant: number }>();
     for (const c of liste) {
       const valeurs = c.lignes.map((l) => {
         const m = Number(l.montant);
@@ -280,7 +280,7 @@ export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
       });
       const somme = valeurs.reduce((s, x) => s + x, 0);
       c.lignes.forEach((l, i) => {
-        const g = parProduit.get(l.produit.code) ?? { code: l.produit.code, nom: l.produit.nom, nbCartons: 0, nbFilets: 0, nbSachets: 0, cartons: 0, montant: 0 };
+        const g = parProduit.get(l.produit.code) ?? { code: l.produit.code, nom: l.produit.nom, nbCartons: 0, nbFilets: 0, nbSachets: 0, cartons: 0, spc: l.produit.sachetsParCarton, montant: 0 };
         g.nbCartons += l.nbCartons;
         g.nbFilets += l.nbFilets;
         g.nbSachets += l.nbSachets;
@@ -296,6 +296,7 @@ export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
         nom: g.nom,
         detail: detailQte(g),
         cartons: arrondiCartons(g.cartons),
+        sachets: Math.round(g.cartons * g.spc),
         montant: Math.round(g.montant),
       }));
     return {
@@ -315,6 +316,11 @@ export type CartonsJour = {
   total: number;
   /** Part de la vente au détail, exprimée en cartons. */
   detail: number;
+  /** Mêmes quantités exprimées en sachets (cartons × sachets par carton). */
+  hypoSachets: number;
+  htcSachets: number;
+  totalSachets: number;
+  detailSachets: number;
   commandes: number;
   montant: number;
 };
@@ -342,7 +348,7 @@ export async function getCartonsParJour(nbJours = 14): Promise<CartonsJour[]> {
   const jours = new Map<string, CartonsJour>();
   for (let i = 0; i < nbJours; i++) {
     const j = ajouterJours(aujourdhui, -i);
-    jours.set(j, { jour: j, hypo: 0, htc: 0, total: 0, detail: 0, commandes: 0, montant: 0 });
+    jours.set(j, { jour: j, hypo: 0, htc: 0, total: 0, detail: 0, hypoSachets: 0, htcSachets: 0, totalSachets: 0, detailSachets: 0, commandes: 0, montant: 0 });
   }
   for (const c of commandes) {
     const g = jours.get(jourDouala(c.valideeAt!));
@@ -351,10 +357,20 @@ export async function getCartonsParJour(nbJours = 14): Promise<CartonsJour[]> {
     g.montant += Number(c.montantTotal);
     for (const l of c.lignes) {
       const q = cartonsEq(l, l.produit);
-      if (l.produit.code === "HYPO") g.hypo += q;
-      else if (l.produit.code === "HTC") g.htc += q;
-      if (l.detail) g.detail += q;
+      const sach = q * l.produit.sachetsParCarton;
+      if (l.produit.code === "HYPO") {
+        g.hypo += q;
+        g.hypoSachets += sach;
+      } else if (l.produit.code === "HTC") {
+        g.htc += q;
+        g.htcSachets += sach;
+      }
+      if (l.detail) {
+        g.detail += q;
+        g.detailSachets += sach;
+      }
       g.total += q;
+      g.totalSachets += sach;
     }
   }
   return [...jours.values()].map((g) => ({
@@ -363,6 +379,10 @@ export async function getCartonsParJour(nbJours = 14): Promise<CartonsJour[]> {
     htc: arrondiCartons(g.htc),
     total: arrondiCartons(g.total),
     detail: arrondiCartons(g.detail),
+    hypoSachets: Math.round(g.hypoSachets),
+    htcSachets: Math.round(g.htcSachets),
+    totalSachets: Math.round(g.totalSachets),
+    detailSachets: Math.round(g.detailSachets),
     montant: Math.round(g.montant),
   }));
 }
@@ -427,4 +447,92 @@ export async function getBilanValidees(): Promise<BilanValidees> {
     lot.montant = Math.round(lot.montant);
   }
   return r;
+}
+
+
+export type ProduitDuJour = {
+  code: string;
+  nom: string;
+  /** Quantités saisies : « 6 cartons, 432 sachets ». */
+  detail: string;
+  nbCartons: number;
+  nbFilets: number;
+  nbSachets: number;
+  /** Total exprimé en cartons et en sachets (cartons × sachets par carton). */
+  cartons: number;
+  sachets: number;
+  /** Part déjà livrée / encore à livrer, en sachets. */
+  sachetsLivres: number;
+  sachetsALivrer: number;
+  commandes: number;
+};
+
+export type CommandesDuJour = {
+  produits: ProduitDuJour[];
+  total: { commandes: number; cartons: number; sachets: number; livrees: number; aLivrer: number; enAttente: number };
+};
+
+/**
+ * Commandes de la journée (validées aujourd'hui par l'admin), produit par produit :
+ * cartons, filets, sachets saisis, puis total en cartons et en sachets.
+ */
+export async function getCommandesDuJour(): Promise<CommandesDuJour> {
+  await assurerMontantsConformes();
+  const jour = jourDouala();
+  const [commandes, enAttente] = await Promise.all([
+    prisma.commande.findMany({
+      where: { valideeAt: { gte: debutJour(jour), lte: finJour(jour) }, statut: { in: ["EN_LIVRAISON", "LIVREE"] } },
+      select: {
+        statut: true,
+        lignes: { select: { nbSachets: true, nbFilets: true, nbCartons: true, produit: { select: { code: true, nom: true, ...SELECT_CONV } } } },
+      },
+    }),
+    prisma.commande.count({ where: { statut: "EN_ATTENTE", archivedAt: null, NOT: livraisonAVenir() } }),
+  ]);
+
+  const map = new Map<string, ProduitDuJour & { cmds: Set<number>; cartonsExact: number }>();
+  commandes.forEach((c, idx) => {
+    for (const l of c.lignes) {
+      const g =
+        map.get(l.produit.code) ??
+        { code: l.produit.code, nom: l.produit.nom, detail: "", nbCartons: 0, nbFilets: 0, nbSachets: 0, cartons: 0, sachets: 0, sachetsLivres: 0, sachetsALivrer: 0, commandes: 0, cmds: new Set<number>(), cartonsExact: 0 };
+      const q = cartonsEq(l, l.produit);
+      g.nbCartons += l.nbCartons;
+      g.nbFilets += l.nbFilets;
+      g.nbSachets += l.nbSachets;
+      g.cartonsExact += q;
+      g.cmds.add(idx);
+      const sach = q * l.produit.sachetsParCarton;
+      g.sachets += sach;
+      if (c.statut === "LIVREE") g.sachetsLivres += sach;
+      else g.sachetsALivrer += sach;
+      map.set(l.produit.code, g);
+    }
+  });
+  const produits = [...map.values()]
+    .sort((a, b) => a.code.localeCompare(b.code))
+    .map((g) => ({
+      code: g.code,
+      nom: g.nom,
+      detail: detailQte(g),
+      nbCartons: g.nbCartons,
+      nbFilets: g.nbFilets,
+      nbSachets: g.nbSachets,
+      cartons: arrondiCartons(g.cartonsExact),
+      sachets: Math.round(g.sachets),
+      sachetsLivres: Math.round(g.sachetsLivres),
+      sachetsALivrer: Math.round(g.sachetsALivrer),
+      commandes: g.cmds.size,
+    }));
+  return {
+    produits,
+    total: {
+      commandes: commandes.length,
+      cartons: arrondiCartons(produits.reduce((s, p) => s + p.cartons, 0)),
+      sachets: produits.reduce((s, p) => s + p.sachets, 0),
+      livrees: commandes.filter((c) => c.statut === "LIVREE").length,
+      aLivrer: commandes.filter((c) => c.statut !== "LIVREE").length,
+      enAttente,
+    },
+  };
 }

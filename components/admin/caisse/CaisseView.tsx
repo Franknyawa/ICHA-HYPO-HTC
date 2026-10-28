@@ -180,6 +180,7 @@ export function CaisseView({
         {/* Opérations + crédits */}
         <CaisseOperations
           jour={jourDouala()}
+          soldes={c.solde}
           credits={c.credits.map((x) => ({
             ...x,
             date: x.date.toISOString(),
@@ -276,7 +277,10 @@ export function CaisseView({
                 <tbody>
                   {c.journal.map((l) => (
                     <tr key={l.id} className="border-t border-slate-100 dark:border-slate-800">
-                      <td className="whitespace-nowrap px-4 py-2.5 text-slate-500">{new Date(l.date).toLocaleDateString("fr-FR")}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-slate-500">
+                        {new Date(l.date).toLocaleDateString("fr-FR", { timeZone: "Africa/Douala" })}
+                        <span className="block text-[11px] text-slate-400">{new Date(l.date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Douala" })}</span>
+                      </td>
                       <td className="px-4 py-2.5">
                         <span className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-100">
                           <span className={`flex h-6 w-6 items-center justify-center rounded-full ${l.sens === "ENTREE" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
@@ -284,6 +288,7 @@ export function CaisseView({
                           </span>
                           {l.libelle}
                         </span>
+                        {l.par && <span className="mt-0.5 block pl-8 text-[11px] text-slate-400">par {l.par}</span>}
                       </td>
                       <td className="px-4 py-2.5 text-slate-500">{l.detail || "—"}</td>
                       <td className="px-4 py-2.5 text-slate-500">{LIBELLE_CANAL[l.canal]}</td>

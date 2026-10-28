@@ -5,7 +5,10 @@ import { Trophy } from "lucide-react";
 import { formatMontant } from "@/lib/utils/format";
 import type { DonneesVentesProduit, PeriodeId, PointSerie } from "@/lib/queries/ventes-produit";
 
-type Indicateur = "cartons" | "ca";
+type Indicateur = "cartons" | "sachets" | "ca";
+
+const LIB_INDIC: Record<Indicateur, string> = { cartons: "Cartons", sachets: "Sachets", ca: "Valeur facturée" };
+const LIB_INDIC_MIN: Record<Indicateur, string> = { cartons: "cartons", sachets: "sachets", ca: "valeur facturée" };
 
 const PERIODES: { id: PeriodeId; label: string }[] = [
   { id: "30j", label: "30 derniers jours" },
@@ -19,7 +22,8 @@ const OR_CLAIR = "#bfdbfe";
 
 const fmtQte = (n: number) => (Number.isInteger(n) ? String(n) : String(n).replace(".", ","));
 const fmtCa = (n: number) => `${formatMontant(n)} FCFA`;
-const fmtValeur = (n: number, i: Indicateur) => (i === "cartons" ? fmtQte(n) : fmtCa(n));
+const fmtSach = (n: number) => `${formatMontant(n)} sachets`;
+const fmtValeur = (n: number, i: Indicateur) => (i === "cartons" ? fmtQte(n) : i === "sachets" ? fmtSach(n) : fmtCa(n));
 const fmtPct = (x: number) => {
   const r = Math.round(x * 10) / 10;
   return `${Number.isInteger(r) ? r : String(r).replace(".", ",")} %`;
@@ -35,7 +39,7 @@ function graduations(max: number) {
 }
 
 function fmtAxe(n: number, i: Indicateur) {
-  if (i === "ca" && n >= 1000) return `${fmtQte(Math.round((n / 1000) * 10) / 10)}k`;
+  if ((i === "ca" || i === "sachets") && n >= 1000) return `${fmtQte(Math.round((n / 1000) * 10) / 10)}k`;
   return fmtQte(n);
 }
 
@@ -117,7 +121,7 @@ function GrapheCourbe({ points, indicateur }: { points: PointSerie[]; indicateur
   );
 }
 
-function ListeClassement({ titre, sousTitre, items, indicateur }: { titre: string; sousTitre: string; items: { nom: string; lieu: string; cartons: number; ca: number }[]; indicateur: Indicateur }) {
+function ListeClassement({ titre, sousTitre, items, indicateur }: { titre: string; sousTitre: string; items: { nom: string; lieu: string; cartons: number; sachets: number; ca: number }[]; indicateur: Indicateur }) {
   const max = Math.max(...items.map((x) => x[indicateur]), 0);
   return (
     <div className="rounded-2xl border border-t-4 border-slate-200/70 border-t-emerald-400 bg-white p-5 shadow-sm dark:border-slate-800 dark:border-t-emerald-500 dark:bg-slate-900">
@@ -134,7 +138,7 @@ function ListeClassement({ titre, sousTitre, items, indicateur }: { titre: strin
                 <span className="text-xs text-slate-500 dark:text-slate-400">{x.lieu}</span>
               </span>
               <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
-                {indicateur === "cartons" ? `${fmtQte(x.cartons)} carton${x.cartons > 1 ? "s" : ""}` : fmtCa(x.ca)}
+                {indicateur === "cartons" ? `${fmtQte(x.cartons)} carton${x.cartons > 1 ? "s" : ""}` : indicateur === "sachets" ? fmtSach(x.sachets) : fmtCa(x.ca)}
               </span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
@@ -182,7 +186,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
         <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400"><span className="h-3.5 w-1 rounded-full bg-gradient-to-b from-teal-500 to-emerald-400" />Ventes par produit</h2>
         <div className="flex items-center gap-2">
           <div className="flex rounded-full border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900" role="group" aria-label="Indicateur">
-            {(["cartons", "ca"] as const).map((i) => (
+            {(["cartons", "sachets", "ca"] as const).map((i) => (
               <button
                 key={i}
                 onClick={() => setIndicateur(i)}
@@ -190,7 +194,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
                   indicateur === i ? "bg-[#1e3a8a] text-white shadow" : "text-slate-500 dark:text-slate-400"
                 }`}
               >
-                {i === "cartons" ? "Cartons" : "Chiffre d'affaires"}
+                {LIB_INDIC[i]}
               </button>
             ))}
           </div>
@@ -219,7 +223,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
               </span>
               <div>
                 <p className="text-xs font-medium text-white/75">
-                  Produit le plus vendu · en {indicateur === "cartons" ? "cartons" : "chiffre d'affaires"}
+                  Produit le plus vendu · en {LIB_INDIC_MIN[indicateur]}
                 </p>
                 <p className="text-xl font-bold">{meilleur.nom}</p>
                 <span className="mt-1 inline-block rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-semibold text-white">
@@ -230,7 +234,8 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
             <div className="relative flex flex-wrap gap-x-8 gap-y-3 text-sm">
               {[
                 ["Cartons vendus", fmtQte(meilleur.cartons)],
-                ["Chiffre d'affaires", fmtCa(meilleur.ca)],
+                ["Sachets vendus", formatMontant(meilleur.sachets)],
+                ["Valeur facturée", fmtCa(meilleur.ca)],
                 ["Part des ventes", fmtPct(total > 0 ? (meilleur[indicateur] / total) * 100 : 0)],
               ].map(([l, v]) => (
                 <div key={l}>
@@ -265,7 +270,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
                           />
                         </span>
                         <span className="w-20 shrink-0 text-xs text-slate-500 dark:text-slate-400">
-                          {indicateur === "cartons" ? fmtQte(p.cartons) : fmtCa(p.ca)}
+                          {indicateur === "cartons" ? fmtQte(p.cartons) : indicateur === "sachets" ? formatMontant(p.sachets) : fmtCa(p.ca)}
                         </span>
                       </button>
                     </li>
@@ -299,10 +304,11 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
                   </select>
                 </div>
 
-                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
                   {[
                     ["Cartons", fmtQte(courant.cartons), "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"],
-                    ["Chiffre d'affaires", fmtCa(courant.ca), "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"],
+                    ["Sachets", formatMontant(courant.sachets), "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300"],
+                    ["Valeur facturée", fmtCa(courant.ca), "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"],
                     ["Commandes", String(courant.commandes), "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"],
                     ["Points de vente", String(courant.pointsVente), "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"],
                   ].map(([l, v, c]) => (
@@ -314,12 +320,12 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
                 </div>
 
                 <p className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Évolution sur 12 mois · {indicateur === "cartons" ? "cartons" : "chiffre d'affaires"}
+                  Évolution sur 12 mois · {LIB_INDIC_MIN[indicateur]}
                 </p>
                 {serie12 ? <GrapheBarres points={serie12} indicateur={indicateur} /> : <p className="py-6 text-sm text-slate-400">Pas de vente sur 12 mois.</p>}
 
                 <p className="mb-2 mt-6 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  30 derniers jours · {indicateur === "cartons" ? "cartons par jour" : "chiffre d'affaires par jour"}
+                  30 derniers jours · {LIB_INDIC_MIN[indicateur]} par jour
                 </p>
                 {serie30 ? <GrapheCourbe points={serie30} indicateur={indicateur} /> : <p className="py-6 text-sm text-slate-400">Pas de vente sur 30 jours.</p>}
               </div>

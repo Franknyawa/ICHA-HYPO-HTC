@@ -1,4 +1,5 @@
-import type { DashboardKpis, VisitesParJour, BilanCommandesEnCours, BilanValidees } from "@/lib/queries/dashboard";
+import type { DashboardKpis, VisitesParJour, BilanCommandesEnCours, BilanValidees, CommandesDuJour } from "@/lib/queries/dashboard";
+import { CommandesDuJourSection } from "@/components/admin/CommandesDuJourSection";
 import type { getCaisseResume } from "@/lib/queries/caisse";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -42,6 +43,7 @@ export function DashboardView({
   kpis,
   enCours,
   bilan,
+  duJour,
   visites,
   caisse,
   parBinome,
@@ -59,6 +61,7 @@ export function DashboardView({
   kpis: DashboardKpis;
   enCours: BilanCommandesEnCours;
   bilan: BilanValidees;
+  duJour: CommandesDuJour;
   visites: VisitesParJour;
   caisse: Awaited<ReturnType<typeof getCaisseResume>>;
   parBinome: { nom: string; montant: number }[];
@@ -138,6 +141,8 @@ export function DashboardView({
           </div>
         </section>
 
+        <CommandesDuJourSection data={duJour} />
+
         {/* Commandes en cours : cumul par produit */}
         <section>
           <TitreSection ton="rose">Commandes en cours</TitreSection>
@@ -196,7 +201,10 @@ export function DashboardView({
                           <tr key={p.code} className="border-b border-slate-50 dark:border-slate-800/60">
                             <td className="py-2 font-semibold text-slate-800 dark:text-slate-100">{p.code}</td>
                             <td className="py-2 text-slate-600 dark:text-slate-300">{p.detail}</td>
-                            <td className="py-2 text-right tabular-nums">{fmtCartons(p.cartons)}</td>
+                            <td className="py-2 text-right tabular-nums">
+                              {fmtCartons(p.cartons)}
+                              <span className="block text-[11px] text-slate-400">{new Intl.NumberFormat("fr-FR").format(p.sachets)} sachets</span>
+                            </td>
                             <td className="whitespace-nowrap py-2 text-right tabular-nums">{formatFcfa(p.montant)}</td>
                           </tr>
                         ))}

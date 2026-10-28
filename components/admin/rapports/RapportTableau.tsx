@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ApercuRapport } from "./ApercuRapport";
 
 /**
@@ -20,7 +20,7 @@ export function RapportTableau({
   vue: string;
   colonnes: string[];
   nbColsTexte: number;
-  lignes: { cle: string; cellules: string[] }[];
+  lignes: { cle: string; cellules: string[]; groupe?: string; part?: number; rang?: number }[];
   total?: string[];
   query: string;
   filtreLabel: string;
@@ -34,21 +34,34 @@ export function RapportTableau({
   for (let i = 0; i < colonnes.length; i++) {
     const c = colonnes[i];
     const suivante = colonnes[i + 1];
-    if (i >= nbColsTexte && c.endsWith(" cartons") && suivante === `${c.slice(0, -8)} CA`) {
-      cols.push({ titre: c.slice(0, -8), sous: "cartons · CA", idx: [i, i + 1] });
+    if (i >= nbColsTexte && c.endsWith(" cartons") && suivante === `${c.slice(0, -8)} sachets`) {
+      cols.push({ titre: c.slice(0, -8), sous: "cartons · sachets", idx: [i, i + 1] });
       i++;
     } else cols.push({ titre: c, idx: [i] });
   }
   const derniere = cols.length - 1;
+  const teinte = (col: Col) =>
+    col.idx.length === 2
+      ? col.titre === "HYPO"
+        ? "bg-blue-50/70 dark:bg-blue-950/20"
+        : col.titre === "HTC"
+          ? "bg-teal-50/70 dark:bg-teal-950/20"
+          : "bg-slate-50 dark:bg-slate-800/40"
+      : "";
+  const pastille = (col: Col) =>
+    col.titre === "HYPO" ? "bg-blue-100 text-blue-800" : col.titre === "HTC" ? "bg-teal-100 text-teal-800" : "bg-slate-100 text-slate-700";
   const rendre = (cells: string[], col: Col) =>
     col.idx.length === 2 ? (
       <>
-        <span className="block font-medium">{cells[col.idx[0]]}</span>
-        <span className="block text-[11px] text-slate-400 dark:text-slate-500">{cells[col.idx[1]]}</span>
+        <span className="block text-sm font-bold text-slate-800 dark:text-slate-100">{cells[col.idx[0]]}</span>
+        <span className="block text-[11px] text-slate-500 dark:text-slate-400">{cells[col.idx[1]]} sachets</span>
       </>
     ) : (
       cells[col.idx[0]]
     );
+  const medaille = (rang: number) =>
+    rang === 1 ? "bg-amber-400 text-white" : rang === 2 ? "bg-slate-400 text-white" : rang === 3 ? "bg-orange-400 text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800";
+  const avecRang = vue === "commercial";
 
   return (
     <>
@@ -59,18 +72,29 @@ export function RapportTableau({
               {cols.map((c, i) => (
                 <th
                   key={c.titre + i}
-                  className={`px-2.5 py-3 align-bottom text-xs font-medium leading-tight ${i < nbColsTexte ? "text-left" : "text-right"}`}
+                  className={`px-2.5 py-3 align-bottom text-xs font-medium leading-tight ${i < nbColsTexte ? "text-left" : "text-right"} ${teinte(c)}`}
                 >
-                  {c.titre}
-                  {c.sous && <span className="block text-[10px] font-normal text-slate-400">{c.sous}</span>}
+                  {c.sous ? (
+                    <span className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${pastille(c)}`}>{c.titre}</span>
+                  ) : (
+                    c.titre
+                  )}
+                  {c.sous && <span className="mt-1 block text-[10px] font-normal text-slate-400">{c.sous}</span>}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {lignes.map((l) => (
+            {lignes.map((l, idx) => (
+              <Fragment key={l.cle}>
+              {l.groupe && l.groupe !== lignes[idx - 1]?.groupe && (
+                <tr className="bg-slate-50 dark:bg-slate-800/50">
+                  <td colSpan={cols.length} className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    {l.groupe}
+                  </td>
+                </tr>
+              )}
               <tr
-                key={l.cle}
                 tabIndex={0}
                 role="button"
                 onClick={() => setOuvert(l.cle)}
@@ -80,7 +104,7 @@ export function RapportTableau({
                 {cols.map((col, j) => (
                   <td
                     key={j}
-                    className={`px-2.5 py-2.5 ${j < nbColsTexte ? "min-w-[120px] text-left" : "whitespace-nowrap text-right tabular-nums"} ${
+                    className={`px-2.5 py-2.5 ${teinte(col)} ${j < nbColsTexte ? "min-w-[120px] text-left" : "whitespace-nowrap text-right tabular-nums"} ${
                       j === 0
                         ? "font-medium text-slate-800 dark:text-slate-100"
                         : j === derniere
@@ -88,10 +112,28 @@ export function RapportTableau({
                           : "text-slate-600 dark:text-slate-300"
                     }`}
                   >
-                    {rendre(l.cellules, col)}
+                    {j === 0 && avecRang && l.rang ? (
+                      <span className="flex items-center gap-2.5">
+                        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${l.groupe?.startsWith("Commandes") ? "bg-violet-100 text-violet-700" : medaille(l.rang)}`}>
+                          {l.rang}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate">{l.cellules[0]}</span>
+                          <span className="mt-1 block h-1.5 w-28 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                            <span
+                              className={`block h-full rounded-full ${l.groupe?.startsWith("Commandes") ? "bg-violet-400" : "bg-[#359980]"}`}
+                              style={{ width: `${Math.max(4, Math.round((l.part ?? 0) * 100))}%` }}
+                            />
+                          </span>
+                        </span>
+                      </span>
+                    ) : (
+                      rendre(l.cellules, col)
+                    )}
                   </td>
                 ))}
               </tr>
+              </Fragment>
             ))}
             {lignes.length === 0 && (
               <tr>

@@ -70,6 +70,7 @@ export async function listCommandes(params: ListCommandesParams) {
         },
         client: { select: { nom: true } },
         commercial: { select: { nom: true, prenom: true } },
+        origines: { select: { commercialNom: true, pointVenteNom: true, source: true, produitCode: true, nbSachets: true, nbFilets: true, montant: true, createdAt: true }, orderBy: { createdAt: "asc" } },
         lignes: { select: { nbSachets: true, nbFilets: true, nbCartons: true, detail: true, produit: { select: { code: true, sachetsParCarton: true, sachetsParFilet: true, filetsParCarton: true } } } },
       },
     }),
