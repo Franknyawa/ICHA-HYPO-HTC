@@ -1,14 +1,15 @@
 import { CheckCircle2, Clock, PackageCheck, ClipboardList } from "lucide-react";
-import type { CommandesDuJour } from "@/lib/queries/dashboard";
+import type { BilanValidees, CommandesDuJour } from "@/lib/queries/dashboard";
 import { TitreSection } from "@/components/admin/ui";
 import { partsVente, texteDetail } from "@/lib/utils/cartons-equiv";
+import { formatFcfa } from "@/lib/utils/format";
 
 const nb = (n: number) => new Intl.NumberFormat("fr-FR").format(Math.round(n));
 const car = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
 const pct = (n: number) => `${String(n).replace(".", ",")} %`;
 
 /** Commandes de la journée, produit par produit : cartons vendus en cartons, sachets / filets vendus à l'unité, part de chacun. */
-export function CommandesDuJourSection({ data }: { data: CommandesDuJour }) {
+export function CommandesDuJourSection({ data, bilan }: { data: CommandesDuJour; bilan: BilanValidees }) {
   const { produits, total } = data;
   const partsTotal = partsVente({ gros: total.cartons, detailEq: total.detailEq });
   return (
@@ -16,10 +17,10 @@ export function CommandesDuJourSection({ data }: { data: CommandesDuJour }) {
       <TitreSection ton="violet">Commandes de la journée</TitreSection>
       <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          { icone: ClipboardList, label: "Validées aujourd'hui", valeur: String(total.commandes), sous: `${car(total.cartons)} cartons + ${texteDetail({ sd: total.sachetsDetail, fd: total.filetsDetail })} au détail`, ton: "bg-blue-100 text-blue-700" },
-          { icone: CheckCircle2, label: "Déjà livrées", valeur: String(total.livrees), sous: "stock sorti, encaissement ouvert", ton: "bg-emerald-100 text-emerald-700" },
-          { icone: PackageCheck, label: "À livrer", valeur: String(total.aLivrer), sous: "validées, en attente de livraison", ton: "bg-amber-100 text-amber-700" },
-          { icone: Clock, label: "En attente de validation", valeur: String(total.enAttente), sous: "à valider par l'admin", ton: "bg-rose-100 text-rose-700" },
+          { icone: ClipboardList, label: "Validées aujourd'hui", valeur: String(total.commandes), sous: `${car(total.cartons)} cartons + ${texteDetail({ sd: total.sachetsDetail, fd: total.filetsDetail })} au détail · ${formatFcfa(total.montant)}`, ton: "bg-blue-100 text-blue-700" },
+          { icone: CheckCircle2, label: "Déjà livrées", valeur: String(total.livrees), sous: `${formatFcfa(total.montantLivrees)} · stock sorti`, ton: "bg-emerald-100 text-emerald-700" },
+          { icone: PackageCheck, label: "À livrer", valeur: String(total.aLivrer), sous: `${formatFcfa(total.montantALivrer)} · en attente de livraison`, ton: "bg-amber-100 text-amber-700" },
+          { icone: Clock, label: "En attente de validation", valeur: String(total.enAttente), sous: `${formatFcfa(total.montantEnAttente)} · à valider`, ton: "bg-rose-100 text-rose-700" },
         ].map((k) => (
           <div key={k.label} className="flex items-center gap-3 rounded-2xl bg-white p-3.5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
             <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${k.ton}`}>
@@ -33,6 +34,13 @@ export function CommandesDuJourSection({ data }: { data: CommandesDuJour }) {
           </div>
         ))}
       </div>
+
+      {bilan.avant.nb > 0 && (
+        <p className="mb-3 rounded-xl bg-slate-50 px-4 py-2.5 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+          <span className="font-semibold text-slate-800 dark:text-slate-100">Validées avant aujourd&apos;hui, encore à livrer :</span>{" "}
+          {bilan.avant.nb} cmd · {car(bilan.avant.cartons)} cartons{bilan.avant.vol.sd + bilan.avant.vol.fd > 0 ? ` + ${texteDetail(bilan.avant.vol)}` : ""} · {formatFcfa(bilan.avant.montant)}
+        </p>
+      )}
 
       {partsTotal && (
         <div className="mb-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
@@ -89,7 +97,10 @@ export function CommandesDuJourSection({ data }: { data: CommandesDuJour }) {
                       </p>
                     </>
                   ) : null}
-                  <p className="mt-2 text-[11px] text-slate-500">
+                  <p className="mt-2 text-sm font-bold tabular-nums text-slate-800 dark:text-slate-100">
+                    {formatFcfa(p.montant)} <span className="text-[11px] font-medium text-slate-400">valeur facturée</span>
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
                     {p.livrees} livrée{p.livrees > 1 ? "s" : ""} · {p.aLivrer} à livrer
                   </p>
                 </div>

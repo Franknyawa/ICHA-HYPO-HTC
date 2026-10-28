@@ -1765,3 +1765,7 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Code client `CLI-0001…` : colonne `points_vente.code_client` + séquence `code_client_seq`, attribué à la 1re validation d'une commande (`lib/services/code-client.ts`) ; le client divers n'en a pas. Recherche par code dans Clients.
 - `/admin/clients/doublons` : détection (même téléphone, même nom, nom proche, GPS) sans rien modifier + bouton d'attribution des codes aux clients existants (`POST /api/clients/codes`).
 - `/admin/rapports/periodiques` : rapport hebdomadaire (lundi→dimanche) et mensuel, par produit : cartons, sachets/filets au détail, % cartons / détail, part du produit, évolution vs période précédente, jour par jour, commerciaux, meilleurs PV, caisse ; imprimable.
+
+## Dashboard : section « Commandes en cours » retirée, modifications réservées au super admin (2026-10-29)
+- La section « Commandes en cours » est supprimée ; ses valeurs financières (FCFA) sont dans « Commandes de la journée » : valeur par statut (validées, livrées, à livrer, en attente), valeur facturée par produit, et ligne « validées avant aujourd'hui, à livrer ».
+- Modification des fiches point de vente, archivage et attribution des codes clients : super administrateur uniquement (API 403 sinon, boutons masqués).

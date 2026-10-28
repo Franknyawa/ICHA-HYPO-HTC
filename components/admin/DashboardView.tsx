@@ -1,4 +1,4 @@
-import type { DashboardKpis, VisitesParJour, BilanCommandesEnCours, BilanValidees, CommandesDuJour } from "@/lib/queries/dashboard";
+import type { DashboardKpis, VisitesParJour, BilanValidees, CommandesDuJour } from "@/lib/queries/dashboard";
 import { CommandesDuJourSection } from "@/components/admin/CommandesDuJourSection";
 import { texteDetail } from "@/lib/utils/cartons-equiv";
 import type { getCaisseResume } from "@/lib/queries/caisse";
@@ -42,7 +42,6 @@ export function DashboardView({
   dateLongue,
   jour,
   kpis,
-  enCours,
   bilan,
   duJour,
   visites,
@@ -60,7 +59,6 @@ export function DashboardView({
   dateLongue: string;
   jour: string;
   kpis: DashboardKpis;
-  enCours: BilanCommandesEnCours;
   bilan: BilanValidees;
   duJour: CommandesDuJour;
   visites: VisitesParJour;
@@ -142,81 +140,7 @@ export function DashboardView({
           </div>
         </section>
 
-        <CommandesDuJourSection data={duJour} />
-
-        {/* Commandes en cours : cumul par produit */}
-        <section>
-          <TitreSection ton="rose">Commandes en cours</TitreSection>
-          <Panneau
-            titre={`${enCours.reduce((s, b) => s + b.nbCommandes, 0)} commande(s) en cours · ${fmtCartons(enCours.reduce((s, b) => s + b.cartons, 0))} cartons`}
-            sousTitre={`Valeur totale : ${formatFcfa(enCours.reduce((s, b) => s + b.montant, 0))}${kpis.livraisonsAVenir > 0 ? ` · hors ${kpis.livraisonsAVenir} livraison(s) à venir` : ""}`}
-            icone={Truck}
-            ton="rose"
-          >
-            <div className="mb-5 grid gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <p className="font-semibold text-slate-800 dark:text-slate-100">Validées aujourd&apos;hui</p>
-                <p className="tabular-nums">{bilan.aujourdhui.nb} cmd · {fmtCartons(bilan.aujourdhui.cartons)} cartons{bilan.aujourdhui.vol.sd + bilan.aujourdhui.vol.fd > 0 ? ` + ${texteDetail(bilan.aujourdhui.vol)}` : ""} · {formatFcfa(bilan.aujourdhui.montant)}</p>
-              </div>
-              <div>
-                <p className="font-semibold text-slate-800 dark:text-slate-100">dont livrées</p>
-                <p className="tabular-nums">{bilan.livrees.nb} cmd · {fmtCartons(bilan.livrees.cartons)} cartons{bilan.livrees.vol.sd + bilan.livrees.vol.fd > 0 ? ` + ${texteDetail(bilan.livrees.vol)}` : ""} · {formatFcfa(bilan.livrees.montant)}</p>
-              </div>
-              <div>
-                <p className="font-semibold text-slate-800 dark:text-slate-100">dont à livrer</p>
-                <p className="tabular-nums">{bilan.aLivrer.nb} cmd · {fmtCartons(bilan.aLivrer.cartons)} cartons{bilan.aLivrer.vol.sd + bilan.aLivrer.vol.fd > 0 ? ` + ${texteDetail(bilan.aLivrer.vol)}` : ""} · {formatFcfa(bilan.aLivrer.montant)}</p>
-              </div>
-              <div>
-                <p className="font-semibold text-slate-800 dark:text-slate-100">Validées avant aujourd&apos;hui, à livrer</p>
-                <p className="tabular-nums">{bilan.avant.nb} cmd · {fmtCartons(bilan.avant.cartons)} cartons{bilan.avant.vol.sd + bilan.avant.vol.fd > 0 ? ` + ${texteDetail(bilan.avant.vol)}` : ""} · {formatFcfa(bilan.avant.montant)}</p>
-              </div>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              {enCours.map((b) => (
-                <div key={b.statut}>
-                  <div className="mb-2 flex items-baseline justify-between gap-3">
-                    <Link
-                      href={`/admin/commandes?statut=${b.statut}`}
-                      className="text-sm font-bold text-slate-800 hover:underline dark:text-slate-100"
-                    >
-                      {b.statut === "EN_ATTENTE" ? "En attente de validation" : "Validées, à livrer"}
-                    </Link>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {b.nbCommandes} commande(s) · {fmtCartons(b.cartons)} cartons · {formatFcfa(b.montant)}
-                    </span>
-                  </div>
-                  {b.produits.length === 0 ? (
-                    <p className="py-4 text-sm text-slate-400">Rien en cours.</p>
-                  ) : (
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-100 text-left text-xs text-slate-400 dark:border-slate-800">
-                          <th className="py-1.5 font-medium">Produit</th>
-                          <th className="py-1.5 font-medium">Quantité</th>
-                          <th className="py-1.5 text-right font-medium">Cartons</th>
-                          <th className="py-1.5 text-right font-medium">Valeur</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {b.produits.map((p) => (
-                          <tr key={p.code} className="border-b border-slate-50 dark:border-slate-800/60">
-                            <td className="py-2 font-semibold text-slate-800 dark:text-slate-100">{p.code}</td>
-                            <td className="py-2 text-slate-600 dark:text-slate-300">{p.detail}</td>
-                            <td className="py-2 text-right tabular-nums">
-                              {fmtCartons(p.cartons)}
-                              {p.vol.sd + p.vol.fd > 0 && <span className="block text-[11px] text-slate-400">dont détail : {texteDetail(p.vol)}</span>}
-                            </td>
-                            <td className="whitespace-nowrap py-2 text-right tabular-nums">{formatFcfa(p.montant)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              ))}
-            </div>
-          </Panneau>
-        </section>
+        <CommandesDuJourSection data={duJour} bilan={bilan} />
 
         {/* Points visités par jour */}
         <section className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">

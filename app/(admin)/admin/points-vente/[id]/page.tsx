@@ -96,7 +96,7 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
           Retour aux points de vente
         </Link>
         <div className="flex items-center gap-2">
-          {peutAcceder(session.role, "archives") && (
+          {session.role === "SUPER_ADMIN" && peutAcceder(session.role, "archives") && (
             <ArchiveButton
               url={`/api/points-vente/${pv.id}/archiver`}
               archive={!pv.archivedAt}
@@ -166,6 +166,7 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
           </div>
         </div>
 
+        {session.role === "SUPER_ADMIN" && (
         <PointVenteForm
           pv={{
             id: pv.id,
@@ -189,6 +190,7 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
           quartiers={quartiers}
           types={types}
         />
+        )}
 
         <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
           <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">

@@ -50,7 +50,8 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireModule("points-vente");
+    const session = await requireModule("points-vente");
+    if (session.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Réservé au super administrateur." }, { status: 403 });
 
     const json = await req.json().catch(() => null);
     const parsed = updatePointVenteSchema.safeParse(json);

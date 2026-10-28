@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { assurerMontantsConformes } from "@/lib/services/recalcul-prix";
 import { valeurCatalogueLigne } from "@/lib/utils/tarifs";
 import { cartonsEq, arrondiCartons, detailQte, SELECT_CONV, volLigne, volVide, volAjouter, type Vol } from "@/lib/utils/cartons-equiv";
+import { repartirVente } from "@/lib/queries/rapports";
 import { ajouterJours, debutJour, finJour, jourDouala } from "@/lib/utils/periode";
 
 // « Aujourd'hui » = la journée du Cameroun (UTC+1), quel que soit le fuseau
@@ -462,6 +463,8 @@ export type ProduitDuJour = {
   filetsDetail: number;
   /** Détail en cartons équivalents (pour la part du détail uniquement). */
   detailEq: number;
+  /** Valeur facturée de ce produit (montant des commandes réparti entre les lignes). */
+  montant: number;
   /** Livré / à livrer, en nombre de commandes contenant ce produit. */
   livrees: number;
   aLivrer: number;
@@ -478,6 +481,11 @@ export type CommandesDuJour = {
     livrees: number;
     aLivrer: number;
     enAttente: number;
+    /** Valeurs en FCFA */
+    montant: number;
+    montantLivrees: number;
+    montantALivrer: number;
+    montantEnAttente: number;
   };
 };
 
@@ -488,29 +496,42 @@ export type CommandesDuJour = {
 export async function getCommandesDuJour(): Promise<CommandesDuJour> {
   await assurerMontantsConformes();
   const jour = jourDouala();
-  const [commandes, enAttente] = await Promise.all([
+  const [commandes, enAttente, enAttenteMontant] = await Promise.all([
     prisma.commande.findMany({
       where: { valideeAt: { gte: debutJour(jour), lte: finJour(jour) }, statut: { in: ["EN_LIVRAISON", "LIVREE"] } },
       select: {
         statut: true,
-        lignes: { select: { nbSachets: true, nbFilets: true, nbCartons: true, detail: true, produit: { select: { code: true, nom: true, ...SELECT_CONV } } } },
+        montantTotal: true,
+        lignes: {
+          select: {
+            nbSachets: true,
+            nbFilets: true,
+            nbCartons: true,
+            detail: true,
+            montant: true,
+            produit: { select: { id: true, code: true, nom: true, gamme: true, prixSachet: true, prixFilet: true, prixCarton: true, ...SELECT_CONV } },
+          },
+        },
       },
     }),
     prisma.commande.count({ where: { statut: "EN_ATTENTE", archivedAt: null, NOT: livraisonAVenir() } }),
+    prisma.commande.aggregate({ where: { statut: "EN_ATTENTE", archivedAt: null, NOT: livraisonAVenir() }, _sum: { montantTotal: true } }),
   ]);
 
   type Acc = ProduitDuJour & { vue: Set<number>; vuLivree: Set<number> };
   const map = new Map<string, Acc>();
   commandes.forEach((c, idx) => {
-    for (const l of c.lignes) {
+    const reparti = repartirVente({ montantTotal: c.montantTotal, lignes: c.lignes });
+    for (const [i, l] of c.lignes.entries()) {
       const g =
         map.get(l.produit.code) ??
-        { code: l.produit.code, nom: l.produit.nom, commandes: 0, cartons: 0, sachetsDetail: 0, filetsDetail: 0, detailEq: 0, livrees: 0, aLivrer: 0, vue: new Set<number>(), vuLivree: new Set<number>() };
+        { code: l.produit.code, nom: l.produit.nom, commandes: 0, cartons: 0, sachetsDetail: 0, filetsDetail: 0, detailEq: 0, montant: 0, livrees: 0, aLivrer: 0, vue: new Set<number>(), vuLivree: new Set<number>() };
       const v: Vol = volLigne(l, l.produit);
       g.cartons += v.gros;
       g.sachetsDetail += v.sd;
       g.filetsDetail += v.fd;
       g.detailEq += v.detailEq;
+      g.montant += reparti.lignes[i]?.ca ?? 0;
       g.vue.add(idx);
       if (c.statut === "LIVREE") g.vuLivree.add(idx);
       map.set(l.produit.code, g);
@@ -526,6 +547,7 @@ export async function getCommandesDuJour(): Promise<CommandesDuJour> {
       sachetsDetail: g.sachetsDetail,
       filetsDetail: g.filetsDetail,
       detailEq: Math.round(g.detailEq * 100) / 100,
+      montant: Math.round(g.montant),
       livrees: g.vuLivree.size,
       aLivrer: g.vue.size - g.vuLivree.size,
     }));
@@ -540,6 +562,10 @@ export async function getCommandesDuJour(): Promise<CommandesDuJour> {
       livrees: commandes.filter((c) => c.statut === "LIVREE").length,
       aLivrer: commandes.filter((c) => c.statut !== "LIVREE").length,
       enAttente,
+      montant: commandes.reduce((s, c) => s + Number(c.montantTotal), 0),
+      montantLivrees: commandes.filter((c) => c.statut === "LIVREE").reduce((s, c) => s + Number(c.montantTotal), 0),
+      montantALivrer: commandes.filter((c) => c.statut !== "LIVREE").reduce((s, c) => s + Number(c.montantTotal), 0),
+      montantEnAttente: Number(enAttenteMontant._sum.montantTotal ?? 0),
     },
   };
 }

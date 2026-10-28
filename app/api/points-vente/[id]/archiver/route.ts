@@ -11,7 +11,8 @@ const schema = z.object({ archive: z.boolean() });
 /** Archive (ou restaure) un point de vente : il disparaît des listes et de la recherche terrain, son historique reste intact. */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    await requireModule("archives");
+    const session = await requireModule("archives");
+    if (session.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Réservé au super administrateur." }, { status: 403 });
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Données invalides." }, { status: 400 });
 

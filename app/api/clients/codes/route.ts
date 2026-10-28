@@ -8,7 +8,8 @@ export const runtime = "nodejs";
 /** Attribue un code client (CLI-0001…) à tous les clients qui n'en ont pas encore. */
 export async function POST() {
   try {
-    await requireModule("clients");
+    const session = await requireModule("clients");
+    if (session.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Réservé au super administrateur." }, { status: 403 });
     const nb = await attribuerCodesManquants();
     return NextResponse.json({ nb });
   } catch (error) {

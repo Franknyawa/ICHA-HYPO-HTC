@@ -10,7 +10,8 @@ import { NOM_CLIENT_DIVERS } from "@/lib/services/client-divers";
 export const dynamic = "force-dynamic";
 
 export default async function DoublonsPage() {
-  await requireAdminPage("clients");
+  const session = await requireAdminPage("clients");
+  const superAdmin = session.role === "SUPER_ADMIN";
   const [{ groupes, total }, manquantsRows] = await Promise.all([
     trouverDoublons(),
     prisma.$queryRaw<{ n: bigint }[]>`
@@ -36,7 +37,7 @@ export default async function DoublonsPage() {
             Pour les clients déjà existants, vérifiez d&apos;abord la liste ci-dessous, archivez ou corrigez les doublons, puis attribuez les codes.
           </p>
           <div className="mt-3">
-            <AttribuerCodesButton manquants={manquants} />
+            {superAdmin ? <AttribuerCodesButton manquants={manquants} /> : <p className="text-xs font-medium text-slate-400">Seul le super administrateur peut attribuer les codes et modifier les fiches.</p>}
           </div>
         </div>
 
