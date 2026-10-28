@@ -1,11 +1,11 @@
-import { TrendingDown, TrendingUp, Minus, CalendarCheck, Trophy, Boxes, Gauge } from "lucide-react";
+import { TrendingDown, TrendingUp, Minus, CalendarCheck, Trophy, Boxes, PieChart } from "lucide-react";
 import { getCartonsParJour, type CartonsJour } from "@/lib/queries/dashboard";
 import { jourDouala } from "@/lib/utils/periode";
-import { arrondiCartons } from "@/lib/utils/cartons-equiv";
+import { arrondiCartons, partsVente, texteDetail } from "@/lib/utils/cartons-equiv";
 
 const fmt = (n: number) => (n === 0 ? "—" : Number.isInteger(n) ? String(n) : String(n).replace(".", ","));
-const nb = (n: number) => (n === 0 ? "—" : new Intl.NumberFormat("fr-FR").format(Math.round(n)));
 const fcfa = (n: number) => (n === 0 ? "—" : n.toLocaleString("fr-FR"));
+const pct = (n: number) => `${String(n).replace(".", ",")} %`;
 
 function libelleJour(j: string, aujourdhui: string) {
   const d = new Date(`${j}T12:00:00Z`);
@@ -28,7 +28,10 @@ function Puce({ icone: Icone, titre, valeur, sous, ton }: { icone: React.Element
   );
 }
 
-/** Ventes par jour (14 derniers jours) : cartons ET sachets par produit, répartition visuelle, totaux. */
+/**
+ * Ventes par jour (14 derniers jours) : cartons vendus en cartons, et sachets / filets vendus au détail (à l'unité),
+ * par produit, avec la part de chacun. Aucune conversion de cartons en sachets.
+ */
 export async function CartonsParJourSection() {
   const lignes = await getCartonsParJour(14);
   const aujourdhui = jourDouala();
@@ -36,10 +39,12 @@ export async function CartonsParJourSection() {
   const avecVentes = lignes.filter((l) => l.commandes > 0);
   const visibles = lignes.filter((l) => l.commandes > 0 || l.jour === aujourdhui);
   const masques = lignes.length - visibles.length;
-  const maxTotal = Math.max(...lignes.map((l) => l.total), 0.1);
+  const volJour = (l: CartonsJour) => ({ gros: l.total, detailEq: l.detailEq, sd: l.detailSd, fd: l.detailFd });
+  const volTotal = { gros: somme("total"), detailEq: somme("detailEq"), sd: somme("detailSd"), fd: somme("detailFd") };
+  const partsTotal = partsVente(volTotal);
+  const maxVol = Math.max(...lignes.map((l) => l.total + l.detailEq), 0.1);
   const meilleur = avecVentes.reduce<CartonsJour | null>((m, l) => (!m || l.total > m.total ? l : m), null);
   const moyenne = avecVentes.length ? somme("total") / avecVentes.length : 0;
-  const moyenneSachets = avecVentes.length ? somme("totalSachets") / avecVentes.length : 0;
   const auj = lignes[0];
   const hier = lignes[1];
   const ecart = auj && hier ? Math.round((auj.total - hier.total) * 10) / 10 : 0;
@@ -47,12 +52,13 @@ export async function CartonsParJourSection() {
 
   const th = "px-2.5 py-2.5 text-right font-semibold";
   const td = "px-2.5 py-2.5 text-right tabular-nums";
+  const unites = (sd: number, fd: number) => texteDetail({ sd, fd });
 
   return (
     <div>
-      <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-[#1e3a8a] dark:text-blue-300">Ventes par jour : cartons et sachets</h2>
+      <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-[#1e3a8a] dark:text-blue-300">Ventes par jour : cartons et détail</h2>
       <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-        Commandes validées chaque jour sur les 14 derniers jours. Un carton HYPO = 112 sachets, un carton HTC = 120 sachets.
+        Commandes validées chaque jour sur les 14 derniers jours. « Cartons » = vendus en cartons (demi-cartons compris) ; « Détail » = sachets et filets vendus à l&apos;unité.
       </p>
 
       <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -60,21 +66,21 @@ export async function CartonsParJourSection() {
           icone={Boxes}
           titre="Total 14 jours"
           valeur={`${fmt(arrondiCartons(somme("total")))} cartons`}
-          sous={`${nb(somme("totalSachets"))} sachets · ${somme("commandes")} commandes`}
+          sous={`+ ${unites(volTotal.sd, volTotal.fd)} au détail · ${somme("commandes")} cmd`}
           ton="bg-blue-100 text-blue-700"
         />
         <Puce
-          icone={Trophy}
-          titre="Meilleur jour"
-          valeur={meilleur ? `${fmt(meilleur.total)} cartons` : "—"}
-          sous={meilleur ? `${libelleJour(meilleur.jour, aujourdhui)} · ${nb(meilleur.totalSachets)} sachets` : "Aucune vente"}
+          icone={PieChart}
+          titre="Part cartons / détail"
+          valeur={partsTotal ? `${pct(partsTotal.cartons)} / ${pct(partsTotal.detail)}` : "—"}
+          sous="en volume vendu sur la période"
           ton="bg-amber-100 text-amber-700"
         />
         <Puce
-          icone={Gauge}
-          titre="Moyenne par jour de vente"
-          valeur={`${fmt(Math.round(moyenne * 10) / 10)} cartons`}
-          sous={`${nb(moyenneSachets)} sachets · ${avecVentes.length} jours de vente`}
+          icone={Trophy}
+          titre="Meilleur jour (cartons)"
+          valeur={meilleur ? `${fmt(meilleur.total)} cartons` : "—"}
+          sous={meilleur ? `${libelleJour(meilleur.jour, aujourdhui)} · moyenne ${fmt(Math.round(moyenne * 10) / 10)}/jour` : "Aucune vente"}
           ton="bg-teal-100 text-teal-700"
         />
         <Puce
@@ -87,28 +93,28 @@ export async function CartonsParJourSection() {
       </div>
 
       <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
-        <table className="w-full min-w-[760px] text-xs">
+        <table className="w-full min-w-[820px] text-xs">
           <thead className="bg-slate-50 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
             <tr>
               <th className="px-3 py-2.5 text-left font-semibold">Jour</th>
               <th className="px-2.5 py-2.5 text-left font-semibold">
-                Répartition{" "}
+                Cartons / détail{" "}
                 <span className="ml-1 inline-flex items-center gap-1 font-normal">
-                  <span className="h-2 w-2 rounded-sm bg-blue-500" /> HYPO
-                  <span className="ml-1 h-2 w-2 rounded-sm bg-teal-500" /> HTC
+                  <span className="h-2 w-2 rounded-sm bg-blue-600" /> cartons
+                  <span className="ml-1 h-2 w-2 rounded-sm bg-amber-400" /> détail
                 </span>
               </th>
               <th className={`${th} bg-blue-50/70 text-blue-800 dark:bg-blue-950/20`}>
-                HYPO<span className="block text-[10px] font-normal">cartons · sachets</span>
+                HYPO<span className="block text-[10px] font-normal">cartons · détail</span>
               </th>
               <th className={`${th} bg-teal-50/70 text-teal-800 dark:bg-teal-950/20`}>
-                HTC<span className="block text-[10px] font-normal">cartons · sachets</span>
+                HTC<span className="block text-[10px] font-normal">cartons · détail</span>
               </th>
               <th className={th}>
-                Total<span className="block text-[10px] font-normal">cartons · sachets</span>
+                Total cartons<span className="block text-[10px] font-normal">vendus en cartons</span>
               </th>
               <th className={th}>
-                dont détail<span className="block text-[10px] font-normal">sachets</span>
+                Total détail<span className="block text-[10px] font-normal">à l&apos;unité</span>
               </th>
               <th className={th}>Cmd</th>
               <th className={th}>
@@ -119,38 +125,38 @@ export async function CartonsParJourSection() {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {visibles.map((l) => {
               const estAuj = l.jour === aujourdhui;
-              const pctHypo = l.total > 0 ? (l.hypo / l.total) * 100 : 0;
-              const largeur = (l.total / maxTotal) * 100;
+              const p = partsVente(volJour(l));
+              const largeur = ((l.total + l.detailEq) / maxVol) * 100;
               return (
                 <tr key={l.jour} className={estAuj ? "bg-amber-50/60 dark:bg-slate-800/40" : "hover:bg-slate-50/70 dark:hover:bg-slate-800/30"}>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-left font-medium text-slate-700 dark:text-slate-200">
-                    {libelleJour(l.jour, aujourdhui)}
-                  </td>
-                  <td className="w-44 px-2.5 py-2.5">
-                    {l.total > 0 ? (
-                      <span className="block h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" style={{ width: `${Math.max(8, largeur)}%` }}>
-                        <span className="flex h-full">
-                          <span className="h-full bg-blue-500" style={{ width: `${pctHypo}%` }} />
-                          <span className="h-full flex-1 bg-teal-500" />
+                  <td className="whitespace-nowrap px-3 py-2.5 text-left font-medium text-slate-700 dark:text-slate-200">{libelleJour(l.jour, aujourdhui)}</td>
+                  <td className="w-56 px-2.5 py-2.5">
+                    {p ? (
+                      <>
+                        <span className="block h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" style={{ width: `${Math.max(10, largeur)}%` }}>
+                          <span className="flex h-full">
+                            <span className="h-full bg-blue-600" style={{ width: `${p.cartons}%` }} />
+                            <span className="h-full flex-1 bg-amber-400" />
+                          </span>
                         </span>
-                      </span>
+                        <span className="mt-0.5 block text-[10px] text-slate-400">
+                          {pct(p.cartons)} cartons · {pct(p.detail)} détail
+                        </span>
+                      </>
                     ) : (
                       <span className="text-slate-300">—</span>
                     )}
                   </td>
                   <td className={`${td} bg-blue-50/40 dark:bg-blue-950/10`}>
                     <span className="block font-semibold text-slate-800 dark:text-slate-100">{fmt(l.hypo)}</span>
-                    <span className="block text-[11px] text-slate-400">{nb(l.hypoSachets)}</span>
+                    <span className="block text-[11px] text-slate-400">{l.hypoSd + l.hypoFd > 0 ? `+ ${unites(l.hypoSd, l.hypoFd)}` : "pas de détail"}</span>
                   </td>
                   <td className={`${td} bg-teal-50/40 dark:bg-teal-950/10`}>
                     <span className="block font-semibold text-slate-800 dark:text-slate-100">{fmt(l.htc)}</span>
-                    <span className="block text-[11px] text-slate-400">{nb(l.htcSachets)}</span>
+                    <span className="block text-[11px] text-slate-400">{l.htcSd + l.htcFd > 0 ? `+ ${unites(l.htcSd, l.htcFd)}` : "pas de détail"}</span>
                   </td>
-                  <td className={td}>
-                    <span className="block text-sm font-bold text-slate-900 dark:text-slate-100">{fmt(l.total)}</span>
-                    <span className="block text-[11px] text-slate-500">{nb(l.totalSachets)}</span>
-                  </td>
-                  <td className={`${td} text-slate-500`}>{nb(l.detailSachets)}</td>
+                  <td className={`${td} text-sm font-bold text-slate-900 dark:text-slate-100`}>{fmt(l.total)}</td>
+                  <td className={`${td} text-slate-600 dark:text-slate-300`}>{unites(l.detailSd, l.detailFd)}</td>
                   <td className={td}>{l.commandes || "—"}</td>
                   <td className={td}>{fcfa(l.montant)}</td>
                 </tr>
@@ -162,21 +168,19 @@ export async function CartonsParJourSection() {
               <td className="px-3 py-3 text-left" colSpan={2}>
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarCheck size={14} /> Total 14 jours
+                  {partsTotal && <span className="ml-2 text-[11px] font-normal text-slate-500">{pct(partsTotal.cartons)} cartons · {pct(partsTotal.detail)} détail</span>}
                 </span>
               </td>
               <td className={td}>
                 {fmt(arrondiCartons(somme("hypo")))}
-                <span className="block text-[11px] font-normal text-slate-500">{nb(somme("hypoSachets"))}</span>
+                <span className="block text-[11px] font-normal text-slate-500">{unites(somme("hypoSd"), somme("hypoFd"))}</span>
               </td>
               <td className={td}>
                 {fmt(arrondiCartons(somme("htc")))}
-                <span className="block text-[11px] font-normal text-slate-500">{nb(somme("htcSachets"))}</span>
+                <span className="block text-[11px] font-normal text-slate-500">{unites(somme("htcSd"), somme("htcFd"))}</span>
               </td>
-              <td className={td}>
-                {fmt(arrondiCartons(somme("total")))}
-                <span className="block text-[11px] font-normal text-slate-500">{nb(somme("totalSachets"))}</span>
-              </td>
-              <td className={td}>{nb(somme("detailSachets"))}</td>
+              <td className={td}>{fmt(arrondiCartons(somme("total")))}</td>
+              <td className={td}>{unites(volTotal.sd, volTotal.fd)}</td>
               <td className={td}>{somme("commandes")}</td>
               <td className={td}>{fcfa(somme("montant"))}</td>
             </tr>

@@ -24,7 +24,7 @@ export async function obtenirClientDivers(tx: Tx, userId: string) {
   if (existant) return existant.id;
   const ville = await tx.ville.findFirst({ where: { actif: true }, orderBy: { nom: "asc" }, select: { id: true } });
   if (!ville) throw new Error("Aucune ville configurée : impossible de créer le client divers.");
-  const type = await tx.typePointVente.findFirst({ where: { nom: "Personne physique" }, select: { id: true } });
+  const type = await tx.typePointVente.findFirst({ where: { nom: "Client divers" }, select: { id: true } });
   const cree = await tx.pointVente.create({
     data: {
       nom: NOM_CLIENT_DIVERS,

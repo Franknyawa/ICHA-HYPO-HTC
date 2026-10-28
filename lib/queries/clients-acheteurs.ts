@@ -13,6 +13,7 @@ export type FiltreClients = {
 
 export type ClientAcheteur = {
   id: string;
+  codeClient: string | null;
   nom: string;
   contact: string | null;
   telephone: string | null;
@@ -57,6 +58,7 @@ export async function getClientsAcheteurs(f: FiltreClients): Promise<ClientAchet
             {
               OR: [
                 { nom: { contains: recherche, mode: "insensitive" as const } },
+                { codeClient: { contains: recherche, mode: "insensitive" as const } },
                 { vendeur: { contains: recherche, mode: "insensitive" as const } },
                 { telephoneVendeur: { contains: recherche } },
               ],
@@ -71,6 +73,7 @@ export async function getClientsAcheteurs(f: FiltreClients): Promise<ClientAchet
     take: MAX_CLIENTS,
     select: {
       id: true,
+      codeClient: true,
       nom: true,
       vendeur: true,
       telephoneVendeur: true,
@@ -119,6 +122,7 @@ export async function getClientsAcheteurs(f: FiltreClients): Promise<ClientAchet
       const c = cumul.get(p.id);
       return {
         id: p.id,
+        codeClient: p.codeClient,
         nom: p.nom,
         contact: p.vendeur,
         telephone: p.telephoneVendeur,

@@ -1,5 +1,6 @@
 import type { DashboardKpis, VisitesParJour, BilanCommandesEnCours, BilanValidees, CommandesDuJour } from "@/lib/queries/dashboard";
 import { CommandesDuJourSection } from "@/components/admin/CommandesDuJourSection";
+import { texteDetail } from "@/lib/utils/cartons-equiv";
 import type { getCaisseResume } from "@/lib/queries/caisse";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -107,7 +108,7 @@ export function DashboardView({
             <KpiCard
               label="Ventes validées"
               valeur={kpis.ventesAujourdhui}
-              sous={`${fmtCartons(bilan.aujourdhui.cartons)} cartons · ${bilan.livrees.nb} livrée(s), ${bilan.aLivrer.nb} à livrer`}
+              sous={`${fmtCartons(bilan.aujourdhui.cartons)} cartons + ${texteDetail(bilan.aujourdhui.vol)} au détail · ${bilan.livrees.nb} livrée(s), ${bilan.aLivrer.nb} à livrer`}
               icone={ShoppingBag}
               ton="violet"
               href={`/admin/factures?dateFrom=${jour}&dateTo=${jour}`}
@@ -155,19 +156,19 @@ export function DashboardView({
             <div className="mb-5 grid gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <p className="font-semibold text-slate-800 dark:text-slate-100">Validées aujourd&apos;hui</p>
-                <p className="tabular-nums">{bilan.aujourdhui.nb} cmd · {fmtCartons(bilan.aujourdhui.cartons)} cartons · {formatFcfa(bilan.aujourdhui.montant)}</p>
+                <p className="tabular-nums">{bilan.aujourdhui.nb} cmd · {fmtCartons(bilan.aujourdhui.cartons)} cartons{bilan.aujourdhui.vol.sd + bilan.aujourdhui.vol.fd > 0 ? ` + ${texteDetail(bilan.aujourdhui.vol)}` : ""} · {formatFcfa(bilan.aujourdhui.montant)}</p>
               </div>
               <div>
                 <p className="font-semibold text-slate-800 dark:text-slate-100">dont livrées</p>
-                <p className="tabular-nums">{bilan.livrees.nb} cmd · {fmtCartons(bilan.livrees.cartons)} cartons · {formatFcfa(bilan.livrees.montant)}</p>
+                <p className="tabular-nums">{bilan.livrees.nb} cmd · {fmtCartons(bilan.livrees.cartons)} cartons{bilan.livrees.vol.sd + bilan.livrees.vol.fd > 0 ? ` + ${texteDetail(bilan.livrees.vol)}` : ""} · {formatFcfa(bilan.livrees.montant)}</p>
               </div>
               <div>
                 <p className="font-semibold text-slate-800 dark:text-slate-100">dont à livrer</p>
-                <p className="tabular-nums">{bilan.aLivrer.nb} cmd · {fmtCartons(bilan.aLivrer.cartons)} cartons · {formatFcfa(bilan.aLivrer.montant)}</p>
+                <p className="tabular-nums">{bilan.aLivrer.nb} cmd · {fmtCartons(bilan.aLivrer.cartons)} cartons{bilan.aLivrer.vol.sd + bilan.aLivrer.vol.fd > 0 ? ` + ${texteDetail(bilan.aLivrer.vol)}` : ""} · {formatFcfa(bilan.aLivrer.montant)}</p>
               </div>
               <div>
                 <p className="font-semibold text-slate-800 dark:text-slate-100">Validées avant aujourd&apos;hui, à livrer</p>
-                <p className="tabular-nums">{bilan.avant.nb} cmd · {fmtCartons(bilan.avant.cartons)} cartons · {formatFcfa(bilan.avant.montant)}</p>
+                <p className="tabular-nums">{bilan.avant.nb} cmd · {fmtCartons(bilan.avant.cartons)} cartons{bilan.avant.vol.sd + bilan.avant.vol.fd > 0 ? ` + ${texteDetail(bilan.avant.vol)}` : ""} · {formatFcfa(bilan.avant.montant)}</p>
               </div>
             </div>
             <div className="grid gap-6 md:grid-cols-2">
@@ -203,7 +204,7 @@ export function DashboardView({
                             <td className="py-2 text-slate-600 dark:text-slate-300">{p.detail}</td>
                             <td className="py-2 text-right tabular-nums">
                               {fmtCartons(p.cartons)}
-                              <span className="block text-[11px] text-slate-400">{new Intl.NumberFormat("fr-FR").format(p.sachets)} sachets</span>
+                              {p.vol.sd + p.vol.fd > 0 && <span className="block text-[11px] text-slate-400">dont détail : {texteDetail(p.vol)}</span>}
                             </td>
                             <td className="whitespace-nowrap py-2 text-right tabular-nums">{formatFcfa(p.montant)}</td>
                           </tr>

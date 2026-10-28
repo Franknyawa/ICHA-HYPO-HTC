@@ -5,6 +5,7 @@ import { Printer, X, Loader2 } from "lucide-react";
 import { SiriMark } from "@/components/brand/SiriMark";
 import { formatMontant } from "@/lib/utils/format";
 import type { ApercuRapport as Apercu } from "@/lib/queries/rapports";
+import { texteDetail, texteParts } from "@/lib/utils/cartons-equiv";
 
 const fcfa = (n: number) => `${formatMontant(n)} FCFA`;
 const qte = (n: number) => (Number.isInteger(n) ? String(n) : String(n).replace(".", ","));
@@ -62,8 +63,9 @@ export function ApercuRapport({
   const tuiles = m
     ? vue === "vente" || vue === "produit"
       ? [
-          ["Cartons vendus", qte(Math.round(m.cartons * 10) / 10)],
-          ["Sachets vendus", new Intl.NumberFormat("fr-FR").format(m.sachets)],
+          ["Cartons vendus", qte(Math.round(m.vol.gros * 10) / 10)],
+          ["Vente au détail", texteDetail(m.vol)],
+          ["Cartons / détail", texteParts(m.vol)],
           ["Reste à payer", fcfa(m.reste)],
           ...(vue === "produit" ? [["Ventes", String(m.nbVentes)]] : []),
         ]
@@ -72,8 +74,9 @@ export function ApercuRapport({
           ["Visites", String(m.visites)],
           ["Commandes", String(m.commandes)],
           ["Ventes", String(m.nbVentes)],
-          ["Cartons vendus", qte(Math.round(m.cartons * 10) / 10)],
-          ["Sachets vendus", new Intl.NumberFormat("fr-FR").format(m.sachets)],
+          ["Cartons vendus", qte(Math.round(m.vol.gros * 10) / 10)],
+          ["Vente au détail", texteDetail(m.vol)],
+          ["Cartons / détail", texteParts(m.vol)],
           ["Reste à payer", fcfa(m.reste)],
         ]
     : [];
@@ -148,7 +151,8 @@ export function ApercuRapport({
                         <th className="py-2 pr-3">Gamme</th>
                         <th className="py-2 pr-3">Quantités</th>
                         <th className="py-2 pr-3 text-right">Cartons</th>
-                        <th className="py-2 text-right">Sachets</th>
+                        <th className="py-2 pr-3 text-right">Détail</th>
+                        <th className="py-2 text-right">Cartons / détail</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -157,13 +161,14 @@ export function ApercuRapport({
                           <td className="py-2 pr-3 font-medium">{p.code} — {p.nom}</td>
                           <td className="py-2 pr-3 text-slate-600">{p.gamme}</td>
                           <td className="py-2 pr-3 text-slate-600">{p.quantites}{p.quantites !== "—" ? ` (${p.cartonsEquiv})` : ""}</td>
-                          <td className="py-2 pr-3 text-right">{qte(p.cartons)}</td>
-                          <td className="py-2 text-right">{new Intl.NumberFormat("fr-FR").format(p.sachets)}</td>
+                          <td className="py-2 pr-3 text-right">{qte(Math.round(p.vol.gros * 10) / 10)}</td>
+                          <td className="py-2 pr-3 text-right">{texteDetail(p.vol)}</td>
+                          <td className="py-2 text-right text-slate-600">{texteParts(p.vol)}</td>
                         </tr>
                       ))}
                       {data.produits.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="py-4 text-center text-slate-400">Aucune vente sur cette période.</td>
+                          <td colSpan={6} className="py-4 text-center text-slate-400">Aucune vente sur cette période.</td>
                         </tr>
                       )}
                     </tbody>
@@ -185,7 +190,7 @@ export function ApercuRapport({
                     <th className="py-2 pr-3">Ville</th>
                     <th className="py-2 pr-3">Produits</th>
                     <th className="py-2 pr-3 text-right">Cartons</th>
-                    <th className="py-2 pr-3 text-right">Sachets</th>
+                    <th className="py-2 pr-3 text-right">Détail</th>
                     <th className="py-2 pr-3 text-right">Payé</th>
                     <th className="py-2 text-right">Reste</th>
                   </tr>
@@ -198,8 +203,8 @@ export function ApercuRapport({
                       <td className="py-2 pr-3">{v.pointVente}{v.client ? ` (${v.client})` : ""}</td>
                       <td className="py-2 pr-3">{v.ville}</td>
                       <td className="py-2 pr-3">{v.detail}</td>
-                      <td className="py-2 pr-3 text-right">{qte(v.cartons)}</td>
-                      <td className="whitespace-nowrap py-2 pr-3 text-right">{new Intl.NumberFormat("fr-FR").format(v.sachets)}</td>
+                      <td className="py-2 pr-3 text-right">{qte(Math.round(v.vol.gros * 10) / 10)}</td>
+                      <td className="whitespace-nowrap py-2 pr-3 text-right">{texteDetail(v.vol)}</td>
                       <td className="whitespace-nowrap py-2 pr-3 text-right">{fcfa(v.paye)}</td>
                       <td className="whitespace-nowrap py-2 text-right font-semibold">{fcfa(v.reste)}</td>
                     </tr>

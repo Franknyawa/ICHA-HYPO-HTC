@@ -9,6 +9,7 @@ import { ImprimerButton } from "@/components/admin/ImprimerButton";
 import { RapportTableau } from "@/components/admin/rapports/RapportTableau";
 import { formatMontant } from "@/lib/utils/format";
 import { getCaisseResume } from "@/lib/queries/caisse";
+import { texteDetail, partsVente } from "@/lib/utils/cartons-equiv";
 import { debutJour, finJour, jourDouala } from "@/lib/utils/periode";
 import {
   Users2,
@@ -153,7 +154,8 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
     ["Points de vente recensés", String(totaux.pointsVente)],
     ["Visites", String(totaux.visites)],
     ["Commandes", String(totaux.commandes)],
-    ["Cartons vendus", String(Math.round(totaux.cartons * 10) / 10).replace(".", ","), `${formatMontant(totaux.sachets)} sachets`],
+    ["Cartons vendus", String(Math.round(totaux.vol.gros * 10) / 10).replace(".", ","), `+ ${texteDetail(totaux.vol)} au détail`],
+    ["Part cartons / détail", (() => { const p = partsVente(totaux.vol); return p ? `${String(p.cartons).replace(".", ",")} % / ${String(p.detail).replace(".", ",")} %` : "—"; })(), "part des ventes en volume"],
     ["Encaissé en caisse", fcfa(caisse.recettesJour), "sur la période"],
     ["Solde en caisse", fcfa(caisse.solde), "cumul à ce jour"],
   ];
@@ -168,6 +170,12 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
       <div className="p-4 md:p-6">
         {/* Onglets */}
         <div className="mb-4 flex flex-wrap gap-2 print:hidden">
+          <Link href="/admin/rapports/periodiques?type=semaine" className="flex items-center gap-1.5 rounded-full bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white dark:bg-slate-100 dark:text-slate-900">
+            Rapport hebdomadaire
+          </Link>
+          <Link href="/admin/rapports/periodiques?type=mois" className="flex items-center gap-1.5 rounded-full bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white dark:bg-slate-100 dark:text-slate-900">
+            Rapport mensuel
+          </Link>
           {ONGLETS.map((o) => {
             const Icon = o.icon;
             return (
@@ -317,7 +325,7 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
         </div>
 
         {/* Tuiles */}
-        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
           {tuiles.map(([label, valeur, sous]) => (
             <div
               key={label}
@@ -353,7 +361,7 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
         {pagination && pagination.totalPages > 1 && (
           <div className="mt-5 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 print:hidden">
             <span>
-              Page {pagination.page} / {pagination.totalPages} · {pagination.total} ventes · {formatMontant(totaux.sachets)} sachets sur la période
+              Page {pagination.page} / {pagination.totalPages} · {pagination.total} ventes · {texteDetail(totaux.vol)} vendus au détail sur la période
             </span>
             <div className="flex gap-2">
               <Link

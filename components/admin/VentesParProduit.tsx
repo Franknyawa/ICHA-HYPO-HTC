@@ -5,10 +5,10 @@ import { Trophy } from "lucide-react";
 import { formatMontant } from "@/lib/utils/format";
 import type { DonneesVentesProduit, PeriodeId, PointSerie } from "@/lib/queries/ventes-produit";
 
-type Indicateur = "cartons" | "sachets" | "ca";
+type Indicateur = "cartons" | "detail" | "ca";
 
-const LIB_INDIC: Record<Indicateur, string> = { cartons: "Cartons", sachets: "Sachets", ca: "Valeur facturée" };
-const LIB_INDIC_MIN: Record<Indicateur, string> = { cartons: "cartons", sachets: "sachets", ca: "valeur facturée" };
+const LIB_INDIC: Record<Indicateur, string> = { cartons: "Vendus en cartons", detail: "Vendus au détail", ca: "Valeur facturée" };
+const LIB_INDIC_MIN: Record<Indicateur, string> = { cartons: "cartons vendus en cartons", detail: "sachets vendus à l'unité", ca: "valeur facturée" };
 
 const PERIODES: { id: PeriodeId; label: string }[] = [
   { id: "30j", label: "30 derniers jours" },
@@ -23,7 +23,16 @@ const OR_CLAIR = "#bfdbfe";
 const fmtQte = (n: number) => (Number.isInteger(n) ? String(n) : String(n).replace(".", ","));
 const fmtCa = (n: number) => `${formatMontant(n)} FCFA`;
 const fmtSach = (n: number) => `${formatMontant(n)} sachets`;
-const fmtValeur = (n: number, i: Indicateur) => (i === "cartons" ? fmtQte(n) : i === "sachets" ? fmtSach(n) : fmtCa(n));
+const fmtValeur = (n: number, i: Indicateur) => (i === "cartons" ? fmtQte(n) : i === "detail" ? fmtSach(n) : fmtCa(n));
+const partDetail = (p: { cartons: number; detailEq: number }) => {
+  const t = p.cartons + p.detailEq;
+  return t > 0 ? Math.round((p.detailEq / t) * 1000) / 10 : 0;
+};
+const txtParts = (p: { cartons: number; detailEq: number }) => {
+  if (p.cartons + p.detailEq <= 0) return "—";
+  const d = partDetail(p);
+  return `${String(Math.round((100 - d) * 10) / 10).replace(".", ",")} % / ${String(d).replace(".", ",")} %`;
+};
 const fmtPct = (x: number) => {
   const r = Math.round(x * 10) / 10;
   return `${Number.isInteger(r) ? r : String(r).replace(".", ",")} %`;
@@ -39,7 +48,7 @@ function graduations(max: number) {
 }
 
 function fmtAxe(n: number, i: Indicateur) {
-  if ((i === "ca" || i === "sachets") && n >= 1000) return `${fmtQte(Math.round((n / 1000) * 10) / 10)}k`;
+  if ((i === "ca" || i === "detail") && n >= 1000) return `${fmtQte(Math.round((n / 1000) * 10) / 10)}k`;
   return fmtQte(n);
 }
 
@@ -121,7 +130,7 @@ function GrapheCourbe({ points, indicateur }: { points: PointSerie[]; indicateur
   );
 }
 
-function ListeClassement({ titre, sousTitre, items, indicateur }: { titre: string; sousTitre: string; items: { nom: string; lieu: string; cartons: number; sachets: number; ca: number }[]; indicateur: Indicateur }) {
+function ListeClassement({ titre, sousTitre, items, indicateur }: { titre: string; sousTitre: string; items: { nom: string; lieu: string; cartons: number; detail: number; ca: number }[]; indicateur: Indicateur }) {
   const max = Math.max(...items.map((x) => x[indicateur]), 0);
   return (
     <div className="rounded-2xl border border-t-4 border-slate-200/70 border-t-emerald-400 bg-white p-5 shadow-sm dark:border-slate-800 dark:border-t-emerald-500 dark:bg-slate-900">
@@ -138,7 +147,7 @@ function ListeClassement({ titre, sousTitre, items, indicateur }: { titre: strin
                 <span className="text-xs text-slate-500 dark:text-slate-400">{x.lieu}</span>
               </span>
               <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
-                {indicateur === "cartons" ? `${fmtQte(x.cartons)} carton${x.cartons > 1 ? "s" : ""}` : indicateur === "sachets" ? fmtSach(x.sachets) : fmtCa(x.ca)}
+                {indicateur === "cartons" ? `${fmtQte(x.cartons)} carton${x.cartons > 1 ? "s" : ""}` : indicateur === "detail" ? fmtSach(x.detail) : fmtCa(x.ca)}
               </span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
@@ -186,7 +195,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
         <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400"><span className="h-3.5 w-1 rounded-full bg-gradient-to-b from-teal-500 to-emerald-400" />Ventes par produit</h2>
         <div className="flex items-center gap-2">
           <div className="flex rounded-full border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900" role="group" aria-label="Indicateur">
-            {(["cartons", "sachets", "ca"] as const).map((i) => (
+            {(["cartons", "detail", "ca"] as const).map((i) => (
               <button
                 key={i}
                 onClick={() => setIndicateur(i)}
@@ -233,10 +242,11 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
             </div>
             <div className="relative flex flex-wrap gap-x-8 gap-y-3 text-sm">
               {[
-                ["Cartons vendus", fmtQte(meilleur.cartons)],
-                ["Sachets vendus", formatMontant(meilleur.sachets)],
+                ["Vendus en cartons", `${fmtQte(meilleur.cartons)} cartons`],
+                ["Vendus au détail", fmtSach(meilleur.detail)],
                 ["Valeur facturée", fmtCa(meilleur.ca)],
                 ["Part des ventes", fmtPct(total > 0 ? (meilleur[indicateur] / total) * 100 : 0)],
+                ["Cartons / détail", txtParts(meilleur)],
               ].map(([l, v]) => (
                 <div key={l}>
                   <p className="text-xs text-white/70">{l}</p>
@@ -245,6 +255,32 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
               ))}
             </div>
           </div>
+
+          {/* Répartition globale : ventes en cartons et ventes au détail (utile pour le marketing) */}
+          {(() => {
+            const gros = produits.reduce((s, p) => s + p.cartons, 0);
+            const det = produits.reduce((s, p) => s + p.detailEq, 0);
+            const sach = produits.reduce((s, p) => s + p.detail, 0);
+            const d = partDetail({ cartons: gros, detailEq: det });
+            return (
+              <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Ventes en cartons et ventes au détail</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {fmtQte(Math.round(gros * 10) / 10)} cartons · {formatMontant(sach)} sachets vendus à l&apos;unité
+                  </p>
+                </div>
+                <div className="flex h-4 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                  <div className="h-full bg-blue-600" style={{ width: `${100 - d}%` }} />
+                  <div className="h-full bg-amber-400" style={{ width: `${d}%` }} />
+                </div>
+                <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs font-semibold">
+                  <span className="text-blue-700 dark:text-blue-400">{fmtPct(100 - d)} vendus en cartons</span>
+                  <span className="text-amber-700 dark:text-amber-400">{fmtPct(d)} vendus au détail</span>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
             {/* Colonne gauche */}
@@ -270,7 +306,7 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
                           />
                         </span>
                         <span className="w-20 shrink-0 text-xs text-slate-500 dark:text-slate-400">
-                          {indicateur === "cartons" ? fmtQte(p.cartons) : indicateur === "sachets" ? formatMontant(p.sachets) : fmtCa(p.ca)}
+                          {indicateur === "cartons" ? fmtQte(p.cartons) : indicateur === "detail" ? formatMontant(p.detail) : fmtCa(p.ca)}
                         </span>
                       </button>
                     </li>
@@ -304,10 +340,11 @@ export function VentesParProduit({ donnees }: { donnees: DonneesVentesProduit })
                   </select>
                 </div>
 
-                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                   {[
-                    ["Cartons", fmtQte(courant.cartons), "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"],
-                    ["Sachets", formatMontant(courant.sachets), "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300"],
+                    ["En cartons", fmtQte(courant.cartons), "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"],
+                    ["Au détail (sachets)", formatMontant(courant.detail), "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300"],
+                    ["Cartons / détail", txtParts(courant), "bg-slate-50 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300"],
                     ["Valeur facturée", fmtCa(courant.ca), "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"],
                     ["Commandes", String(courant.commandes), "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"],
                     ["Points de vente", String(courant.pointsVente), "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"],

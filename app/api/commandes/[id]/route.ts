@@ -1,3 +1,4 @@
+import { attribuerCodeClient } from "@/lib/services/code-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -37,6 +38,7 @@ export async function PATCH(
         id: true,
         statut: true,
         valideeAt: true,
+        pointVenteId: true,
         dateLivraisonPrevue: true,
         commercialId: true,
         pointVente: {
@@ -175,6 +177,10 @@ export async function PATCH(
     // moyen de savoir que sa commande a été traitée avant qu'elle arrive.
     if (dateChangee || statutCible === "EN_LIVRAISON" || statutCible === "ANNULEE" || statutCible === "LIVREE") {
       await rafraichirAlerteLivraison(params.id);
+    }
+
+    if (statutCible === "EN_LIVRAISON" || statutCible === "LIVREE") {
+      await attribuerCodeClient(existante.pointVenteId);
     }
 
     if (statutCible === "EN_LIVRAISON" && existante.statut !== "EN_LIVRAISON") {

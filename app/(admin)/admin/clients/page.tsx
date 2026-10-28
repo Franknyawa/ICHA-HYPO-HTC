@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, MapPin, Phone } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, MapPin, Phone } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requireAdminPage } from "@/lib/auth/rbac";
 import { listerVilles } from "@/lib/geo/synchro-villes";
@@ -63,7 +63,7 @@ export default async function ClientsPage({
 
       <div className="space-y-4 p-4 md:p-6">
         <form action="/admin/clients" className="grid grid-cols-2 gap-2 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 md:grid-cols-4">
-          <input name="search" defaultValue={f.search} placeholder="Nom, contact ou téléphone" className={`${champ} col-span-2 md:col-span-2`} />
+          <input name="search" defaultValue={f.search} placeholder="Code, nom, contact ou téléphone" className={`${champ} col-span-2 md:col-span-2`} />
           <select name="villeId" defaultValue={f.villeId} className={champ}>
             <option value="">Toutes les villes</option>
             {villes.map((v) => (
@@ -95,7 +95,12 @@ export default async function ClientsPage({
           </div>
         </form>
 
-        <ClientsActions clients={clients} sousTitre={criteres} />
+        <div className="flex flex-wrap items-center gap-2">
+          <ClientsActions clients={clients} sousTitre={criteres} />
+          <Link href="/admin/clients/doublons" className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+            <Copy size={15} /> Doublons et codes clients
+          </Link>
+        </div>
 
         <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
           <table className="w-full text-sm">
@@ -114,9 +119,10 @@ export default async function ClientsPage({
               {visibles.map((c) => (
                 <tr key={c.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70 dark:border-slate-800 dark:hover:bg-slate-800/40">
                   <td className="px-4 py-3">
-                    <Link href={`/admin/points-vente/${c.id}`} className="font-semibold text-slate-800 hover:text-brand dark:text-slate-100">
+                    <Link href={`/admin/clients/${c.id}?retour=${encodeURIComponent(lien({ ...f, page: String(page) }))}`} className="font-semibold text-slate-800 hover:text-brand dark:text-slate-100">
                       {c.nom}
                     </Link>
+                    {c.codeClient && <span className="ml-2 rounded-md bg-brand/10 px-1.5 py-0.5 text-[10px] font-bold text-brand">{c.codeClient}</span>}
                     <p className="flex items-center gap-1 text-xs text-slate-400">
                       {c.contact}
                       {c.telephone && (

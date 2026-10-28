@@ -34,8 +34,8 @@ export function RapportTableau({
   for (let i = 0; i < colonnes.length; i++) {
     const c = colonnes[i];
     const suivante = colonnes[i + 1];
-    if (i >= nbColsTexte && c.endsWith(" cartons") && suivante === `${c.slice(0, -8)} sachets`) {
-      cols.push({ titre: c.slice(0, -8), sous: "cartons · sachets", idx: [i, i + 1] });
+    if (i >= nbColsTexte && c.endsWith(" cartons") && suivante === `${c.slice(0, -8)} détail`) {
+      cols.push({ titre: c.slice(0, -8), sous: "cartons · détail", idx: [i, i + 1] });
       i++;
     } else cols.push({ titre: c, idx: [i] });
   }
@@ -54,7 +54,7 @@ export function RapportTableau({
     col.idx.length === 2 ? (
       <>
         <span className="block text-sm font-bold text-slate-800 dark:text-slate-100">{cells[col.idx[0]]}</span>
-        <span className="block text-[11px] text-slate-500 dark:text-slate-400">{cells[col.idx[1]]} sachets</span>
+        <span className="block text-[11px] text-slate-500 dark:text-slate-400">{cells[col.idx[1]] === "—" ? "pas de détail" : `+ ${cells[col.idx[1]]}`}</span>
       </>
     ) : (
       cells[col.idx[0]]

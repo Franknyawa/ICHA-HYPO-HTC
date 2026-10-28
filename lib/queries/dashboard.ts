@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { assurerMontantsConformes } from "@/lib/services/recalcul-prix";
 import { valeurCatalogueLigne } from "@/lib/utils/tarifs";
-import { cartonsEq, arrondiCartons, detailQte, SELECT_CONV } from "@/lib/utils/cartons-equiv";
+import { cartonsEq, arrondiCartons, detailQte, SELECT_CONV, volLigne, volVide, volAjouter, type Vol } from "@/lib/utils/cartons-equiv";
 import { ajouterJours, debutJour, finJour, jourDouala } from "@/lib/utils/periode";
 
 // « Aujourd'hui » = la journée du Cameroun (UTC+1), quel que soit le fuseau
@@ -243,7 +243,7 @@ export type BilanCommandesEnCours = {
   nbCommandes: number;
   cartons: number;
   montant: number;
-  produits: { code: string; nom: string; detail: string; cartons: number; sachets: number; montant: number }[];
+  produits: { code: string; nom: string; detail: string; cartons: number; vol: Vol; montant: number }[];
 }[];
 
 /** Commandes à traiter (en attente) et validées non livrées (en livraison), cumulées par produit. */
@@ -260,6 +260,7 @@ export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
           nbFilets: true,
           nbCartons: true,
           montant: true,
+          detail: true,
           produit: {
             select: { code: true, nom: true, sachetsParCarton: true, sachetsParFilet: true, filetsParCarton: true, prixSachet: true, prixFilet: true, prixCarton: true },
           },
@@ -270,7 +271,7 @@ export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
 
   return (["EN_ATTENTE", "EN_LIVRAISON"] as const).map((statut) => {
     const liste = commandes.filter((c) => c.statut === statut);
-    const parProduit = new Map<string, { code: string; nom: string; nbCartons: number; nbFilets: number; nbSachets: number; cartons: number; spc: number; montant: number }>();
+    const parProduit = new Map<string, { code: string; nom: string; nbCartons: number; nbFilets: number; nbSachets: number; cartons: number; vol: Vol; montant: number }>();
     for (const c of liste) {
       const valeurs = c.lignes.map((l) => {
         const m = Number(l.montant);
@@ -280,10 +281,11 @@ export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
       });
       const somme = valeurs.reduce((s, x) => s + x, 0);
       c.lignes.forEach((l, i) => {
-        const g = parProduit.get(l.produit.code) ?? { code: l.produit.code, nom: l.produit.nom, nbCartons: 0, nbFilets: 0, nbSachets: 0, cartons: 0, spc: l.produit.sachetsParCarton, montant: 0 };
+        const g = parProduit.get(l.produit.code) ?? { code: l.produit.code, nom: l.produit.nom, nbCartons: 0, nbFilets: 0, nbSachets: 0, cartons: 0, vol: volVide(), montant: 0 };
         g.nbCartons += l.nbCartons;
         g.nbFilets += l.nbFilets;
         g.nbSachets += l.nbSachets;
+        volAjouter(g.vol, volLigne(l, l.produit));
         g.cartons += cartonsEq(l, l.produit);
         g.montant += somme > 0 ? (Number(c.montantTotal) * valeurs[i]) / somme : 0;
         parProduit.set(l.produit.code, g);
@@ -296,7 +298,7 @@ export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
         nom: g.nom,
         detail: detailQte(g),
         cartons: arrondiCartons(g.cartons),
-        sachets: Math.round(g.cartons * g.spc),
+        vol: g.vol,
         montant: Math.round(g.montant),
       }));
     return {
@@ -314,20 +316,22 @@ export type CartonsJour = {
   hypo: number;
   htc: number;
   total: number;
-  /** Part de la vente au détail, exprimée en cartons. */
-  detail: number;
-  /** Mêmes quantités exprimées en sachets (cartons × sachets par carton). */
-  hypoSachets: number;
-  htcSachets: number;
-  totalSachets: number;
-  detailSachets: number;
+  /** Ventes au détail : sachets et filets vendus à l'unité (par produit et au total). */
+  hypoSd: number;
+  hypoFd: number;
+  htcSd: number;
+  htcFd: number;
+  detailSd: number;
+  detailFd: number;
+  /** Vente au détail en cartons équivalents (uniquement pour calculer la part du détail). */
+  detailEq: number;
   commandes: number;
   montant: number;
 };
 
 /**
  * Cartons vendus par jour (commandes validées ce jour-là par l'admin), sur les `nbJours` derniers jours,
- * du plus récent au plus ancien. Les sachets / filets sont convertis en cartons.
+ * du plus récent au plus ancien. « Cartons » = ventes en cartons ; le détail (sachets / filets à l'unité) est compté à part.
  */
 export async function getCartonsParJour(nbJours = 14): Promise<CartonsJour[]> {
   await assurerMontantsConformes();
@@ -348,7 +352,7 @@ export async function getCartonsParJour(nbJours = 14): Promise<CartonsJour[]> {
   const jours = new Map<string, CartonsJour>();
   for (let i = 0; i < nbJours; i++) {
     const j = ajouterJours(aujourdhui, -i);
-    jours.set(j, { jour: j, hypo: 0, htc: 0, total: 0, detail: 0, hypoSachets: 0, htcSachets: 0, totalSachets: 0, detailSachets: 0, commandes: 0, montant: 0 });
+    jours.set(j, { jour: j, hypo: 0, htc: 0, total: 0, hypoSd: 0, hypoFd: 0, htcSd: 0, htcFd: 0, detailSd: 0, detailFd: 0, detailEq: 0, commandes: 0, montant: 0 });
   }
   for (const c of commandes) {
     const g = jours.get(jourDouala(c.valideeAt!));
@@ -356,21 +360,21 @@ export async function getCartonsParJour(nbJours = 14): Promise<CartonsJour[]> {
     g.commandes += 1;
     g.montant += Number(c.montantTotal);
     for (const l of c.lignes) {
-      const q = cartonsEq(l, l.produit);
-      const sach = q * l.produit.sachetsParCarton;
+      const v = volLigne(l, l.produit);
+      // « Cartons » = ventes en cartons (gros) ; le détail est compté en sachets / filets à l'unité.
+      g.total += v.gros;
+      g.detailEq += v.detailEq;
+      g.detailSd += v.sd;
+      g.detailFd += v.fd;
       if (l.produit.code === "HYPO") {
-        g.hypo += q;
-        g.hypoSachets += sach;
+        g.hypo += v.gros;
+        g.hypoSd += v.sd;
+        g.hypoFd += v.fd;
       } else if (l.produit.code === "HTC") {
-        g.htc += q;
-        g.htcSachets += sach;
+        g.htc += v.gros;
+        g.htcSd += v.sd;
+        g.htcFd += v.fd;
       }
-      if (l.detail) {
-        g.detail += q;
-        g.detailSachets += sach;
-      }
-      g.total += q;
-      g.totalSachets += sach;
     }
   }
   return [...jours.values()].map((g) => ({
@@ -378,17 +382,13 @@ export async function getCartonsParJour(nbJours = 14): Promise<CartonsJour[]> {
     hypo: arrondiCartons(g.hypo),
     htc: arrondiCartons(g.htc),
     total: arrondiCartons(g.total),
-    detail: arrondiCartons(g.detail),
-    hypoSachets: Math.round(g.hypoSachets),
-    htcSachets: Math.round(g.htcSachets),
-    totalSachets: Math.round(g.totalSachets),
-    detailSachets: Math.round(g.detailSachets),
+    detailEq: Math.round(g.detailEq * 100) / 100,
     montant: Math.round(g.montant),
   }));
 }
 
 
-export type LotValide = { nb: number; cartons: number; montant: number };
+export type LotValide = { nb: number; /** vendus en cartons */ cartons: number; /** vendus au détail (sachets / filets à l'unité) */ vol: Vol; montant: number };
 export type BilanValidees = {
   /** Validées aujourd'hui (livrées ou non) : c'est le chiffre « Ventes validées ». */
   aujourdhui: LotValide;
@@ -420,18 +420,19 @@ export async function getBilanValidees(): Promise<BilanValidees> {
       statut: true,
       valideeAt: true,
       montantTotal: true,
-      lignes: { select: { nbSachets: true, nbFilets: true, nbCartons: true, produit: { select: SELECT_CONV } } },
+      lignes: { select: { nbSachets: true, nbFilets: true, nbCartons: true, detail: true, produit: { select: SELECT_CONV } } },
     },
   });
-  const vide = () => ({ nb: 0, cartons: 0, montant: 0 });
+  const vide = (): LotValide => ({ nb: 0, cartons: 0, vol: volVide(), montant: 0 });
   const r = { aujourdhui: vide(), livrees: vide(), aLivrer: vide(), avant: vide(), totalALivrer: vide() };
-  const ajoute = (lot: LotValide, cartons: number, montant: number) => {
+  const ajoute = (lot: LotValide, vol: Vol, montant: number) => {
     lot.nb += 1;
-    lot.cartons += cartons;
+    lot.cartons += vol.gros;
+    volAjouter(lot.vol, vol);
     lot.montant += montant;
   };
   for (const c of commandes) {
-    const cartons = c.lignes.reduce((s, l) => s + cartonsEq(l, l.produit), 0);
+    const cartons = c.lignes.reduce((a, l) => volAjouter(a, volLigne(l, l.produit)), volVide());
     const montant = Number(c.montantTotal);
     const aujourdhui = !!c.valideeAt && c.valideeAt >= debut;
     if (aujourdhui) {
@@ -453,28 +454,36 @@ export async function getBilanValidees(): Promise<BilanValidees> {
 export type ProduitDuJour = {
   code: string;
   nom: string;
-  /** Quantités saisies : « 6 cartons, 432 sachets ». */
-  detail: string;
-  nbCartons: number;
-  nbFilets: number;
-  nbSachets: number;
-  /** Total exprimé en cartons et en sachets (cartons × sachets par carton). */
-  cartons: number;
-  sachets: number;
-  /** Part déjà livrée / encore à livrer, en sachets. */
-  sachetsLivres: number;
-  sachetsALivrer: number;
   commandes: number;
+  /** Vendus en cartons (cartons entiers et demi-cartons), en cartons. */
+  cartons: number;
+  /** Vendus au détail : sachets et filets à l'unité. */
+  sachetsDetail: number;
+  filetsDetail: number;
+  /** Détail en cartons équivalents (pour la part du détail uniquement). */
+  detailEq: number;
+  /** Livré / à livrer, en nombre de commandes contenant ce produit. */
+  livrees: number;
+  aLivrer: number;
 };
 
 export type CommandesDuJour = {
   produits: ProduitDuJour[];
-  total: { commandes: number; cartons: number; sachets: number; livrees: number; aLivrer: number; enAttente: number };
+  total: {
+    commandes: number;
+    cartons: number;
+    sachetsDetail: number;
+    filetsDetail: number;
+    detailEq: number;
+    livrees: number;
+    aLivrer: number;
+    enAttente: number;
+  };
 };
 
 /**
  * Commandes de la journée (validées aujourd'hui par l'admin), produit par produit :
- * cartons, filets, sachets saisis, puis total en cartons et en sachets.
+ * cartons vendus en cartons, sachets et filets vendus à l'unité, et part de chacun.
  */
 export async function getCommandesDuJour(): Promise<CommandesDuJour> {
   await assurerMontantsConformes();
@@ -484,52 +493,50 @@ export async function getCommandesDuJour(): Promise<CommandesDuJour> {
       where: { valideeAt: { gte: debutJour(jour), lte: finJour(jour) }, statut: { in: ["EN_LIVRAISON", "LIVREE"] } },
       select: {
         statut: true,
-        lignes: { select: { nbSachets: true, nbFilets: true, nbCartons: true, produit: { select: { code: true, nom: true, ...SELECT_CONV } } } },
+        lignes: { select: { nbSachets: true, nbFilets: true, nbCartons: true, detail: true, produit: { select: { code: true, nom: true, ...SELECT_CONV } } } },
       },
     }),
     prisma.commande.count({ where: { statut: "EN_ATTENTE", archivedAt: null, NOT: livraisonAVenir() } }),
   ]);
 
-  const map = new Map<string, ProduitDuJour & { cmds: Set<number>; cartonsExact: number }>();
+  type Acc = ProduitDuJour & { vue: Set<number>; vuLivree: Set<number> };
+  const map = new Map<string, Acc>();
   commandes.forEach((c, idx) => {
     for (const l of c.lignes) {
       const g =
         map.get(l.produit.code) ??
-        { code: l.produit.code, nom: l.produit.nom, detail: "", nbCartons: 0, nbFilets: 0, nbSachets: 0, cartons: 0, sachets: 0, sachetsLivres: 0, sachetsALivrer: 0, commandes: 0, cmds: new Set<number>(), cartonsExact: 0 };
-      const q = cartonsEq(l, l.produit);
-      g.nbCartons += l.nbCartons;
-      g.nbFilets += l.nbFilets;
-      g.nbSachets += l.nbSachets;
-      g.cartonsExact += q;
-      g.cmds.add(idx);
-      const sach = q * l.produit.sachetsParCarton;
-      g.sachets += sach;
-      if (c.statut === "LIVREE") g.sachetsLivres += sach;
-      else g.sachetsALivrer += sach;
+        { code: l.produit.code, nom: l.produit.nom, commandes: 0, cartons: 0, sachetsDetail: 0, filetsDetail: 0, detailEq: 0, livrees: 0, aLivrer: 0, vue: new Set<number>(), vuLivree: new Set<number>() };
+      const v: Vol = volLigne(l, l.produit);
+      g.cartons += v.gros;
+      g.sachetsDetail += v.sd;
+      g.filetsDetail += v.fd;
+      g.detailEq += v.detailEq;
+      g.vue.add(idx);
+      if (c.statut === "LIVREE") g.vuLivree.add(idx);
       map.set(l.produit.code, g);
     }
   });
-  const produits = [...map.values()]
+  const produits: ProduitDuJour[] = [...map.values()]
     .sort((a, b) => a.code.localeCompare(b.code))
     .map((g) => ({
       code: g.code,
       nom: g.nom,
-      detail: detailQte(g),
-      nbCartons: g.nbCartons,
-      nbFilets: g.nbFilets,
-      nbSachets: g.nbSachets,
-      cartons: arrondiCartons(g.cartonsExact),
-      sachets: Math.round(g.sachets),
-      sachetsLivres: Math.round(g.sachetsLivres),
-      sachetsALivrer: Math.round(g.sachetsALivrer),
-      commandes: g.cmds.size,
+      commandes: g.vue.size,
+      cartons: arrondiCartons(g.cartons),
+      sachetsDetail: g.sachetsDetail,
+      filetsDetail: g.filetsDetail,
+      detailEq: Math.round(g.detailEq * 100) / 100,
+      livrees: g.vuLivree.size,
+      aLivrer: g.vue.size - g.vuLivree.size,
     }));
   return {
     produits,
     total: {
       commandes: commandes.length,
       cartons: arrondiCartons(produits.reduce((s, p) => s + p.cartons, 0)),
-      sachets: produits.reduce((s, p) => s + p.sachets, 0),
+      sachetsDetail: produits.reduce((s, p) => s + p.sachetsDetail, 0),
+      filetsDetail: produits.reduce((s, p) => s + p.filetsDetail, 0),
+      detailEq: Math.round(produits.reduce((s, p) => s + p.detailEq, 0) * 100) / 100,
       livrees: commandes.filter((c) => c.statut === "LIVREE").length,
       aLivrer: commandes.filter((c) => c.statut !== "LIVREE").length,
       enAttente,

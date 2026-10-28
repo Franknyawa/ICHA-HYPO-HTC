@@ -123,7 +123,7 @@ export async function getPointVenteDetail(id: string) {
       },
       visites: {
         orderBy: { dateVisite: "desc" },
-        take: 30,
+        take: 100,
         select: {
           id: true,
           dateVisite: true,

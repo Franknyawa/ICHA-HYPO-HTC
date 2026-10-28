@@ -20,6 +20,17 @@ export const createPointVenteSchema = z.object({
 
 export const updatePointVenteSchema = createPointVenteSchema
   .omit({ uuidClient: true })
+  .extend({
+    telephonePatron: z.string().nullable().optional(),
+    patronNom: z.string().nullable().optional(),
+    repondantRole: z.enum(["PATRON", "GERANT", "EMPLOYE", "AUTRE"]).nullable().optional(),
+    repondantFonction: z.string().nullable().optional(),
+    typeAutre: z.string().nullable().optional(),
+    typesIds: z.array(z.string().uuid()).optional(),
+    vendeur: z.string().nullable().optional(),
+    telephoneVendeur: z.string().nullable().optional(),
+    repere: z.string().nullable().optional(),
+  })
   .partial();
 
 export const listPointVenteQuerySchema = z.object({

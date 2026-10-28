@@ -3,7 +3,7 @@ import { assurerMontantsConformes } from "@/lib/services/recalcul-prix";
 import type { Prisma } from "@prisma/client";
 import { valeurCatalogueLigne } from "@/lib/utils/tarifs";
 import { formatMontant } from "@/lib/utils/format";
-import { detailQte, libelleCartons } from "@/lib/utils/cartons-equiv";
+import { detailQte, libelleCartons, volLigne, volVide, volAjouter, texteDetail, texteParts, partsVente, type Vol } from "@/lib/utils/cartons-equiv";
 
 // ---------------------------------------------------------------------------
 // Rapports — même modèle que BELGRAVIA : 7 vues (commercial, point de vente,
@@ -48,8 +48,8 @@ export type Mesures = {
   commandes: number;
   nbVentes: number;
   cartons: number;
-  /** Sachets équivalents (cartons × sachets par carton) : le nombre de sachets réellement vendus. */
-  sachets: number;
+  /** Ventes en cartons (gros) et ventes au détail (sachets / filets à l'unité). */
+  vol: Vol;
   ca: number;
   reste: number;
 };
@@ -87,7 +87,7 @@ export type ApercuRapport = {
     /** « 1/2 carton » : équivalent de la quantité saisie */
     cartonsEquiv: string;
     cartons: number;
-    sachets: number;
+    vol: Vol;
     ca: number;
     part: number;
   }[];
@@ -101,7 +101,7 @@ export type ApercuRapport = {
     ville: string;
     client: string | null;
     cartons: number;
-    sachets: number;
+    vol: Vol;
     ca: number;
     paye: number;
     reste: number;
@@ -201,7 +201,7 @@ const SELECT_PV = {
   quartier: { select: { nom: true } },
 } satisfies Prisma.PointVenteSelect;
 
-async function chargerVentes(filters: RapportFilters) {
+export async function chargerVentes(filters: RapportFilters) {
   const produitWhere = filtreProduit(filters);
   // « Ventes » = commandes VALIDÉES par l'admin (valeur = montant de la commande,
   // sachets et filets inclus ; quantités converties en cartons équivalents).
@@ -231,6 +231,7 @@ async function chargerVentes(filters: RapportFilters) {
           nbFilets: true,
           nbCartons: true,
           montant: true,
+          detail: true,
           produit: {
             select: {
               id: true,
@@ -271,7 +272,7 @@ export type LigneRepartie = {
   nbFilets: number;
   nbCartons: number;
   cartons: number;
-  sachets: number;
+  vol: Vol;
   ca: number;
   reste: number;
 };
@@ -284,6 +285,7 @@ export type VenteRepartissable = {
     nbFilets: number;
     nbCartons: number;
     montant: unknown;
+    detail?: boolean | null;
     produit: ProduitCalc & { id: string; code: string; nom: string; gamme: string | null };
   }[];
   paiements?: { montant: unknown }[];
@@ -315,7 +317,7 @@ export function repartirVente(v: VenteRepartissable): { lignes: LigneRepartie[];
     nbFilets: l.nbFilets,
     nbCartons: l.nbCartons,
     cartons: cartonsEquivalents(l, l.produit),
-    sachets: Math.round(cartonsEquivalents(l, l.produit) * l.produit.sachetsParCarton),
+    vol: volLigne(l, l.produit),
     ca: (total * ws[i]) / somme,
     reste: (resteVente * ws[i]) / somme,
   }));
@@ -351,9 +353,9 @@ type Evt = {
   ca?: number;
   reste?: number;
   cartons?: number;
-  sachets?: number;
-  /** Détail par produit (code → cartons équivalents, sachets équivalents et CA) */
-  parProduit?: Map<string, { cartons: number; sachets: number; ca: number }>;
+  vol?: Vol;
+  /** Détail par produit (code → cartons équivalents, ventes en cartons / au détail et CA) */
+  parProduit?: Map<string, { cartons: number; vol: Vol; ca: number }>;
 };
 
 function moisDe(d: Date) {
@@ -422,12 +424,12 @@ async function chargerEvenements(filters: RapportFilters) {
     const ca = retenues.reduce((s, l) => s + l.ca, 0);
     const reste = retenues.reduce((s, l) => s + l.reste, 0);
     const cartons = retenues.reduce((s, l) => s + l.cartons, 0);
-    const sachets = retenues.reduce((s, l) => s + l.sachets, 0);
-    const parProduit = new Map<string, { cartons: number; sachets: number; ca: number }>();
+    const vol = retenues.reduce((a, l) => volAjouter(a, l.vol), volVide());
+    const parProduit = new Map<string, { cartons: number; vol: Vol; ca: number }>();
     for (const l of retenues) {
-      const g = parProduit.get(l.code) ?? { cartons: 0, sachets: 0, ca: 0 };
+      const g = parProduit.get(l.code) ?? { cartons: 0, vol: volVide(), ca: 0 };
       g.cartons += l.cartons;
-      g.sachets += l.sachets;
+      volAjouter(g.vol, l.vol);
       g.ca += l.ca;
       parProduit.set(l.code, g);
     }
@@ -448,7 +450,7 @@ async function chargerEvenements(filters: RapportFilters) {
       ca,
       reste,
       cartons,
-      sachets,
+      vol,
       parProduit,
     });
   }
@@ -511,7 +513,7 @@ function cleDe(vue: RapportVue, e: Evt): Cle | null {
 }
 
 function vide(): Mesures {
-  return { pointsVente: 0, visites: 0, commandes: 0, nbVentes: 0, cartons: 0, sachets: 0, ca: 0, reste: 0 };
+  return { pointsVente: 0, visites: 0, commandes: 0, nbVentes: 0, cartons: 0, vol: volVide(), ca: 0, reste: 0 };
 }
 
 function cumuler(m: Mesures, e: Evt) {
@@ -520,7 +522,7 @@ function cumuler(m: Mesures, e: Evt) {
     m.ca += e.ca ?? 0;
     m.reste += e.reste ?? 0;
     m.cartons += e.cartons ?? 0;
-    m.sachets += e.sachets ?? 0;
+    if (e.vol) volAjouter(m.vol, e.vol);
   } else if (e.type === "visite") m.visites += 1;
   else if (e.type === "commande") m.commandes += 1;
   else m.pointsVente += 1;
@@ -555,13 +557,13 @@ function ligneMesures(m: Mesures, _totalCa: number, avecCompteurs: boolean) {
     : [];
   const brut: number[] = avecCompteurs ? [m.pointsVente, m.visites, m.commandes] : [];
   return {
-    cells: [...cells, formatQte(m.cartons), formatNombre(m.sachets), fcfa(m.reste)],
-    brut: [...brut, arrondi(m.cartons), Math.round(m.sachets), Math.round(m.reste)],
+    cells: [...cells, formatQte(m.vol.gros), texteDetail(m.vol), texteParts(m.vol), fcfa(m.reste)],
+    brut: [...brut, arrondi(m.vol.gros), texteDetail(m.vol), texteParts(m.vol), Math.round(m.reste)],
   };
 }
 
-const COLS_MESURES = ["Points de vente recensés", "Visites", "Commandes", "Cartons vendus", "Sachets vendus", "Reste à payer"];
-const COLS_MESURES_PRODUIT = ["Ventes", "Cartons vendus", "Sachets vendus", "Reste à payer"];
+const COLS_MESURES = ["Points de vente recensés", "Visites", "Commandes", "Cartons vendus", "Vente au détail", "Cartons / détail", "Reste à payer"];
+const COLS_MESURES_PRODUIT = ["Ventes", "Cartons vendus", "Vente au détail", "Cartons / détail", "Reste à payer"];
 
 function totalMesures(evts: Evt[]): Mesures {
   const t = vide();
@@ -594,7 +596,7 @@ export async function getRapport(
       const r = repartirVente(v);
       const retenues = r.lignes.filter((l) => ligneRetenue(l, filters));
       const cartons = retenues.reduce((s, l) => s + l.cartons, 0);
-      const sachets = retenues.reduce((s, l) => s + l.sachets, 0);
+      const vol = retenues.reduce((a, l) => volAjouter(a, l.vol), volVide());
       const reste = retenues.reduce((s, l) => s + l.reste, 0);
       const resume =
         retenues
@@ -604,13 +606,13 @@ export async function getRapport(
       const com = `${v.commercial.prenom} ${v.commercial.nom}`;
       return {
         cle: v.id,
-        cellules: [date, com, v.pointVente.nom, v.pointVente.ville.nom, resume, formatQte(cartons), formatNombre(sachets), fcfa(reste)],
-        brut: [date, com, v.pointVente.nom, v.pointVente.ville.nom, resume, arrondi(cartons), Math.round(sachets), Math.round(reste)],
+        cellules: [date, com, v.pointVente.nom, v.pointVente.ville.nom, resume, formatQte(vol.gros), texteDetail(vol), fcfa(reste)],
+        brut: [date, com, v.pointVente.nom, v.pointVente.ville.nom, resume, arrondi(vol.gros), texteDetail(vol), Math.round(reste)],
       };
     });
     return {
       vue,
-      colonnes: ["Date", "Commercial", "Point de vente", "Ville", "Produits", "Cartons vendus", "Sachets vendus", "Reste à payer"],
+      colonnes: ["Date", "Commercial", "Point de vente", "Ville", "Produits", "Cartons vendus", "Vente au détail", "Reste à payer"],
       nbColsTexte: 5,
       lignes,
       totaux,
@@ -645,14 +647,14 @@ export async function getRapport(
 
   // Détail par produit : cartons équivalents et CA de chaque produit, par ligne.
   const codes = [...new Set(evts.flatMap((e) => (e.parProduit ? [...e.parProduit.keys()] : [])))].sort();
-  const parProduitDe = new Map<string, Map<string, { cartons: number; sachets: number; ca: number }>>();
+  const parProduitDe = new Map<string, Map<string, { cartons: number; vol: Vol; ca: number }>>();
   const ajouterProd = (k: string, e: Evt) => {
     if (!e.parProduit) return;
-    const cible = parProduitDe.get(k) ?? new Map<string, { cartons: number; sachets: number; ca: number }>();
+    const cible = parProduitDe.get(k) ?? new Map<string, { cartons: number; vol: Vol; ca: number }>();
     for (const [code, v] of e.parProduit) {
-      const x = cible.get(code) ?? { cartons: 0, sachets: 0, ca: 0 };
+      const x = cible.get(code) ?? { cartons: 0, vol: volVide(), ca: 0 };
       x.cartons += v.cartons;
-      x.sachets += v.sachets;
+      volAjouter(x.vol, v.vol);
       x.ca += v.ca;
       cible.set(code, x);
     }
@@ -666,11 +668,11 @@ export async function getRapport(
   const celluleProduits = (k: string) => {
     const map = parProduitDe.get(k);
     const cells: string[] = [];
-    const brut: number[] = [];
+    const brut: (string | number)[] = [];
     for (const code of codes) {
-      const x = map?.get(code) ?? { cartons: 0, sachets: 0, ca: 0 };
-      cells.push(formatQte(x.cartons), formatNombre(x.sachets));
-      brut.push(arrondi(x.cartons), Math.round(x.sachets));
+      const x = map?.get(code) ?? { cartons: 0, vol: volVide(), ca: 0 };
+      cells.push(formatQte(x.vol.gros), texteDetail(x.vol));
+      brut.push(arrondi(x.vol.gros), texteDetail(x.vol));
     }
     return { cells, brut };
   };
@@ -717,14 +719,14 @@ export async function getRapport(
     historique: "Mois",
   }[vue] as string;
   const colSecondaire = vue === "point_vente" ? "Ville · quartier" : vue === "quartier" ? "Ville" : null;
-  const colsProduits = codes.flatMap((c) => [`${c} cartons`, `${c} sachets`]);
+  const colsProduits = codes.flatMap((c) => [`${c} cartons`, `${c} détail`]);
   const colonnes = [
     colonnePrincipale,
     ...(colSecondaire ? [colSecondaire] : []),
     ...COLS_MESURES.slice(0, NB_COMPTEURS),
     ...colsProduits,
     ...COLS_MESURES.slice(NB_COMPTEURS).map((c) =>
-      codes.length > 0 && c === "Cartons vendus" ? "Total cartons" : codes.length > 0 && c === "Sachets vendus" ? "Total sachets" : c
+      codes.length > 0 && c === "Cartons vendus" ? "Total cartons" : codes.length > 0 && c === "Vente au détail" ? "Total détail" : c
     ),
   ];
   const nbColsTexte = colSecondaire ? 2 : 1;
@@ -751,14 +753,14 @@ async function rapportProduit(filters: RapportFilters): Promise<RapportTableau> 
   const { evts, ventes } = await chargerEvenements(filters);
   const totaux = totalMesures(evts);
 
-  const map = new Map<string, { code: string; nom: string; gamme: string; ventes: Set<string>; cartons: number; sachets: number; ca: number; reste: number }>();
+  const map = new Map<string, { code: string; nom: string; gamme: string; ventes: Set<string>; cartons: number; vol: Vol; ca: number; reste: number }>();
   for (const v of ventes) {
     for (const l of repartirVente(v).lignes) {
       if (!ligneRetenue(l, filters)) continue;
-      const g = map.get(l.produitId) ?? { code: l.code, nom: l.nom, gamme: l.gamme, ventes: new Set<string>(), cartons: 0, sachets: 0, ca: 0, reste: 0 };
+      const g = map.get(l.produitId) ?? { code: l.code, nom: l.nom, gamme: l.gamme, ventes: new Set<string>(), cartons: 0, vol: volVide(), ca: 0, reste: 0 };
       g.ventes.add(v.id);
       g.cartons += l.cartons;
-      g.sachets += l.sachets;
+      volAjouter(g.vol, l.vol);
       g.ca += l.ca;
       g.reste += l.reste;
       map.set(l.produitId, g);
@@ -768,7 +770,7 @@ async function rapportProduit(filters: RapportFilters): Promise<RapportTableau> 
   const totalCa = liste.reduce((s, [, g]) => s + g.ca, 0);
 
   const lignes = liste.map(([id, g]) => {
-    const m: Mesures = { ...vide(), nbVentes: g.ventes.size, cartons: g.cartons, sachets: g.sachets, ca: g.ca, reste: g.reste };
+    const m: Mesures = { ...vide(), nbVentes: g.ventes.size, cartons: g.cartons, vol: g.vol, ca: g.ca, reste: g.reste };
     const mes = ligneMesures(m, totalCa, false);
     return {
       cle: id,
@@ -781,7 +783,7 @@ async function rapportProduit(filters: RapportFilters): Promise<RapportTableau> 
     ...vide(),
     nbVentes: ventes.length,
     cartons: liste.reduce((s, [, g]) => s + g.cartons, 0),
-    sachets: liste.reduce((s, [, g]) => s + g.sachets, 0),
+    vol: liste.reduce((a, [, g]) => volAjouter(a, g.vol), volVide()),
     ca: totalCa,
     reste: liste.reduce((s, [, g]) => s + g.reste, 0),
   };
@@ -793,7 +795,7 @@ async function rapportProduit(filters: RapportFilters): Promise<RapportTableau> 
     nbColsTexte: 2,
     lignes,
     total: { cellules: ["Total", "", String(tot.nbVentes), ...tm.cells], brut: ["Total", "", tot.nbVentes, ...tm.brut] },
-    totaux: { ...totaux, ca: totalCa, cartons: tot.cartons, sachets: tot.sachets, reste: tot.reste },
+    totaux: { ...totaux, ca: totalCa, cartons: tot.cartons, vol: tot.vol, reste: tot.reste },
     pagination: null,
   };
 }
@@ -889,14 +891,14 @@ export async function getApercu(
           : "";
 
   // Produits
-  const prod = new Map<string, { code: string; nom: string; gamme: string; sach: number; fil: number; cart: number; cartons: number; sachets: number; ca: number }>();
+  const prod = new Map<string, { code: string; nom: string; gamme: string; sach: number; fil: number; cart: number; cartons: number; vol: Vol; ca: number }>();
   const lignesVentes: ApercuRapport["ventes"] = [];
   for (const v of ventesFocus) {
     const r = repartirVente(v);
     const retenues = r.lignes.filter((l) => ligneRetenue(l, filters));
     for (const l of retenues) {
-      const g = prod.get(l.produitId) ?? { code: l.code, nom: l.nom, gamme: l.gamme, sach: 0, fil: 0, cart: 0, cartons: 0, sachets: 0, ca: 0 };
-      g.sachets += l.sachets;
+      const g = prod.get(l.produitId) ?? { code: l.code, nom: l.nom, gamme: l.gamme, sach: 0, fil: 0, cart: 0, cartons: 0, vol: volVide(), ca: 0 };
+      volAjouter(g.vol, l.vol);
       g.sach += l.nbSachets;
       g.fil += l.nbFilets;
       g.cart += l.nbCartons;
@@ -913,7 +915,7 @@ export async function getApercu(
       ville: v.pointVente.ville.nom,
       client: v.client?.nom ?? null,
       cartons: arrondi(retenues.reduce((s, l) => s + l.cartons, 0)),
-      sachets: Math.round(retenues.reduce((s, l) => s + l.sachets, 0)),
+      vol: retenues.reduce((a, l) => volAjouter(a, l.vol), volVide()),
       ca: Math.round(retenues.reduce((s, l) => s + l.ca, 0)),
       paye: Math.round(r.paye),
       reste: Math.round(retenues.reduce((s, l) => s + l.reste, 0)),
@@ -932,7 +934,7 @@ export async function getApercu(
         .join(" · ") || "—",
       cartonsEquiv: libelleCartons(g.cartons),
       cartons: arrondi(g.cartons),
-      sachets: Math.round(g.sachets),
+      vol: g.vol,
       ca: Math.round(g.ca),
       part: totalCa > 0 ? arrondi((g.ca / totalCa) * 100, 1) : 0,
     }));

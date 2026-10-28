@@ -1753,3 +1753,15 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Caisse : onglet « Transfert » (Espèces / OM-MoMo / Banque), frais optionnels, 2 écritures liées (`referenceType = TRANSFERT`, frais `TRANSFERT_FRAIS`), ni recette ni dépense, annulation du transfert entier depuis le journal ; le journal affiche l'heure et l'auteur.
 - CLIENT DIVERS : table `commande_detail_origines` (commerciale, point visité, source terrain/bureau, produit, quantités, montant) ; bloc « Détail par commerciale » dans la liste des commandes ; SQL `docs/migration-2026-10-28.sql` (création + reprise de l'existant).
 - Tableau de bord : section « Commandes de la journée » par produit (cartons, sachets, livrés / à livrer) ; « Ventes par jour » avec sachets, barres HYPO/HTC et synthèse ; « Ventes par produit » avec indicateur Sachets.
+
+### Mise à jour 28/10 (soir) — cartons vs détail, retour clients
+- Onglet Clients : le bouton « Retour » de la fiche ramène à la liste des clients (mêmes filtres et même page) ; depuis les points de vente il ramène toujours aux points de vente.
+- Partout (rapports, aperçus, exports, tableau de bord, ventes par produit) : les ventes sont séparées en « vendus en cartons » (cartons et demi-cartons) et « vendus au détail » (sachets / filets à l'unité, ligne `detail`), avec la part en % de chacune. Plus de conversion des cartons en sachets. Helpers : `lib/utils/cartons-equiv.ts` (`volLigne`, `texteDetail`, `partsVente`).
+
+## Fiches point de vente / client, code client, rapports périodiques (2026-10-29)
+- Type « Personne physique » renommé « Client divers » (seed, service client divers, SQL `docs/migration-2026-10-29.sql`).
+- `/admin/points-vente/[id]` = données recensées (interlocuteur, patron, types, localisation, GPS, photos) + bouton « Mettre à jour les données » (`PointVenteForm`, PATCH `/api/points-vente/[id]`). Plus de mouvements financiers.
+- `/admin/clients/[id]` = fiche client : code, compte (factures, encaissements, avoirs, retours, relevé), commandes et dates de passage. La liste Clients y renvoie.
+- Code client `CLI-0001…` : colonne `points_vente.code_client` + séquence `code_client_seq`, attribué à la 1re validation d'une commande (`lib/services/code-client.ts`) ; le client divers n'en a pas. Recherche par code dans Clients.
+- `/admin/clients/doublons` : détection (même téléphone, même nom, nom proche, GPS) sans rien modifier + bouton d'attribution des codes aux clients existants (`POST /api/clients/codes`).
+- `/admin/rapports/periodiques` : rapport hebdomadaire (lundi→dimanche) et mensuel, par produit : cartons, sachets/filets au détail, % cartons / détail, part du produit, évolution vs période précédente, jour par jour, commerciaux, meilleurs PV, caisse ; imprimable.
