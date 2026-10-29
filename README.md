@@ -1769,3 +1769,11 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 ## Dashboard : section « Commandes en cours » retirée, modifications réservées au super admin (2026-10-29)
 - La section « Commandes en cours » est supprimée ; ses valeurs financières (FCFA) sont dans « Commandes de la journée » : valeur par statut (validées, livrées, à livrer, en attente), valeur facturée par produit, et ligne « validées avant aujourd'hui, à livrer ».
 - Modification des fiches point de vente, archivage et attribution des codes clients : super administrateur uniquement (API 403 sinon, boutons masqués).
+
+## Lot 29/10 (midi)
+- Alerte « INP Issue » : due au bouton Imprimer (`window.print()` bloque jusqu'à la fermeture de la fenêtre d'impression → mesuré comme 9,8 s de blocage). L'impression est maintenant différée (`lancerImpression`), plus d'alerte.
+- Bouton « Télécharger PDF » à côté de chaque Imprimer (`TelechargerPdfButton`, capture de la page via html2canvas + jsPDF, `lib/utils/pdf-page.ts`) ; les pages qui ont déjà un export PDF structuré (points de vente, rapports, caisse) gardent le leur.
+- Recherche (point de vente, interlocuteur, téléphone, quartier, commercial) sur Commandes et Facturation ; filtre « type de boutique » sur Facturation.
+- Rapport hebdo/mensuel : « Lecture de la période » détaillée (dates longues, nombre de jours, bloc de points clés colorés).
+- Menu admin regroupé : Pilotage / Ventes / Terrain / Stock et finances / Administration (mobile : 4 rubriques + « Plus » groupé). Police admin plus grasse et textes secondaires plus contrastés (globals.css).
+- Page Paramètres : navigation par catégories (Catalogue, Équipe, Objectifs, Alertes et stock, Sécurité), bandeau de section.

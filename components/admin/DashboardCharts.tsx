@@ -1,5 +1,7 @@
 "use client";
 
+import { lancerImpression } from "@/components/admin/ImprimerButton";
+import { TelechargerPdfButton } from "@/components/admin/TelechargerPdfButton";
 import { Printer } from "lucide-react";
 import {
   BarChart,
@@ -94,12 +96,15 @@ export function CartonsChart({
 
 export function PrintButton() {
   return (
+    <div className="hidden items-center gap-2 md:flex print:hidden">
     <button
-      onClick={() => window.print()}
-      className="hidden items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3.5 py-2 text-sm font-semibold text-[#1e3a8a] shadow-sm md:flex hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 print:hidden"
+      onClick={lancerImpression}
+      className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3.5 py-2 text-sm font-semibold text-[#1e3a8a] shadow-sm hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
     >
       <Printer size={15} />
       Imprimer
     </button>
+    <TelechargerPdfButton className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3.5 py-2 text-sm font-semibold text-[#1e3a8a] shadow-sm hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" />
+    </div>
   );
 }

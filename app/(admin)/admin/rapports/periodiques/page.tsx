@@ -99,24 +99,38 @@ export default async function RapportsPeriodiquesPage({ searchParams }: { search
           ))}
         </div>
 
-        {/* Lecture */}
-        <div className={carte}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">Lecture de la période</h2>
+        {/* Lecture de la période */}
+        <div className={`${carte} !p-0 overflow-hidden`}>
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-800/40">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Lecture de la période</p>
+              <p className="mt-1 text-base font-bold capitalize text-slate-900 dark:text-slate-50">{r.datesLongues}</p>
+              <p className="mt-0.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {r.nbJours} jour{r.nbJours > 1 ? "s" : ""} · {t.commandes} commande{t.commandes > 1 ? "s" : ""} validée{t.commandes > 1 ? "s" : ""}
+              </p>
+            </div>
             {variation != null && (
-              <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${variation >= 0 ? "bg-teal-50 text-teal-700" : "bg-red-50 text-red-700"}`}>
-                {variation >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+              <span className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${variation >= 0 ? "bg-teal-50 text-teal-700" : "bg-red-50 text-red-700"}`}>
+                {variation >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                 {variation >= 0 ? "+" : "−"}
                 {pct(Math.abs(variation))} vs période précédente
               </span>
             )}
           </div>
-          <div className="mt-3">
+          <div className="px-5 pt-4">
             <BarreParts vol={t.vol} />
           </div>
-          <ul className="mt-3 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+          <ul className="grid gap-3 p-5 md:grid-cols-2">
             {r.lecture.map((l) => (
-              <li key={l}>{l}</li>
+              <li
+                key={l.titre}
+                className={`rounded-xl border-l-4 bg-slate-50 px-4 py-3 dark:bg-slate-800/40 ${
+                  l.ton === "bon" ? "border-teal-500" : l.ton === "alerte" ? "border-red-500" : l.ton === "info" ? "border-brand" : "border-slate-300 dark:border-slate-600"
+                }`}
+              >
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{l.titre}</p>
+                <p className="mt-1 text-sm font-medium leading-relaxed text-slate-800 dark:text-slate-200">{l.texte}</p>
+              </li>
             ))}
           </ul>
         </div>

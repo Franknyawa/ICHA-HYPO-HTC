@@ -30,23 +30,53 @@ import { peutAcceder, type Module } from "@/lib/auth/permissions";
 // Navigation sobre : icônes grises, seule la rubrique active est colorée.
 const COULEURS_ICONES: Record<string, string> = {};
 
-const TOUS_LES_ITEMS: { href: string; label: string; icon: LucideIcon; module: Module }[] = [
-  { href: "/admin/dashboard", label: "Tableau de bord", icon: LayoutDashboard, module: "dashboard" },
-  { href: "/admin/alertes", label: "Alertes", icon: BellRing, module: "alertes" },
-  { href: "/admin/points-vente", label: "Points de vente", icon: Store, module: "points-vente" },
-  { href: "/admin/relances", label: "Prospects indécis", icon: CalendarClock, module: "relances" },
-  { href: "/admin/commandes", label: "Commandes", icon: Truck, module: "commandes" },
-  { href: "/admin/stock", label: "Stock", icon: Package, module: "stock" },
-  { href: "/admin/caisse", label: "Caisse", icon: Wallet, module: "caisse" },
-  { href: "/admin/objectifs", label: "Objectifs", icon: Target, module: "objectifs" },
-  { href: "/admin/factures", label: "Facturation", icon: Receipt, module: "factures" },
-  { href: "/admin/tracking", label: "Tracking", icon: Navigation, module: "tracking" },
-  { href: "/admin/clients", label: "Clients", icon: Users2, module: "clients" },
-  { href: "/admin/rapports", label: "Rapports", icon: FileBarChart, module: "rapports" },
-  { href: "/admin/archives", label: "Archives", icon: Archive, module: "archives" },
-  { href: "/admin/parametres", label: "Paramètres", icon: Settings, module: "parametres" },
-  { href: "/admin/utilisateurs", label: "Utilisateurs", icon: UserCog, module: "utilisateurs" },
+type Item = { href: string; label: string; icon: LucideIcon; module: Module };
+
+// Rubriques regroupées par catégorie.
+const GROUPES: { titre: string; items: Item[] }[] = [
+  {
+    titre: "Pilotage",
+    items: [
+      { href: "/admin/dashboard", label: "Tableau de bord", icon: LayoutDashboard, module: "dashboard" },
+      { href: "/admin/alertes", label: "Alertes", icon: BellRing, module: "alertes" },
+      { href: "/admin/rapports", label: "Rapports", icon: FileBarChart, module: "rapports" },
+      { href: "/admin/objectifs", label: "Objectifs", icon: Target, module: "objectifs" },
+    ],
+  },
+  {
+    titre: "Ventes",
+    items: [
+      { href: "/admin/commandes", label: "Commandes", icon: Truck, module: "commandes" },
+      { href: "/admin/factures", label: "Facturation", icon: Receipt, module: "factures" },
+      { href: "/admin/clients", label: "Clients", icon: Users2, module: "clients" },
+    ],
+  },
+  {
+    titre: "Terrain",
+    items: [
+      { href: "/admin/points-vente", label: "Points de vente", icon: Store, module: "points-vente" },
+      { href: "/admin/relances", label: "Prospects indécis", icon: CalendarClock, module: "relances" },
+      { href: "/admin/tracking", label: "Tracking", icon: Navigation, module: "tracking" },
+    ],
+  },
+  {
+    titre: "Stock et finances",
+    items: [
+      { href: "/admin/stock", label: "Stock", icon: Package, module: "stock" },
+      { href: "/admin/caisse", label: "Caisse", icon: Wallet, module: "caisse" },
+    ],
+  },
+  {
+    titre: "Administration",
+    items: [
+      { href: "/admin/utilisateurs", label: "Utilisateurs", icon: UserCog, module: "utilisateurs" },
+      { href: "/admin/parametres", label: "Paramètres", icon: Settings, module: "parametres" },
+      { href: "/admin/archives", label: "Archives", icon: Archive, module: "archives" },
+    ],
+  },
 ];
+// Les 4 rubriques de la barre du bas (mobile) ; le reste est dans « Plus ».
+const PRIORITE_MOBILE = ["/admin/dashboard", "/admin/commandes", "/admin/points-vente", "/admin/caisse"];
 
 export function AdminShell({
   children,
@@ -56,7 +86,13 @@ export function AdminShell({
   role: string;
 }) {
   const pathname = usePathname();
-  const NAV_ITEMS = TOUS_LES_ITEMS.filter((i) => peutAcceder(role, i.module));
+  const groupes = GROUPES.map((g) => ({ ...g, items: g.items.filter((i) => peutAcceder(role, i.module)) })).filter((g) => g.items.length > 0);
+  const TOUS = groupes.flatMap((g) => g.items);
+  const BARRE = [
+    ...PRIORITE_MOBILE.map((h) => TOUS.find((i) => i.href === h)).filter((i): i is Item => Boolean(i)),
+    ...TOUS.filter((i) => !PRIORITE_MOBILE.includes(i.href)),
+  ].slice(0, 4);
+  const PLUS = TOUS.filter((i) => !BARRE.includes(i));
   const [showPlus, setShowPlus] = useState(false);
   const [alertesCount, setAlertesCount] = useState(0);
 
@@ -117,8 +153,12 @@ export function AdminShell({
           </p>
         </div>
 
-        <nav className="flex-1 space-y-0.5 px-3 py-2">
-          {NAV_ITEMS.map((item) => {
+        <nav className="admin-nav flex-1 space-y-4 overflow-y-auto px-3 py-2">
+          {groupes.map((g) => (
+            <div key={g.titre}>
+              <p className="mb-1 px-3 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">{g.titre}</p>
+              <div className="space-y-0.5">
+          {g.items.map((item) => {
             const active = pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
@@ -127,8 +167,8 @@ export function AdminShell({
                 href={item.href}
                 className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                   active
-                    ? "bg-[#1e3a8a] font-semibold text-white shadow-sm"
-                    : "font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200"
+                    ? "bg-[#1e3a8a] font-bold text-white shadow-sm"
+                    : "font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200"
                 }`}
               >
                 <Icon size={18} strokeWidth={active ? 2.2 : 1.9} className={active ? "text-white" : "text-slate-400"} />
@@ -146,6 +186,9 @@ export function AdminShell({
               </Link>
             );
           })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 p-3 dark:border-slate-800">
@@ -170,7 +213,7 @@ export function AdminShell({
           un menu "Plus" pour le reste, sinon 9 onglets ne tiennent pas sur
           un petit écran. */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 dark:border-slate-700 bg-white/95 backdrop-blur md:hidden print:hidden">
-        {NAV_ITEMS.slice(0, 4).map((item) => {
+        {BARRE.map((item) => {
           const active = pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
@@ -199,7 +242,7 @@ export function AdminShell({
         <button
           onClick={() => setShowPlus((v) => !v)}
           className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium ${
-            showPlus || NAV_ITEMS.slice(4).some((i) => pathname.startsWith(i.href))
+            showPlus || PLUS.some((i) => pathname.startsWith(i.href))
               ? "text-brand"
               : "text-slate-400 dark:text-slate-500"
           }`}
@@ -217,8 +260,14 @@ export function AdminShell({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-700" />
-            <div className="grid grid-cols-3 gap-2">
-              {NAV_ITEMS.slice(4).map((item) => {
+            {groupes.map((g) => {
+              const items = g.items.filter((i) => PLUS.includes(i));
+              if (items.length === 0) return null;
+              return (
+                <div key={g.titre} className="mb-3">
+                  <p className="mb-1.5 px-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">{g.titre}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {items.map((item) => {
                 const active = pathname.startsWith(item.href);
                 const Icon = item.icon;
                 return (
@@ -242,7 +291,11 @@ export function AdminShell({
                   </Link>
                 );
               })}
-            </div>
+            
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

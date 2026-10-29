@@ -312,7 +312,7 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
                 total={total?.brut}
                 nomFichier={`rapport-${vue}`}
               />
-              <ImprimerButton />
+              <ImprimerButton sansPdf />
             </div>
           </div>
         </div>

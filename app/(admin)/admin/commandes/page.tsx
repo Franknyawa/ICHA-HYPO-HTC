@@ -1,7 +1,7 @@
 import { listerVilles } from "@/lib/geo/synchro-villes";
 import { Fragment } from "react";
 import Link from "next/link";
-import { Plus, Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Pencil, UserCog, CalendarClock } from "lucide-react";
+import { Search, Plus, Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Pencil, UserCog, CalendarClock } from "lucide-react";
 import { listCommandes, countCommandesParStatut, type StatutCommandeFiltre } from "@/lib/queries/commandes";
 import { prisma } from "@/lib/prisma";
 import { jourDouala } from "@/lib/utils/periode";
@@ -64,6 +64,7 @@ export default async function CommandesPage({
     dateFrom?: string;
     dateTo?: string;
     vue?: string;
+    q?: string;
   };
 }) {
   const session = await requireAdminPage("commandes");
@@ -76,8 +77,9 @@ export default async function CommandesPage({
   const binomeId = searchParams.binomeId ?? "";
   const dateFrom = searchParams.dateFrom ?? "";
   const dateTo = searchParams.dateTo ?? "";
+  const q = searchParams.q ?? "";
 
-  const filtresSansStatut = { villeId, commercialId, binomeId, dateFrom, dateTo };
+  const filtresSansStatut = { villeId, commercialId, binomeId, dateFrom, dateTo, search: q };
 
   const [{ data, pagination }, { parStatut, total: totalToutStatut }, villes, commerciaux, binomes] = await Promise.all([
     listCommandes({ page, statut, ...filtresSansStatut, livraison: "courantes" }),
@@ -95,7 +97,7 @@ export default async function CommandesPage({
   const vueAvenir = searchParams.vue === "avenir";
   const aVenirListe = (await listCommandes({ pageSize: 100, statut, ...filtresSansStatut, livraison: "avenir" })).data;
 
-  const baseQuery = { statut, villeId, commercialId, binomeId, dateFrom, dateTo };
+  const baseQuery = { statut, villeId, commercialId, binomeId, dateFrom, dateTo, q };
 
   return (
     <main>
@@ -123,14 +125,14 @@ export default async function CommandesPage({
         <div className="mb-4">
           {vueAvenir ? (
             <Link
-              href={`/admin/commandes?${buildQuery({ ...filtresSansStatut })}`}
+              href={`/admin/commandes?${buildQuery({ ...filtresSansStatut, search: undefined, q })}`}
               className="inline-flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 dark:bg-slate-700"
             >
               <ChevronLeft size={16} /> Retour aux commandes
             </Link>
           ) : (
             <Link
-              href={`/admin/commandes?${buildQuery({ ...filtresSansStatut, vue: "avenir" })}`}
+              href={`/admin/commandes?${buildQuery({ ...filtresSansStatut, search: undefined, q, vue: "avenir" })}`}
               className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-600"
             >
               <CalendarClock size={16} />
@@ -143,7 +145,7 @@ export default async function CommandesPage({
         {/* Pastilles de filtre rapide par statut */}
         <div className="mb-4 flex flex-wrap gap-2">
           <Link
-            href={`/admin/commandes?${buildQuery({ ...filtresSansStatut })}`}
+            href={`/admin/commandes?${buildQuery({ ...filtresSansStatut, search: undefined, q })}`}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
               !statut ? "bg-brand text-white" : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 ring-1 ring-slate-200 dark:ring-slate-700"
             }`}
@@ -153,7 +155,7 @@ export default async function CommandesPage({
           {(Object.keys(CONFIG_STATUT) as StatutCommandeFiltre[]).map((s) => (
             <Link
               key={s}
-              href={`/admin/commandes?${buildQuery({ ...filtresSansStatut, statut: s })}`}
+              href={`/admin/commandes?${buildQuery({ ...filtresSansStatut, search: undefined, q, statut: s })}`}
               className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
                 statut === s ? "bg-brand text-white" : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 ring-1 ring-slate-200 dark:ring-slate-700"
               }`}
@@ -165,6 +167,10 @@ export default async function CommandesPage({
 
         {/* Filtres */}
         <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-5" action="/admin/commandes">
+          <div className="relative col-span-2 md:col-span-5">
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input type="search" name="q" defaultValue={q} placeholder="Rechercher : point de vente, interlocuteur, téléphone, quartier, commercial" className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
+          </div>
           <select name="statut" defaultValue={statut ?? ""} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100">
             <option value="">Tous les statuts</option>
             <option value="EN_ATTENTE">En attente</option>

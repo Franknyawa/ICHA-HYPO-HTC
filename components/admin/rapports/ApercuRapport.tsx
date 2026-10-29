@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Printer, X, Loader2 } from "lucide-react";
+import { TelechargerPdfButton } from "@/components/admin/TelechargerPdfButton";
 import { SiriMark } from "@/components/brand/SiriMark";
 import { formatMontant } from "@/lib/utils/format";
 import type { ApercuRapport as Apercu } from "@/lib/queries/rapports";
@@ -90,13 +91,18 @@ export function ApercuRapport({
       <div className="apercu-carte w-full max-w-4xl rounded-2xl bg-white p-5 text-slate-900 shadow-2xl md:p-8">
         <div className="apercu-no-print mb-4 flex items-center justify-end gap-2">
           <button
-            onClick={() => window.print()}
+            onClick={() => setTimeout(() => window.print(), 50)}
             disabled={!data}
             className="flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             <Printer size={15} />
             Imprimer
           </button>
+          <TelechargerPdfButton
+            selecteur=".apercu-carte"
+            nom="fiche-rapport"
+            className="flex items-center gap-1.5 rounded-xl bg-slate-100 px-3.5 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+          />
           <button
             onClick={onClose}
             aria-label="Fermer"

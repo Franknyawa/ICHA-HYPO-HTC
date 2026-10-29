@@ -66,7 +66,7 @@ export function CaisseView({
               lignes={lignesTexte}
             />
             <ExportCsvButton colonnes={colonnesExport} lignes={lignesNombres} nomFichier="caisse" />
-            <ImprimerButton />
+            <ImprimerButton sansPdf />
           </div>
         }
       />

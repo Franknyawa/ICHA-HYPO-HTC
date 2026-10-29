@@ -130,3 +130,18 @@ input[type="date"] {
   box-sizing: border-box;
 }
 input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; }
+
+/* Interface admin : écriture plus grasse et textes secondaires plus contrastés pour une meilleure lisibilité. */
+.admin-vie,
+.admin-nav {
+  font-weight: 500;
+}
+.admin-vie .font-normal { font-weight: 500; }
+.admin-vie .font-medium { font-weight: 600; }
+.admin-vie .font-semibold { font-weight: 700; }
+.admin-vie .font-bold { font-weight: 800; }
+html:not(.dark) .admin-vie .text-slate-400 { color: #64748b; }
+html:not(.dark) .admin-vie .text-slate-500 { color: #475569; }
+html:not(.dark) .admin-vie .text-slate-600 { color: #334155; }
+html.dark .admin-vie .text-slate-400 { color: #a8b3c4; }
+html.dark .admin-vie .text-slate-500 { color: #b9c3d3; }

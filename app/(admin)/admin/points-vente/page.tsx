@@ -108,7 +108,7 @@ export default async function PointsVentePage({
               colonnes={colonnesPdf}
               lignes={lignesPdf}
             />
-            <ImprimerButton />
+            <ImprimerButton sansPdf />
           </div>
         }
       />

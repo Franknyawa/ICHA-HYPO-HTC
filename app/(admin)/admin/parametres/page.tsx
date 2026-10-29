@@ -1172,28 +1172,127 @@ function SessionDureeManager() {
 
 // --- Page principale -----------------------------------------------------
 
-export default function ParametresPage() {
-  return (
-    <main>
-      <AdminPageHeader
-        title="Paramètres"
-        subtitle="Types de boutique, produits, binômes, objectifs — utilisés dans le formulaire terrain"
-      />
+type Section = { id: string; label: string; desc: string; icon: React.ElementType; couleur: string; contenu: React.ReactNode };
 
-      <div className="grid gap-4 p-4 md:grid-cols-2 md:p-6">
+const SECTIONS: Section[] = [
+  {
+    id: "catalogue",
+    label: "Catalogue",
+    desc: "Types de boutique, produits, prix et tarifs par type de point de vente.",
+    icon: Package,
+    couleur: "#1e40af",
+    contenu: (
+      <>
         <SimpleEntityManager apiBase="/api/parametres/types" labelSingulier="Type de boutique" icon={Store} color="#1e40af" avecOrdre />
+        <ProduitsManager />
+        <TarifsManager />
+      </>
+    ),
+  },
+  {
+    id: "equipe",
+    label: "Équipe",
+    desc: "Binômes de terrain et agents de facturation.",
+    icon: Users2,
+    couleur: "#0f766e",
+    contenu: (
+      <>
         <SimpleEntityManager apiBase="/api/parametres/binomes" labelSingulier="Binôme" icon={Users2} color="#0f766e" />
         <SimpleEntityManager apiBase="/api/parametres/agents-facturation" labelSingulier="Agent de facturation" labelPluriel="Agents de facturation" icon={Users2} color="#b45309" />
-        <ProduitsManager />
-        <div className="md:col-span-2">
-          <ObjectifsManager />
-        </div>
+      </>
+    ),
+  },
+  {
+    id: "objectifs",
+    label: "Objectifs",
+    desc: "Objectifs par binôme, par commercial et par territoire.",
+    icon: Target,
+    couleur: "#7c3aed",
+    contenu: (
+      <>
+        <ObjectifsManager />
         <ObjectifsIndividuelsManager />
-        <SessionDureeManager />
-        <SeuilsAlertesManager />
-        <div className="md:col-span-2">
-          <TarifsManager />
         <ObjectifsTerritoireManager />
+      </>
+    ),
+  },
+  {
+    id: "alertes",
+    label: "Alertes et stock",
+    desc: "Délais qui déclenchent les alertes et seuils de stock.",
+    icon: BellRing,
+    couleur: "#dc2626",
+    contenu: <SeuilsAlertesManager />,
+  },
+  {
+    id: "securite",
+    label: "Sécurité",
+    desc: "Durée de session des utilisateurs.",
+    icon: Clock,
+    couleur: "#334155",
+    contenu: <SessionDureeManager />,
+  },
+];
+
+export default function ParametresPage() {
+  const [actif, setActif] = useState(SECTIONS[0].id);
+  useEffect(() => {
+    const h = window.location.hash.replace("#", "");
+    if (SECTIONS.some((x) => x.id === h)) setActif(h);
+  }, []);
+  const choisir = (id: string) => {
+    setActif(id);
+    try {
+      history.replaceState(null, "", `#${id}`);
+    } catch {}
+  };
+  const courant = SECTIONS.find((x) => x.id === actif) ?? SECTIONS[0];
+  const Icone = courant.icon;
+
+  return (
+    <main>
+      <AdminPageHeader title="Paramètres" subtitle="Réglages de l'application — réservés au super administrateur" />
+
+      <div className="grid gap-5 p-4 md:p-6 lg:grid-cols-[250px_minmax(0,1fr)]">
+        {/* Menu des catégories */}
+        <nav className="flex gap-2 overflow-x-auto pb-1 lg:sticky lg:top-4 lg:flex-col lg:self-start lg:overflow-visible">
+          {SECTIONS.map((x) => {
+            const I = x.icon;
+            const on = x.id === actif;
+            return (
+              <button
+                key={x.id}
+                onClick={() => choisir(x.id)}
+                className={`flex shrink-0 items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold transition-all ${
+                  on
+                    ? "bg-white text-slate-900 shadow-md ring-2 dark:bg-slate-900 dark:text-white"
+                    : "bg-white/60 text-slate-600 ring-1 ring-slate-200 hover:bg-white dark:bg-slate-900/50 dark:text-slate-300 dark:ring-slate-800"
+                }`}
+                style={on ? { boxShadow: `0 6px 18px -8px ${x.couleur}`, outline: `2px solid ${x.couleur}`, outlineOffset: "-2px" } : undefined}
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white" style={{ backgroundColor: x.couleur }}>
+                  <I size={17} />
+                </span>
+                <span className="whitespace-nowrap">{x.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Contenu de la catégorie */}
+        <div className="min-w-0 space-y-4">
+          <div className="flex items-center gap-4 rounded-2xl p-5 text-white shadow-sm" style={{ background: `linear-gradient(135deg, ${courant.couleur}, ${courant.couleur}cc)` }}>
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+              <Icone size={24} />
+            </span>
+            <div>
+              <h2 className="text-xl font-extrabold">{courant.label}</h2>
+              <p className="text-sm font-semibold text-white/85">{courant.desc}</p>
+            </div>
+          </div>
+          <div key={courant.id} className="space-y-4">
+            {courant.contenu}
+          </div>
         </div>
       </div>
     </main>

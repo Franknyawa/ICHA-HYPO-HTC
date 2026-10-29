@@ -3,7 +3,7 @@ import { chargerVentes, repartirVente } from "@/lib/queries/rapports";
 import { getCaisseResume } from "@/lib/queries/caisse";
 import { NOM_CLIENT_DIVERS } from "@/lib/services/client-divers";
 import { ajouterJours, debutJour, finJour, jourDouala } from "@/lib/utils/periode";
-import { partsVente, volAjouter, volVide, type Vol } from "@/lib/utils/cartons-equiv";
+import { partsVente, texteDetail, volAjouter, volVide, type Vol } from "@/lib/utils/cartons-equiv";
 
 export type TypePeriode = "semaine" | "mois";
 
@@ -66,8 +66,13 @@ export type RapportPeriodique = {
   commerciaux: ClassementLigne[];
   pointsVente: ClassementLigne[];
   caisse: { encaisse: number; depenses: number };
-  lecture: string[];
+  lecture: Lecture[];
+  /** « du lundi 19 au dimanche 25 octobre 2026 » */
+  datesLongues: string;
+  nbJours: number;
 };
+
+export type Lecture = { titre: string; texte: string; ton: "info" | "bon" | "alerte" | "neutre" };
 
 type Agg = { vol: Vol; commandes: number };
 const eqDe = (v: Vol) => v.gros + v.detailEq;
@@ -188,19 +193,62 @@ export async function getRapportPeriodique(type: TypePeriode, ref?: string): Pro
     ? { nom: "Commandes enregistrées au bureau", sous: "superviseurs et administrateurs", vol: bureau.reduce((s, b) => volAjouter(s, b.vol), volVide()), commandes: bureau.reduce((s, b) => s + b.commandes, 0) }
     : null;
 
-  // Lecture automatique : phrases utiles pour le marketing.
+  // Lecture de la période : points clés rédigés pour le marketing.
   const parts = partsVente(cur.total);
-  const lecture: string[] = [];
-  if (parts) {
-    lecture.push(`Sur la période, ${pct(parts.cartons)} % des ventes se font en cartons et ${pct(parts.detail)} % au détail (sachets et filets à l'unité).`);
-  } else {
-    lecture.push("Aucune vente validée sur cette période.");
-  }
-  if (produits[0]) lecture.push(`Produit n°1 : ${produits[0].code} (${pct(produits[0].partProduit)} % du volume).`);
-  const plusDetail = produits.filter((p) => p.parts && p.eq > 0).sort((a, b) => (b.parts!.detail - a.parts!.detail))[0];
-  if (plusDetail?.parts && plusDetail.parts.detail > 0) lecture.push(`Produit le plus acheté au détail : ${plusDetail.code} (${pct(plusDetail.parts.detail)} % de ses ventes).`);
+  const partsPrec = partsVente(prev.total);
+  const lecture: Lecture[] = [];
   const vEq = variation(eqTotal, eqPrec);
-  if (vEq != null) lecture.push(`Volume ${vEq >= 0 ? "en hausse" : "en baisse"} de ${pct(Math.abs(vEq))} % par rapport à la période précédente.`);
+  const detailPrec = partsPrec?.detail ?? null;
+  if (!parts) {
+    lecture.push({ titre: "Aucune vente", texte: "Aucune commande validée sur cette période.", ton: "neutre" });
+  } else {
+    lecture.push({
+      titre: "Répartition des ventes",
+      texte: `${pct(parts.cartons)} % du volume est vendu en cartons et ${pct(parts.detail)} % au détail (sachets et filets à l'unité).${
+        detailPrec != null ? ` Le détail représentait ${pct(detailPrec)} % sur la période précédente (${parts.detail >= detailPrec ? "+" : "−"}${pct(Math.abs(Math.round((parts.detail - detailPrec) * 10) / 10))} point).` : ""
+      }`,
+      ton: "info",
+    });
+  }
+  if (vEq != null) {
+    lecture.push({
+      titre: "Évolution du volume",
+      texte: `Volume ${vEq >= 0 ? "en hausse" : "en baisse"} de ${pct(Math.abs(vEq))} % par rapport à ${prec.libelle.toLowerCase()} (${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(eqPrec)} → ${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(eqTotal)} cartons équivalents).`,
+      ton: vEq >= 0 ? "bon" : "alerte",
+    });
+  }
+  if (produits[0]) {
+    lecture.push({
+      titre: "Produit n°1",
+      texte: `${produits[0].code} réalise ${pct(produits[0].partProduit)} % du volume${produits[1] ? `, devant ${produits[1].code} (${pct(produits[1].partProduit)} %)` : ""}.`,
+      ton: "bon",
+    });
+  }
+  const plusDetail = produits.filter((p) => p.parts && p.eq > 0).sort((a, b) => b.parts!.detail - a.parts!.detail)[0];
+  if (plusDetail?.parts && plusDetail.parts.detail > 0) {
+    lecture.push({
+      titre: "Produit le plus acheté au détail",
+      texte: `${plusDetail.code} : ${pct(plusDetail.parts.detail)} % de ses ventes se font à l'unité (${texteDetail(plusDetail.vol)}).`,
+      ton: "info",
+    });
+  }
+  const meilleur = [...cur.jours.entries()].sort((a, b) => eqDe(b[1].vol) - eqDe(a[1].vol))[0];
+  if (meilleur && eqDe(meilleur[1].vol) > 0) {
+    lecture.push({
+      titre: "Meilleur jour",
+      texte: `${new Date(`${meilleur[0]}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })} : ${meilleur[1].commandes} commande(s), ${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(meilleur[1].vol.gros)} cartons${meilleur[1].vol.sd + meilleur[1].vol.fd > 0 ? ` et ${texteDetail(meilleur[1].vol)} au détail` : ""}.`,
+      ton: "bon",
+    });
+  }
+  const actifs = [...cur.commerciaux.values()].filter((c) => !c.bureau).length;
+  lecture.push({
+    titre: "Activité terrain",
+    texte: `${visites} visite(s), ${nouveauxPv} nouveau(x) point(s) de vente recensé(s), ${actifs} commercial(aux) ayant eu au moins une commande validée.`,
+    ton: "neutre",
+  });
+
+  const nbJours = Math.round((debutJour(periode.au).getTime() - debutJour(periode.du).getTime()) / 86400000) + 1;
+  const jl = (j: string) => new Date(`${j}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
   return {
     periode,
@@ -212,5 +260,7 @@ export async function getRapportPeriodique(type: TypePeriode, ref?: string): Pro
     pointsVente: top(cur.pvs, 10),
     caisse: { encaisse: caisse.recettesJour, depenses: caisse.depensesJour },
     lecture,
+    datesLongues: `du ${jl(periode.du)} au ${jl(periode.au)}`,
+    nbJours,
   };
 }

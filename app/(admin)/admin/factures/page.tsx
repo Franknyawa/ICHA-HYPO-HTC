@@ -1,6 +1,6 @@
 import { listerVilles } from "@/lib/geo/synchro-villes";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Receipt, FileMinus2, Undo2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Receipt, FileMinus2, Undo2 } from "lucide-react";
 import { listCommandes } from "@/lib/queries/commandes";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
@@ -25,7 +25,7 @@ function buildQuery(params: Record<string, string | undefined>) {
 export default async function FacturesPage({
   searchParams,
 }: {
-  searchParams: { onglet?: string; page?: string; commercialId?: string; villeId?: string; dateFrom?: string; dateTo?: string };
+  searchParams: { onglet?: string; page?: string; commercialId?: string; villeId?: string; dateFrom?: string; dateTo?: string; q?: string; typeId?: string };
 }) {
   await requireAdminPage("factures");
   const onglet = searchParams.onglet === "avoirs" || searchParams.onglet === "retours" ? searchParams.onglet : "factures";
@@ -34,11 +34,13 @@ export default async function FacturesPage({
   const villeId = searchParams.villeId ?? "";
   const dateFrom = searchParams.dateFrom ?? "";
   const dateTo = searchParams.dateTo ?? "";
+  const q = searchParams.q ?? "";
+  const typeId = searchParams.typeId ?? "";
 
   const estFactures = onglet === "factures";
-  const [liste, villes, commerciaux, corrections] = await Promise.all([
+  const [liste, villes, commerciaux, corrections, types] = await Promise.all([
     estFactures
-      ? listCommandes({ page, commercialId, villeId, dateFrom, dateTo, statuts: ["EN_LIVRAISON", "LIVREE"] })
+      ? listCommandes({ page, commercialId, villeId, dateFrom, dateTo, search: q, typeId, statuts: ["EN_LIVRAISON", "LIVREE"] })
       : Promise.resolve(null),
     estFactures ? listerVilles() : Promise.resolve([]),
     estFactures
@@ -49,11 +51,12 @@ export default async function FacturesPage({
         })
       : Promise.resolve([]),
     !estFactures ? listerCorrections(onglet === "avoirs" ? "AVOIR" : "RETOUR") : Promise.resolve([]),
+    prisma.typePointVente.findMany({ where: { actif: true }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
   ]);
   const data = liste?.data ?? [];
   const pagination = liste?.pagination ?? { page: 1, totalPages: 1, total: 0 };
 
-  const baseQuery = { commercialId, villeId, dateFrom, dateTo };
+  const baseQuery = { commercialId, villeId, dateFrom, dateTo, q, typeId };
 
   return (
     <main>
@@ -116,6 +119,16 @@ export default async function FacturesPage({
 
         {estFactures && (<>
         <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 md:grid-cols-4" action="/admin/factures">
+          <div className="relative col-span-2 md:col-span-4">
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input type="search" name="q" defaultValue={q} placeholder="Rechercher : point de vente, interlocuteur, téléphone, quartier, commercial" className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
+          </div>
+          <select name="typeId" defaultValue={typeId} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100">
+            <option value="">Tous les types de boutique</option>
+            {types.map((t) => (
+              <option key={t.id} value={t.id}>{t.nom}</option>
+            ))}
+          </select>
           <select name="commercialId" defaultValue={commercialId} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-100">
             <option value="">Tous les commerciaux</option>
             {commerciaux.map((c) => (

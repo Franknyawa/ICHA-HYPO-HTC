@@ -19,7 +19,30 @@ export type ListCommandesParams = {
   dateTo?: string;
   /** « avenir » : livraisons prévues après aujourd'hui (à traiter ou en livraison) ; « courantes » : tout le reste. */
   livraison?: "avenir" | "courantes";
+  /** Recherche : point de vente, interlocuteur, téléphone, commercial. */
+  search?: string;
+  /** Type de boutique du point de vente. */
+  typeId?: string;
 };
+
+function filtresRecherche(params: { search?: string; typeId?: string }): Prisma.CommandeWhereInput[] {
+  const out: Prisma.CommandeWhereInput[] = [];
+  const q = params.search?.trim();
+  if (q) {
+    out.push({
+      OR: [
+        { pointVente: { nom: { contains: q, mode: "insensitive" } } },
+        { pointVente: { vendeur: { contains: q, mode: "insensitive" } } },
+        { pointVente: { telephoneVendeur: { contains: q } } },
+        { pointVente: { quartier: { nom: { contains: q, mode: "insensitive" } } } },
+        { commercial: { nom: { contains: q, mode: "insensitive" } } },
+        { commercial: { prenom: { contains: q, mode: "insensitive" } } },
+      ],
+    });
+  }
+  if (params.typeId) out.push({ pointVente: { OR: [{ typeId: params.typeId }, { typesIds: { has: params.typeId } }] } });
+  return out;
+}
 
 export async function listCommandes(params: ListCommandesParams) {
   await assurerMontantsConformes();
@@ -36,7 +59,8 @@ export async function listCommandes(params: ListCommandesParams) {
   };
   const where: Prisma.CommandeWhereInput = {
     archivedAt: null,
-    ...(params.livraison === "avenir" ? { AND: [aVenir] } : params.livraison === "courantes" ? { NOT: { AND: [aVenir, { dateCommande: { lt: debutJour(jourDouala()) } }] } } : {}),
+    AND: [...filtresRecherche(params), ...(params.livraison === "avenir" ? [aVenir] : [])],
+    ...(params.livraison === "courantes" ? { NOT: { AND: [aVenir, { dateCommande: { lt: debutJour(jourDouala()) } }] } } : {}),
     ...(params.statut ? { statut: params.statut } : params.statuts ? { statut: { in: params.statuts } } : {}),
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),
     ...(params.commercialId ? { commercialId: params.commercialId } : {}),
@@ -91,6 +115,7 @@ export async function countCommandesParStatut(
   await assurerMontantsConformes();
   const where: Prisma.CommandeWhereInput = {
     archivedAt: null,
+    AND: filtresRecherche(params),
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),
     ...(params.commercialId ? { commercialId: params.commercialId } : {}),
     ...(params.binomeId ? { commercial: { binomeId: params.binomeId } } : {}),
