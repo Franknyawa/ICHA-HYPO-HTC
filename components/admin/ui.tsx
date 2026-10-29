@@ -130,8 +130,8 @@ export function Panneau({
 /** Titre de section discret mais coloré (puce dégradée + libellé). */
 export function TitreSection({ children, ton = "bleu" }: { children: ReactNode; ton?: Ton }) {
   return (
-    <h2 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-      <span className={`h-3.5 w-1 rounded-full bg-gradient-to-b ${TONS[ton].puce}`} />
+    <h2 className="mb-3 flex items-center gap-2.5 text-sm font-extrabold uppercase tracking-[0.12em] text-slate-900 dark:text-slate-50">
+      <span className={`h-5 w-1.5 rounded-full bg-gradient-to-b ${TONS[ton].puce}`} />
       {children}
     </h2>
   );

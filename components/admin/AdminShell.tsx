@@ -156,7 +156,7 @@ export function AdminShell({
         <nav className="admin-nav flex-1 space-y-4 overflow-y-auto px-3 py-2">
           {groupes.map((g) => (
             <div key={g.titre}>
-              <p className="mb-1 px-3 text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">{g.titre}</p>
+              <p className="mb-1 px-3 text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-700 dark:text-slate-300">{g.titre}</p>
               <div className="space-y-0.5">
           {g.items.map((item) => {
             const active = pathname.startsWith(item.href);
