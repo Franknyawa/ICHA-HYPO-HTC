@@ -1777,3 +1777,14 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Rapport hebdo/mensuel : « Lecture de la période » détaillée (dates longues, nombre de jours, bloc de points clés colorés).
 - Menu admin regroupé : Pilotage / Ventes / Terrain / Stock et finances / Administration (mobile : 4 rubriques + « Plus » groupé). Police admin plus grasse et textes secondaires plus contrastés (globals.css).
 - Page Paramètres : navigation par catégories (Catalogue, Équipe, Objectifs, Alertes et stock, Sécurité), bandeau de section.
+
+## Fusion des clients en doublon (2026-10-29)
+- Attribution des codes clients désactivée pour l'instant (plus d'attribution automatique, bouton retiré, API codes → 409). La colonne `code_client` reste en base.
+- `/admin/clients/doublons` : bouton « Fusionner » par groupe (super admin) → choix du profil conservé, des fiches à fusionner et du nom définitif.
+- `POST /api/points-vente/fusion` (`lib/services/fusion-clients.ts`, transaction) : commandes, ventes, visites, photos, prospects et clients des doublons passent sur le profil conservé ; champs vides complétés ; doublons archivés (repère « Fusionné dans … »). Stock et caisse inchangés (ils référencent commandes/ventes, qui gardent montants et identité).
+
+## Fusion des clients, client divers (2026-10-29, soir)
+- Attribution des codes clients suspendue (plus d'attribution à la validation ; l'API renvoie 409). La colonne `code_client` reste en base.
+- Fusion des doublons (super admin) : `/admin/clients/doublons` → « Fusionner » (`FusionGroupe`, `POST /api/points-vente/fusion`, `lib/services/fusion-clients.ts`) : commandes, ventes, visites, photos, prospects rattachés au profil conservé, champs vides complétés, nom définitif au choix, doublons archivés. Stock et caisse inchangés (ils référencent les commandes/ventes, pas le client).
+- « CLIENT DIVERS » n'est plus un client : exclu de l'onglet Clients, du compteur du tableau de bord et des doublons ; sa fiche client est inaccessible ; données de profil effacées via `docs/nettoyage-client-divers-2026-10-29.sql`. Ses commandes/factures restent (ventes au détail réelles).
+- Les fiches archivées (fusionnées) n'apparaissent plus dans Clients.

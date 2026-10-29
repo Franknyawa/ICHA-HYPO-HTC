@@ -1,4 +1,3 @@
-import { attribuerCodeClient } from "@/lib/services/code-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -179,9 +178,7 @@ export async function PATCH(
       await rafraichirAlerteLivraison(params.id);
     }
 
-    if (statutCible === "EN_LIVRAISON" || statutCible === "LIVREE") {
-      await attribuerCodeClient(existante.pointVenteId);
-    }
+    // Attribution automatique du code client désactivée pour l'instant (fusion des doublons d'abord).
 
     if (statutCible === "EN_LIVRAISON" && existante.statut !== "EN_LIVRAISON") {
       const nomVendeur = existante.pointVente.vendeur || existante.pointVente.nom;

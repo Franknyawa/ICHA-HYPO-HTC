@@ -49,6 +49,8 @@ export async function getClientsAcheteurs(f: FiltreClients): Promise<ClientAchet
   const recherche = f.search?.trim();
   const where: Prisma.PointVenteWhereInput = {
     AND: [
+      // Le « client divers » (ventes au détail du jour) n'est pas un client ; les fiches archivées (fusionnées) non plus.
+      { archivedAt: null, nom: { not: "CLIENT DIVERS" } },
       { commandes: { some: commandeOk } },
       ...(f.villeId ? [{ villeId: f.villeId }] : []),
       ...(f.quartier?.trim() ? [{ quartier: { nom: { contains: f.quartier.trim(), mode: "insensitive" as const } } }] : []),

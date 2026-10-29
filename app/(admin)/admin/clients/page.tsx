@@ -98,7 +98,7 @@ export default async function ClientsPage({
         <div className="flex flex-wrap items-center gap-2">
           <ClientsActions clients={clients} sousTitre={criteres} />
           <Link href="/admin/clients/doublons" className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-            <Copy size={15} /> Doublons et codes clients
+            <Copy size={15} /> Doublons de clients
           </Link>
         </div>
 

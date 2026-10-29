@@ -1,45 +1,25 @@
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
-import { prisma } from "@/lib/prisma";
 import { requireAdminPage } from "@/lib/auth/rbac";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
-import { AttribuerCodesButton } from "@/components/admin/AttribuerCodesButton";
+import { FusionGroupe } from "@/components/admin/FusionGroupe";
 import { trouverDoublons } from "@/lib/queries/doublons-clients";
-import { NOM_CLIENT_DIVERS } from "@/lib/services/client-divers";
 
 export const dynamic = "force-dynamic";
 
 export default async function DoublonsPage() {
   const session = await requireAdminPage("clients");
   const superAdmin = session.role === "SUPER_ADMIN";
-  const [{ groupes, total }, manquantsRows] = await Promise.all([
-    trouverDoublons(),
-    prisma.$queryRaw<{ n: bigint }[]>`
-      SELECT COUNT(*)::bigint AS n FROM points_vente p
-      WHERE p.code_client IS NULL AND p.nom <> ${NOM_CLIENT_DIVERS}
-        AND EXISTS (SELECT 1 FROM commandes c WHERE c.point_vente_id = p.id AND c.statut IN ('EN_LIVRAISON','LIVREE'))`.catch(() => [{ n: BigInt(0) }]),
-  ]);
-  const manquants = Number(manquantsRows[0]?.n ?? 0);
+  const { groupes, total } = await trouverDoublons();
   const concernes = groupes.reduce((s, g) => s + g.membres.length, 0);
 
   return (
     <main>
-      <AdminPageHeader title="Doublons et codes clients" subtitle={`${total} points de vente analysés`} />
+      <AdminPageHeader title="Doublons de clients" subtitle={`${total} points de vente analysés`} />
       <div className="space-y-4 p-4 md:p-6">
         <Link href="/admin/clients" className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300">
           <ArrowLeft size={16} /> Retour aux clients
         </Link>
-
-        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
-          <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">Code client</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Chaque client reçoit un code unique (CLI-0001, CLI-0002…) à la validation de sa première commande ; il ne change jamais.
-            Pour les clients déjà existants, vérifiez d&apos;abord la liste ci-dessous, archivez ou corrigez les doublons, puis attribuez les codes.
-          </p>
-          <div className="mt-3">
-            {superAdmin ? <AttribuerCodesButton manquants={manquants} /> : <p className="text-xs font-medium text-slate-400">Seul le super administrateur peut attribuer les codes et modifier les fiches.</p>}
-          </div>
-        </div>
 
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
           <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">
@@ -47,7 +27,7 @@ export default async function DoublonsPage() {
           </h2>
           <p className="mt-1 text-xs text-slate-400">
             Critères : même téléphone, même nom ou nom très proche dans la même ville, même emplacement GPS. Rien n&apos;est modifié automatiquement :
-            ouvrez chaque fiche pour corriger les données, ou archivez le doublon sans commande depuis sa fiche.
+            utilisez « Fusionner » pour regrouper les fiches d&apos;un même client en un seul profil (nom définitif au choix). Le stock et la caisse ne changent pas.
           </p>
         </div>
 
@@ -63,6 +43,7 @@ export default async function DoublonsPage() {
               {g.raisons.map((r) => (
                 <span key={r} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">{r}</span>
               ))}
+              {superAdmin && <span className="ml-auto"><FusionGroupe membres={g.membres} /></span>}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-sm">

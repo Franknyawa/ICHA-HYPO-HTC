@@ -127,7 +127,7 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
               )}
             </div>
             <div className="flex flex-wrap gap-2 print:hidden">
-              {aCommandeValidee > 0 && (
+              {aCommandeValidee > 0 && pv.nom !== "CLIENT DIVERS" && (
                 <Link href={`/admin/clients/${pv.id}`} className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">
                   <Users2 size={15} />
                   Fiche client (mouvements)

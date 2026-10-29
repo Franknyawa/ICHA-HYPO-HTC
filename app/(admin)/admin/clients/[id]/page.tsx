@@ -86,7 +86,7 @@ export default async function ClientDetailPage({ params, searchParams }: { param
   const [pv, compte] = await Promise.all([getPointVenteDetail(params.id), getCompteClient(params.id)]);
   const codeRows = await prisma.$queryRaw<{ code: string | null }[]>`SELECT code_client AS code FROM points_vente WHERE id = ${params.id}`.catch(() => []);
   const codeClient = codeRows[0]?.code ?? null;
-  if (!pv) {
+  if (!pv || pv.nom === "CLIENT DIVERS") {
     notFound();
     return null;
   }

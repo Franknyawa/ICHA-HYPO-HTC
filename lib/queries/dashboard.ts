@@ -37,7 +37,7 @@ export async function getDashboardKpis() {
     prisma.prospect.count({ where: { statut: { in: ["NOUVEAU", "A_RELANCER"] } } }),
     // « Clients » = points de vente ayant au moins une commande validée.
     prisma.pointVente.count({
-      where: { archivedAt: null, commandes: { some: { valideeAt: { not: null }, statut: { not: "ANNULEE" } } } },
+      where: { archivedAt: null, nom: { not: "CLIENT DIVERS" }, commandes: { some: { valideeAt: { not: null }, statut: { not: "ANNULEE" } } } },
     }),
   ]);
 
