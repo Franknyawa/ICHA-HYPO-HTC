@@ -1788,3 +1788,9 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Fusion des doublons (super admin) : `/admin/clients/doublons` → « Fusionner » (`FusionGroupe`, `POST /api/points-vente/fusion`, `lib/services/fusion-clients.ts`) : commandes, ventes, visites, photos, prospects rattachés au profil conservé, champs vides complétés, nom définitif au choix, doublons archivés. Stock et caisse inchangés (ils référencent les commandes/ventes, pas le client).
 - « CLIENT DIVERS » n'est plus un client : exclu de l'onglet Clients, du compteur du tableau de bord et des doublons ; sa fiche client est inaccessible ; données de profil effacées via `docs/nettoyage-client-divers-2026-10-29.sql`. Ses commandes/factures restent (ventes au détail réelles).
 - Les fiches archivées (fusionnées) n'apparaissent plus dans Clients.
+
+## Codes clients abandonnés (2026-10-29)
+- Fonction supprimée (service, API, bouton, affichage, recherche, colonne d'export). SQL `docs/suppression-codes-clients-2026-10-29.sql` à passer après le déploiement.
+
+## Codes clients abandonnés (2026-10-29)
+- Fonction supprimée (service, API, bouton, affichage, recherche, export). SQL `docs/suppression-codes-clients-2026-10-29.sql` à passer après le déploiement.

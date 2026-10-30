@@ -409,8 +409,6 @@ model PointVente {
   type          TypePointVente? @relation(fields: [typeId], references: [id])
   presentoir    Boolean   @default(false)
   archivedAt    DateTime? @map("archived_at")
-  // Code client (CLI-0001…) attribué à la 1re validation d'une commande ; null tant que ce n'est pas un client.
-  codeClient    String?   @unique @map("code_client")
   latitude      Decimal?  @db.Decimal(10, 7)
   longitude     Decimal?  @db.Decimal(10, 7)
   precisionGps  Decimal?  @map("precision_gps") @db.Decimal(6, 2)

@@ -52,7 +52,6 @@ export default async function DoublonsPage() {
                     <tr key={m.id}>
                       <td className="px-4 py-2.5">
                         <Link href={`/admin/points-vente/${m.id}`} className="font-semibold text-slate-800 hover:text-brand dark:text-slate-100">{m.nom}</Link>
-                        {m.codeClient && <span className="ml-2 rounded-md bg-brand/10 px-1.5 py-0.5 text-[10px] font-bold text-brand">{m.codeClient}</span>}
                         <p className="text-xs text-slate-400">{m.interlocuteur ?? "—"} · {m.telephone ?? "pas de téléphone"}</p>
                       </td>
                       <td className="px-2 py-2.5 text-slate-600 dark:text-slate-300">{[m.quartier, m.ville].filter(Boolean).join(", ") || "—"}</td>

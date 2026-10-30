@@ -63,7 +63,7 @@ export default async function ClientsPage({
 
       <div className="space-y-4 p-4 md:p-6">
         <form action="/admin/clients" className="grid grid-cols-2 gap-2 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 md:grid-cols-4">
-          <input name="search" defaultValue={f.search} placeholder="Code, nom, contact ou téléphone" className={`${champ} col-span-2 md:col-span-2`} />
+          <input name="search" defaultValue={f.search} placeholder="Nom, contact ou téléphone" className={`${champ} col-span-2 md:col-span-2`} />
           <select name="villeId" defaultValue={f.villeId} className={champ}>
             <option value="">Toutes les villes</option>
             {villes.map((v) => (
@@ -122,7 +122,6 @@ export default async function ClientsPage({
                     <Link href={`/admin/clients/${c.id}?retour=${encodeURIComponent(lien({ ...f, page: String(page) }))}`} className="font-semibold text-slate-800 hover:text-brand dark:text-slate-100">
                       {c.nom}
                     </Link>
-                    {c.codeClient && <span className="ml-2 rounded-md bg-brand/10 px-1.5 py-0.5 text-[10px] font-bold text-brand">{c.codeClient}</span>}
                     <p className="flex items-center gap-1 text-xs text-slate-400">
                       {c.contact}
                       {c.telephone && (

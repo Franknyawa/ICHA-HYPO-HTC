@@ -71,8 +71,6 @@ export async function fusionnerClients(opts: { principalId: string; doublonIds: 
           data: {
             archivedAt: new Date(),
             repere: `${d.repere ? `${d.repere} · ` : ""}Fusionné dans « ${nom} » le ${new Date().toLocaleDateString("fr-FR")}`,
-            // Un code client éventuel reste uniquement sur le profil conservé.
-            codeClient: null,
           },
         });
       }

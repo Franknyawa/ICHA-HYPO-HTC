@@ -54,7 +54,7 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
   const session = await requireAdminPage("points-vente");
   if (!peutModifier(session.role)) redirect("/admin/points-vente");
 
-  const [pv, brut, photos, villes, quartiers, types, aCommandeValidee, codes] = await Promise.all([
+  const [pv, brut, photos, villes, quartiers, types, aCommandeValidee] = await Promise.all([
     getPointVenteDetail(params.id),
     prisma.pointVente.findUnique({
       where: { id: params.id },
@@ -70,13 +70,11 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
     prisma.quartier.findMany({ where: { actif: true }, orderBy: { nom: "asc" }, select: { id: true, nom: true, villeId: true } }),
     prisma.typePointVente.findMany({ where: { actif: true }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
     prisma.commande.count({ where: { pointVenteId: params.id, statut: { in: ["EN_LIVRAISON", "LIVREE"] } } }),
-    prisma.$queryRaw<{ code: string | null }[]>`SELECT code_client AS code FROM points_vente WHERE id = ${params.id}`.catch(() => []),
   ]);
   if (!pv || !brut) {
     notFound();
     return null;
   }
-  const codeClient = codes[0]?.code ?? null;
   const lat = pv.latitude != null ? Number(pv.latitude) : null;
   const lng = pv.longitude != null ? Number(pv.longitude) : null;
   const maps = lat != null && lng != null ? `https://www.google.com/maps?q=${lat},${lng}` : null;
@@ -113,7 +111,6 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
             <div>
               <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">
                 {pv.nom}
-                {codeClient && <span className="ml-2 rounded-lg bg-brand/10 px-2 py-0.5 align-middle text-xs font-bold text-brand">{codeClient}</span>}
               </h1>
               <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
                 {typesTxt || "Type non précisé"} · {pv.ville?.nom ?? "—"}
@@ -154,7 +151,7 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
               <Ligne k="Type(s)" v={typesTxt} />
               <Ligne k="Présentoir" v={pv.presentoir ? "Installé" : "Non"} />
               <Ligne k="Visites" v={String(pv.nbVisites)} />
-              <Ligne k="Statut" v={pv.archivedAt ? "Archivé" : codeClient ? "Client" : aCommandeValidee ? "Client" : "Prospect / recensé"} />
+              <Ligne k="Statut" v={pv.archivedAt ? "Archivé" : aCommandeValidee ? "Client" : "Prospect / recensé"} />
             </Bloc>
             <Bloc icone={<MapPin size={13} />} titre="Localisation">
               <Ligne k="Ville" v={pv.ville?.nom} />

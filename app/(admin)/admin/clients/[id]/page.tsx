@@ -84,8 +84,6 @@ export default async function ClientDetailPage({ params, searchParams }: { param
   // Le superviseur ne consulte pas la fiche détaillée d'un point de vente ou d'un client.
   if (!peutModifier(session.role)) redirect("/admin/clients");
   const [pv, compte] = await Promise.all([getPointVenteDetail(params.id), getCompteClient(params.id)]);
-  const codeRows = await prisma.$queryRaw<{ code: string | null }[]>`SELECT code_client AS code FROM points_vente WHERE id = ${params.id}`.catch(() => []);
-  const codeClient = codeRows[0]?.code ?? null;
   if (!pv || pv.nom === "CLIENT DIVERS") {
     notFound();
     return null;
@@ -148,7 +146,6 @@ export default async function ClientDetailPage({ params, searchParams }: { param
             <div>
               <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">
                 {pv.nom}
-                {codeClient && <span className="ml-2 rounded-lg bg-brand/10 px-2 py-0.5 align-middle text-xs font-bold text-brand">{codeClient}</span>}
               </h1>
               <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
                 {[...pv.typesNoms, ...(pv.typeAutre ? [pv.typeAutre] : [])].join(", ") || "—"} · {pv.ville?.nom ?? "—"}

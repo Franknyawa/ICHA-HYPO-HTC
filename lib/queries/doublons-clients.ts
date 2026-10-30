@@ -3,7 +3,6 @@ import { NOM_CLIENT_DIVERS } from "@/lib/services/client-divers";
 
 export type MembreDoublon = {
   id: string;
-  codeClient: string | null;
   nom: string;
   interlocuteur: string | null;
   telephone: string | null;
@@ -58,7 +57,6 @@ export async function trouverDoublons(): Promise<{ groupes: GroupeDoublon[]; tot
     take: 6000,
     select: {
       id: true,
-      codeClient: true,
       nom: true,
       vendeur: true,
       telephoneVendeur: true,
@@ -136,7 +134,6 @@ export async function trouverDoublons(): Promise<{ groupes: GroupeDoublon[]; tot
           const p = pts[i];
           return {
             id: p.id,
-            codeClient: p.codeClient,
             nom: p.nom,
             interlocuteur: p.vendeur,
             telephone: p.telephoneVendeur ?? p.telephonePatron,
