@@ -4,6 +4,7 @@ import { IchaLogo } from "@/components/brand/IchaLogo";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { HorsLigneAdmin, StatutHorsLigne } from "@/components/admin/HorsLigneAdmin";
 import { LogoutButton } from "@/components/LogoutButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
@@ -93,6 +94,7 @@ export function AdminShell({
     ...TOUS.filter((i) => !PRIORITE_MOBILE.includes(i.href)),
   ].slice(0, 4);
   const PLUS = TOUS.filter((i) => !BARRE.includes(i));
+  const hrefsHorsLigne = TOUS.filter((i) => i.href !== "/admin/tracking").map((i) => i.href);
   const [showPlus, setShowPlus] = useState(false);
   const [alertesCount, setAlertesCount] = useState(0);
 
@@ -191,6 +193,7 @@ export function AdminShell({
           ))}
         </nav>
 
+        <StatutHorsLigne hrefs={hrefsHorsLigne} />
         <div className="flex items-center gap-2 border-t border-slate-100 dark:border-slate-800 p-3 dark:border-slate-800">
           <LogoutButton className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/60 dark:bg-slate-950 dark:text-slate-400 dark:text-slate-500 dark:hover:bg-slate-800/60" />
           <ThemeToggle className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 dark:bg-slate-800 dark:text-slate-300" />
@@ -206,6 +209,7 @@ export function AdminShell({
           <ThemeToggle className="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-500 dark:text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 backdrop-blur dark:bg-slate-900/95 dark:text-slate-300 dark:ring-slate-700" />
           <LogoutButton className="flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 backdrop-blur dark:bg-slate-900/95 dark:text-slate-300 dark:ring-slate-700" />
         </div>
+        <HorsLigneAdmin hrefs={hrefsHorsLigne} />
         {children}
       </div>
 

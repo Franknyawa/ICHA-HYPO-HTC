@@ -1798,3 +1798,8 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 ## Commandes saisies au bureau comptées pour le commercial + totaux par produit (2026-11-02)
 - Une commande saisie par un admin / superviseur « au nom d'un commercial » (champ « Commercial concerné ») compte maintenant dans ses chiffres : statistiques personnelles (app commerciale), progression et objectifs admin (commerciaux et binômes). Cartons commandés + vente au détail saisie au bureau ; commandes annulées ignorées (`lib/queries/ventes-bureau.ts`). Sans commercial choisi (« Bureau (moi) »), rien n'est attribué.
 - Tableau de bord : section « Cartons vendus par produit » (total depuis le début + aujourd'hui / semaine / mois, avec détail sachets et filets), `getTotauxParProduit`.
+
+## Admin hors ligne — consultation seule (2026-11-02)
+- Service worker v9 (`public/sw.js`) : pages `/admin/*` réseau d'abord (8 s), sinon dernière version enregistrée (clé = chemin + filtres, à défaut même page sans filtres) ; cache `siri-admin-v9` effacé à la déconnexion.
+- `components/admin/HorsLigneAdmin.tsx` : préchargement des rubriques en arrière-plan (au démarrage si > 20 min, ou via le bouton « Préparer le mode hors ligne » de la barre latérale), bandeau orange hors ligne avec la date des données, et blocage des modifications (POST/PATCH/PUT/DELETE renvoient un message « consultation seule »).
+- Cible : ordinateur (Chrome / Edge). Tracking (carte) non préchargé. Les données hors ligne restent celles du dernier enregistrement.

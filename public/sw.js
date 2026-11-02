@@ -6,13 +6,18 @@
 // - Icônes / logo / manifest : cache puis mise à jour en arrière-plan.
 // - Pages de l'app terrain (dashboard, visites, historique, profil) : réseau
 //   d'abord ; si le réseau est absent ou lent (> 4 s) on affiche la dernière
-//   version connue. Jamais de cache pour l'admin ni pour les appels /api/.
+//   version connue. Jamais de cache pour les appels /api/.
+// - Pages ADMIN (/admin/*) : mode CONSULTATION hors ligne. Réseau d'abord ; sans réseau
+//   (ou > 8 s) on affiche la dernière version enregistrée de la page. Les pages sont
+//   aussi préchargées en arrière-plan et effacées à la déconnexion.
 // - Une réponse redirigée (ex. session expirée -> /login) n'est JAMAIS mise
 //   en cache : le navigateur refuse de servir une redirection à une navigation.
 
-const VERSION = "v8";
+const VERSION = "v9";
 const STATIC_CACHE = `siri-static-${VERSION}`;
 const PAGES_CACHE = `siri-pages-${VERSION}`;
+const ADMIN_CACHE = `siri-admin-${VERSION}`;
+const DELAI_ADMIN_MS = 8000;
 const PAGES_TERRAIN = ["/dashboard", "/visites/new", "/visites/rotation", "/visites/reassort", "/historique", "/profil"];
 const PAGE_DE_SECOURS = "/visites/new";
 const DELAI_RESEAU_MS = 4000;
@@ -32,7 +37,7 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => k !== STATIC_CACHE && k !== PAGES_CACHE).map((k) => caches.delete(k)))
+        Promise.all(keys.filter((k) => k !== STATIC_CACHE && k !== PAGES_CACHE && k !== ADMIN_CACHE).map((k) => caches.delete(k)))
       )
   );
   self.clients.claim();
@@ -84,6 +89,41 @@ async function pageReseauDAbord(event) {
 
   // Une version locale existe : on laisse le réseau répondre, mais pas plus de 4 s.
   const delai = new Promise((resolve) => setTimeout(() => resolve(enCache), DELAI_RESEAU_MS));
+  event.waitUntil(reseau.catch(() => {}));
+  try {
+    return await Promise.race([reseau, delai]);
+  } catch {
+    return enCache;
+  }
+}
+
+// Pages admin : la clé inclut la recherche (filtres) ; sans réseau, à défaut on retombe sur la même page sans filtre.
+function cleAdmin(url) {
+  return new Request(self.location.origin + url.pathname + url.search);
+}
+
+async function pageAdmin(event) {
+  const request = event.request;
+  const url = new URL(request.url);
+  const cle = cleAdmin(url);
+  const cache = await caches.open(ADMIN_CACHE);
+  const trouver = async () => (await cache.match(cle)) || (await cache.match(cle, { ignoreSearch: true }));
+
+  const reseau = fetch(request).then(async (res) => {
+    await mettreEnCache(ADMIN_CACHE, cle, res);
+    return res;
+  });
+
+  const enCache = await trouver();
+  if (!enCache) {
+    try {
+      return await reseau;
+    } catch {
+      return reponseHorsLigne();
+    }
+  }
+  // Une version locale existe : le réseau a priorité (8 s max), sinon la dernière version connue.
+  const delai = new Promise((resolve) => setTimeout(() => resolve(enCache), DELAI_ADMIN_MS));
   event.waitUntil(reseau.catch(() => {}));
   try {
     return await Promise.race([reseau, delai]);
@@ -145,14 +185,17 @@ self.addEventListener("fetch", (event) => {
         fetch(request).catch(() => caches.match(cleDePage(PAGE_DE_SECOURS)).then((r) => r || reponseHorsLigne()))
       );
     }
-    // Admin et le reste : comportement normal du navigateur (réseau).
+    else if (url.pathname.startsWith("/admin")) {
+      event.respondWith(pageAdmin(event));
+    }
+    // Le reste : comportement normal du navigateur (réseau).
   }
 });
 
 // Télécharge à l'avance les pages terrain ET leurs fichiers JS/CSS, pour que
 // toute l'app s'ouvre sans réseau même si on n'a pas encore visité chaque écran.
-async function prechargerPages(urls) {
-  const pages = await caches.open(PAGES_CACHE);
+async function prechargerPages(urls, nomCache = PAGES_CACHE, admin = false) {
+  const pages = await caches.open(nomCache);
   const statics = await caches.open(STATIC_CACHE);
 
   for (const path of urls) {
@@ -160,7 +203,7 @@ async function prechargerPages(urls) {
       const res = await fetch(path, { credentials: "same-origin" });
       if (!res.ok || res.redirected) continue; // pas connecté : rien à garder
       const html = await res.clone().text();
-      await pages.put(cleDePage(path), res);
+      await pages.put(admin ? cleAdmin(new URL(path, self.location.origin)) : cleDePage(path), res);
 
       const chemins = new Set();
       for (const m of html.matchAll(/\/_next\/static\/[A-Za-z0-9_\-./%\[\]()~]+\.(?:js|css)/g)) chemins.add(m[0]);
@@ -187,8 +230,16 @@ self.addEventListener("message", (event) => {
   const data = event.data || {};
   if (data.type === "PRECHARGER_PAGES") {
     event.waitUntil(prechargerPages(Array.isArray(data.urls) ? data.urls : PAGES_TERRAIN));
+  } else if (data.type === "PRECHARGER_ADMIN") {
+    const urls = Array.isArray(data.urls) ? data.urls.filter((u) => typeof u === "string" && u.startsWith("/admin")) : [];
+    event.waitUntil(
+      prechargerPages(urls, ADMIN_CACHE, true).then(async () => {
+        const clients = await self.clients.matchAll();
+        clients.forEach((c) => c.postMessage({ type: "ADMIN_PRECHARGE_OK", date: Date.now() }));
+      })
+    );
   } else if (data.type === "VIDER_PAGES") {
     // Déconnexion : on ne laisse pas les pages d'un utilisateur sur le téléphone.
-    event.waitUntil(caches.delete(PAGES_CACHE));
+    event.waitUntil(Promise.all([caches.delete(PAGES_CACHE), caches.delete(ADMIN_CACHE)]));
   }
 });
