@@ -47,7 +47,8 @@ export function preparerCommande(
   produits: ProduitForm[],
   quantites: QuantitesParCode,
   ctx: { typeId?: string | null; prixParType?: PrixTypeTarif[]; paliers?: PalierTarif[] },
-  detail?: QuantitesParCode
+  detail?: QuantitesParCode,
+  remiseBureauPct = 0
 ): CommandePreparee {
   const lignes: LignePayload[] = [];
   const sources: LigneSource[] = [];
@@ -94,7 +95,7 @@ export function preparerCommande(
       const d = detail[p.code];
       if (!d) continue;
       const q = { sachets: d.sachets, filets: p.prixFilet !== null ? d.filets : 0 };
-      const { prix, montant } = calculerLigneDetail(q);
+      const { prix, montant } = calculerLigneDetail(q, remiseBureauPct);
       sousTotauxDetail.set(p.code, montant);
       if (q.sachets === 0 && q.filets === 0) continue;
       total += montant;

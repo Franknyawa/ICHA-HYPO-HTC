@@ -27,7 +27,7 @@ export class ErreurCalcul extends Error {
  */
 export function calculerLignesCommande(
   entrees: EntreeLigne[],
-  ref: { produits: Produit[]; prixParType: PrixParType[]; paliers: PalierPrix[]; typeId: string | null }
+  ref: { produits: Produit[]; prixParType: PrixParType[]; paliers: PalierPrix[]; typeId: string | null; remiseBureauPct?: number }
 ): LigneCalculee[] {
   const produitParCode = new Map(ref.produits.map((p) => [p.code, p]));
   const ctx = {
@@ -54,7 +54,7 @@ export function calculerLignesCommande(
       if (!p) throw new ErreurCalcul(`Produit inconnu : ${l.produitCode}`);
       if (l.detail) {
         // Vente au détail : sachets 100 F, filets 1 000 F (filets seulement pour les produits à filets).
-        const { prix, montant, quantites: qd } = calculerLigneDetail({ sachets: l.nbSachets, filets: p.prixFilet === null ? 0 : l.nbFilets });
+        const { prix, montant, quantites: qd } = calculerLigneDetail({ sachets: l.nbSachets, filets: p.prixFilet === null ? 0 : l.nbFilets }, ref.remiseBureauPct ?? 0);
         return { produitId: p.id, nbSachets: qd.sachets, nbFilets: qd.filets, nbCartons: 0, prixSachet: prix.sachet, prixFilet: prix.filet, prixCarton: Number(p.prixCarton), montant, detail: true };
       }
       const { prix, montant, quantites: qn } = calculerLigne(

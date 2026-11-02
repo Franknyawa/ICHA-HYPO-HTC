@@ -1070,6 +1070,41 @@ function SeuilsStockManager() {
   );
 }
 
+function RemiseBureauManager() {
+  const [pct, setPct] = useState(20);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+  useEffect(() => {
+    apiFetch<{ pct?: number }>("/api/parametres/remise-bureau").then((d) => setPct(d.pct ?? 20)).catch(() => {});
+  }, []);
+  async function save() {
+    setMsg(null);
+    setErreur(null);
+    const res = await fetch("/api/parametres/remise-bureau", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pct }) });
+    if (res.ok) setMsg("Enregistré.");
+    else setErreur((await res.json().catch(() => ({}))).error ?? "Échec de l'enregistrement.");
+  }
+  const sachet = Math.round(100 * (1 - pct / 100));
+  return (
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+      <h2 className="font-bold text-slate-800 dark:text-slate-100">Tarif personnel du bureau</h2>
+      <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+        Remise appliquée à la vente au détail (sachets et filets) quand l'admin coche « Tarif personnel du bureau » sur une commande.
+      </p>
+      <div className="flex items-center gap-2">
+        <input type="number" min={0} max={90} step={0.5} value={pct} onChange={(e) => setPct(Number(e.target.value))} className="w-24 rounded-lg border border-slate-300 px-2 py-2 text-sm dark:border-slate-600" />
+        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">% de remise</span>
+        <button onClick={save} className="ml-auto rounded-lg bg-[#1e3a8a] px-4 py-2 text-sm font-bold text-white">Enregistrer</button>
+      </div>
+      <p className="mt-2 text-xs font-semibold text-slate-500">
+        Sachet : {sachet} F · filet : {Math.round(1000 * (1 - pct / 100)).toLocaleString("fr-FR")} F · 6 sachets : {(sachet * 6).toLocaleString("fr-FR")} F
+      </p>
+      {msg && <p className="mt-2 text-sm text-green-600">{msg}</p>}
+      {erreur && <p className="mt-2 text-sm text-red-600">{erreur}</p>}
+    </div>
+  );
+}
+
 function SessionDureeManager() {
   const [minutes, setMinutes] = useState(720);
   const [loading, setLoading] = useState(true);
@@ -1223,6 +1258,14 @@ const SECTIONS: Section[] = [
     icon: BellRing,
     couleur: "#dc2626",
     contenu: <SeuilsAlertesManager />,
+  },
+  {
+    id: "bureau",
+    label: "Tarif bureau",
+    desc: "Remise sur le détail pour le personnel du bureau.",
+    icon: Users2,
+    couleur: "#0f766e",
+    contenu: <RemiseBureauManager />,
   },
   {
     id: "securite",

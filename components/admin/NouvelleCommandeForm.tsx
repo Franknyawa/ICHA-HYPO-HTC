@@ -51,6 +51,8 @@ export function NouvelleCommandeForm({
   prixParType,
   paliers,
   modif,
+  peutAntidater = false,
+  remiseBureauPct = 0,
 }: {
   villes: { id: string; nom: string }[];
   types: { id: string; nom: string }[];
@@ -58,6 +60,9 @@ export function NouvelleCommandeForm({
   produits: ProduitForm[];
   prixParType: PrixTypeTarif[];
   paliers: PalierTarif[];
+  /** Admin / super admin : saisie d'une commande à une date passée + tarif du personnel du bureau. */
+  peutAntidater?: boolean;
+  remiseBureauPct?: number;
   /** Mode modification d'une commande existante (client non modifiable). */
   modif?: {
     id: string;
@@ -91,6 +96,9 @@ export function NouvelleCommandeForm({
   const [modePaiement, setModePaiement] = useState<ModePaiementTerrain>((modif?.modePaiement as ModePaiementTerrain | null) ?? "ESPECES");
   const [acompte, setAcompte] = useState(0);
   const [livraison, setLivraison] = useState(modif?.livraison ?? "");
+  const [dateCmd, setDateCmd] = useState("");
+  const [tarifBureau, setTarifBureau] = useState(false);
+  const remiseActive = peutAntidater && tarifBureau && detailActif ? remiseBureauPct : 0;
   const [commercialId, setCommercialId] = useState(modif?.commercialId ?? "");
 
   const [envoi, setEnvoi] = useState(false);
@@ -111,12 +119,12 @@ export function NouvelleCommandeForm({
 
   const typeEffectif = mode === "EXISTANT" ? choisi?.typeId ?? null : typeId || null;
   const commande = useMemo(
-    () => preparerCommande(produits, quantites, { typeId: typeEffectif, prixParType, paliers }, detailActif ? quantitesDetail : undefined),
-    [produits, quantites, typeEffectif, prixParType, paliers, detailActif, quantitesDetail]
+    () => preparerCommande(produits, quantites, { typeId: typeEffectif, prixParType, paliers }, detailActif ? quantitesDetail : undefined, remiseActive),
+    [produits, quantites, typeEffectif, prixParType, paliers, detailActif, quantitesDetail, remiseActive]
   );
   const sousTotauxDetail = useMemo(
-    () => preparerCommande(produits, {}, { typeId: typeEffectif, prixParType, paliers }, quantitesDetail).sousTotauxDetail,
-    [produits, typeEffectif, prixParType, paliers, quantitesDetail]
+    () => preparerCommande(produits, {}, { typeId: typeEffectif, prixParType, paliers }, quantitesDetail, remiseActive).sousTotauxDetail,
+    [produits, typeEffectif, prixParType, paliers, quantitesDetail, remiseActive]
   );
 
   function majDetail(code: string, cle: "sachets" | "filets" | "cartons", v: number) {
@@ -168,6 +176,8 @@ export function NouvelleCommandeForm({
             detail: l.detail ?? false,
           })),
           modePaiement,
+          ...(!modif && peutAntidater && dateCmd ? { dateCommande: dateCmd } : {}),
+          ...(!modif && remiseActive > 0 ? { tarifBureau: true } : {}),
           ...(modif
             ? { dateLivraisonPrevue: livraison || null }
             : { dateLivraisonPrevue: livraison ? new Date(livraison).toISOString() : undefined }),
@@ -313,6 +323,17 @@ export function NouvelleCommandeForm({
           </div>
           <div className="mt-4 space-y-3">
             <CaseVenteDetail actif={detailActif} onChange={setDetailActif} />
+            {detailActif && peutAntidater && !modif && remiseBureauPct > 0 && (
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
+                <input type="checkbox" checked={tarifBureau} onChange={(e) => setTarifBureau(e.target.checked)} className="h-5 w-5 rounded border-slate-300 accent-[#359980]" />
+                <span>
+                  <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100">Tarif personnel du bureau</span>
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">
+                    Remise de {remiseBureauPct} % sur le détail : sachet {Math.round(100 * (1 - remiseBureauPct / 100))} F, filet {Math.round(1000 * (1 - remiseBureauPct / 100)).toLocaleString("fr-FR")} F
+                  </span>
+                </span>
+              </label>
+            )}
             {detailActif &&
               produits.map((p) => (
                 <QuantitesDetail
@@ -322,6 +343,8 @@ export function NouvelleCommandeForm({
                   valeur={quantitesDetail[p.code] ?? { sachets: 0, filets: 0, cartons: 0 }}
                   onChange={(cle, v) => majDetail(p.code, cle, v)}
                   sousTotal={sousTotauxDetail.get(p.code) ?? 0}
+                  prixSachet={Math.round(100 * (1 - remiseActive / 100))}
+                  prixFilet={Math.round(1000 * (1 - remiseActive / 100))}
                 />
               ))}
           </div>
@@ -337,6 +360,14 @@ export function NouvelleCommandeForm({
 
         <Section titre="Livraison et suivi">
           <div className="space-y-3">
+            {peutAntidater && !modif && (
+              <Etiquette texte="Date de la commande (antidatée)">
+                <input type="date" className={champ} value={dateCmd} max={new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Douala" })} onChange={(e) => setDateCmd(e.target.value)} />
+                <span className="mt-1 block text-[11px] text-slate-500">
+                  Vide = aujourd'hui. Une date passée : la commande et sa facture sont comptées à ce jour-là.
+                </span>
+              </Etiquette>
+            )}
             <Etiquette texte="Date de livraison prévue">
               <input type="date" className={champ} value={livraison} onChange={(e) => setLivraison(e.target.value)} />
             </Etiquette>

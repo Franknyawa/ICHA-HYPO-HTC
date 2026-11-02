@@ -127,8 +127,14 @@ export function sousTotal(prix: PrixUnitaires, q: Quantites, conv?: ConversionTa
 export const PRIX_DETAIL = { sachet: 100, filet: 1000 } as const;
 
 /** Ligne de vente au détail : sachets (tous produits) et filets (produits à filets), prix fixes. */
-export function calculerLigneDetail(q: { sachets: number; filets: number }) {
-  const prix = { sachet: PRIX_DETAIL.sachet, filet: PRIX_DETAIL.filet, carton: 0 };
+export function prixDetailRemise(remisePct = 0) {
+  const k = 1 - Math.min(Math.max(remisePct, 0), 100) / 100;
+  return { sachet: Math.round(PRIX_DETAIL.sachet * k), filet: Math.round(PRIX_DETAIL.filet * k) };
+}
+
+/** `remisePct` : tarif du personnel du bureau (ex. 20 → sachet 80 F, filet 800 F). */
+export function calculerLigneDetail(q: { sachets: number; filets: number }, remisePct = 0) {
+  const prix = { ...prixDetailRemise(remisePct), carton: 0 };
   const quantites = { sachets: q.sachets, filets: q.filets, cartons: 0 };
   return { prix, montant: sousTotal(prix, quantites, undefined, true), quantites };
 }

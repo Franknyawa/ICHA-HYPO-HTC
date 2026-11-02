@@ -5,6 +5,8 @@ import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { listCommandes } from "@/lib/queries/commandes";
 import { ajouterVentesDetail } from "@/lib/services/client-divers";
+import { jourDouala, debutJour } from "@/lib/utils/periode";
+import { getRemiseBureauPct } from "@/lib/services/remise-bureau";
 import { calculerLignesCommande, ErreurCalcul } from "@/lib/services/commande-calcul";
 
 export const runtime = "nodejs";
@@ -54,6 +56,10 @@ const schema = z
     lignes: z.array(z.object({ produitCode: z.string(), nbSachets: QTE, nbFilets: QTE, nbCartons: QTE_CARTONS, detail: z.boolean().optional() })).min(1),
     modePaiement: z.enum(["ESPECES", "MOBILE_MONEY", "CREDIT_PARTIEL", "CREDIT_TOTAL"]).optional(),
     dateLivraisonPrevue: z.string().datetime().optional(),
+    /** Commande antidatée (AAAA-MM-JJ) — admin / super admin uniquement. */
+    dateCommande: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    /** Tarif du personnel du bureau (remise sur la vente au détail). */
+    tarifBureau: z.boolean().optional(),
   })
   // Une vente uniquement au détail va sur le « client divers » : aucun point de vente à choisir.
   .refine((d) => d.pointVenteId || d.nouveauPointVente || d.lignes.every((l) => l.detail), { message: "Choisissez ou créez un point de vente." });
@@ -72,6 +78,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Données invalides." }, { status: 400 });
     }
     const d = parsed.data;
+
+    // Antidater : réservé à l'admin et au super admin ; jamais dans le futur.
+    let dateCmd: Date | undefined;
+    let antidatee = false;
+    if (d.dateCommande) {
+      if (session.role !== "ADMIN" && session.role !== "SUPER_ADMIN") {
+        return NextResponse.json({ error: "Seuls l'admin et le super admin peuvent antidater une commande." }, { status: 403 });
+      }
+      if (Number.isNaN(debutJour(d.dateCommande).getTime())) return NextResponse.json({ error: "Date invalide." }, { status: 400 });
+      if (d.dateCommande > jourDouala()) return NextResponse.json({ error: "La date de la commande ne peut pas être dans le futur." }, { status: 400 });
+      if (d.dateCommande < jourDouala()) {
+        antidatee = true;
+        dateCmd = new Date(`${d.dateCommande}T12:00:00+01:00`); // midi à Douala : reste dans le bon jour
+      }
+    }
+    const tarifBureau = !!d.tarifBureau && (session.role === "ADMIN" || session.role === "SUPER_ADMIN");
+    const remiseBureauPct = tarifBureau ? await getRemiseBureauPct() : 0;
 
     const lignesUtiles = d.lignes.filter((l) => l.nbSachets + l.nbFilets + l.nbCartons > 0);
     if (lignesUtiles.length === 0) return NextResponse.json({ error: "Indiquez au moins une quantité." }, { status: 400 });
@@ -126,7 +149,7 @@ export async function POST(req: NextRequest) {
       }
       if (!pointVenteId && !lignesUtiles.every((l) => l.detail)) throw new ErreurMetier("Point de vente manquant.", 400);
 
-      const toutes = calculerLignesCommande(lignesUtiles, { produits, prixParType, paliers, typeId });
+      const toutes = calculerLignesCommande(lignesUtiles, { produits, prixParType, paliers, typeId, remiseBureauPct });
       // Vente au détail : portée par la facture unique « CLIENT DIVERS » du jour, pas par ce client.
       const lignesDivers = toutes.filter((l) => l.detail);
       const lignes = toutes.filter((l) => !l.detail);
@@ -134,13 +157,15 @@ export async function POST(req: NextRequest) {
       const lignesClient = lignes;
       const role = session.role === "SUPERVISEUR" ? "Superviseur" : "Admin";
       const saisiePar = `${role} · ${[session.prenom, session.nom].filter(Boolean).join(" ") || "bureau"}`;
+      const sourceDetail = tarifBureau ? `Personnel bureau (−${remiseBureauPct} %) · ${saisiePar}` : saisiePar;
       const idDivers = lignesDivers.length
         ? await ajouterVentesDetail(tx, {
             lignes: lignesDivers,
             commercialId: d.commercialId ?? session.userId,
             userId: session.userId,
-            date: new Date(),
-            origine: { source: saisiePar },
+            date: dateCmd ?? new Date(),
+            antidatee,
+            origine: { source: sourceDetail },
           })
         : null;
       if (lignesClient.length === 0) {
@@ -153,7 +178,8 @@ export async function POST(req: NextRequest) {
           saisiePar,
           pointVenteId: pointVenteId!,
           commercialId: d.commercialId ?? session.userId,
-          dateLivraisonPrevue: d.dateLivraisonPrevue ? new Date(d.dateLivraisonPrevue) : undefined,
+          ...(dateCmd ? { dateCommande: dateCmd, antidatee: true } : {}),
+          dateLivraisonPrevue: d.dateLivraisonPrevue ? new Date(d.dateLivraisonPrevue) : dateCmd,
           montantTotal: lignesClient.reduce((t, l) => t + l.montant, 0),
           modePaiement: d.modePaiement,
           lignes: { create: lignesClient },

@@ -1809,3 +1809,9 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Hors ligne : écran PIN (redemandé après 30 min d'inactivité) ; au-delà de 24 h sans contact serveur, écran « expiré » et pages vidées.
 - PIN défini/changé/retiré depuis la barre latérale (avec internet). Effacé à la déconnexion.
 - Le PIN protège la consultation locale, ce n'est pas une connexion.
+
+## Commandes antidatées et tarif personnel du bureau (02/11/2026)
+- SQL préalable : `docs/antidate-tarif-bureau-2026-11-02.sql` (colonne `commandes.antidatee`).
+- Nouvelle commande (admin / super admin seulement) : champ « Date de la commande ». Date passée → `dateCommande` à midi Douala, `antidatee = true`, livraison prévue = même jour. À la validation, `valideeAt` = la date de la commande (pas la date de validation), donc comptée dans le bon jour (dashboard, rapports, factures). Vente au détail antidatée : versée sur la facture CLIENT DIVERS du jour visé.
+- Stock (sortie à la livraison) et caisse (encaissements) gardent la date réelle de l'opération.
+- Tarif bureau : Paramètres > Tarif bureau (% de remise, défaut 20 → sachet 80 F, filet 800 F, 6 sachets = 480 F). Case « Tarif personnel du bureau » (vente au détail) ; ligne séparée sur la facture, source tracée « Personnel bureau (−20 %) ».

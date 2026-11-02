@@ -360,7 +360,11 @@ export function QuantitesDetail({
   valeur,
   onChange,
   sousTotal,
+  prixSachet = 100,
+  prixFilet = 1000,
 }: {
+  prixSachet?: number;
+  prixFilet?: number;
   nom: string;
   avecFilets: boolean;
   valeur: { sachets: number; filets: number; cartons: number };
@@ -368,8 +372,8 @@ export function QuantitesDetail({
   sousTotal: number;
 }) {
   const champs: { cle: "sachets" | "filets"; label: string }[] = [
-    { cle: "sachets", label: "Sachets (100 F)" },
-    ...(avecFilets ? [{ cle: "filets" as const, label: "Filets (1 000 F)" }] : []),
+    { cle: "sachets", label: `Sachets (${prixSachet} F)` },
+    ...(avecFilets ? [{ cle: "filets" as const, label: `Filets (${prixFilet.toLocaleString("fr-FR")} F)` }] : []),
   ];
   return (
     <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 dark:border-slate-800 dark:bg-transparent">

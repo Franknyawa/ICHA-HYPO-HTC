@@ -37,6 +37,8 @@ export async function PATCH(
         id: true,
         statut: true,
         valideeAt: true,
+        antidatee: true,
+        dateCommande: true,
         pointVenteId: true,
         dateLivraisonPrevue: true,
         commercialId: true,
@@ -156,7 +158,7 @@ export async function PATCH(
             statut: statutCible,
             ...(nouvelleDate !== undefined ? { dateLivraisonPrevue: nouvelleDate } : {}),
             // Date de la 1re validation ; effacée si la commande redevient « en attente » ou est annulée.
-            valideeAt: doitEtreValidee ? (existante.valideeAt ?? new Date()) : null,
+            valideeAt: doitEtreValidee ? (existante.valideeAt ?? (existante.antidatee ? existante.dateCommande : new Date())) : null,
           },
           select: { id: true, statut: true },
         });

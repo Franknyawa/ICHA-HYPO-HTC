@@ -51,6 +51,8 @@ export async function ajouterVentesDetail(
     commercialId: string;
     date: Date;
     userId: string;
+    /** Saisie après coup par l'admin : la facture du jour visé est comptée à cette date. */
+    antidatee?: boolean;
     /** D'où viennent ces ventes : point visité, vente d'origine, ou saisie au bureau. */
     origine?: { pointVenteNom?: string | null; venteId?: string | null; source?: string };
   }
@@ -71,6 +73,7 @@ export async function ajouterVentesDetail(
     select: { id: true },
     orderBy: { createdAt: "asc" },
   });
+  if (commande && p.antidatee) await tx.commande.update({ where: { id: commande.id }, data: { antidatee: true } });
   if (!commande) {
     commande = await tx.commande.create({
       data: {
@@ -81,6 +84,7 @@ export async function ajouterVentesDetail(
         dateLivraisonPrevue: p.date,
         montantTotal: 0,
         modePaiement: "ESPECES",
+        antidatee: p.antidatee ?? false,
       },
       select: { id: true },
     });
@@ -109,7 +113,7 @@ export async function ajouterVentesDetail(
 
   for (const l of p.lignes) {
     const ligne = await tx.commandeLigne.findFirst({
-      where: { commandeId: commande.id, produitId: l.produitId, detail: true },
+      where: { commandeId: commande.id, produitId: l.produitId, detail: true, prixSachet: l.prixSachet },
       select: { id: true },
     });
     if (ligne) {
