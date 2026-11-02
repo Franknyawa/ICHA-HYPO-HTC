@@ -569,3 +569,61 @@ export async function getCommandesDuJour(): Promise<CommandesDuJour> {
     },
   };
 }
+
+
+export type TotauxProduitPeriode = { cartons: number; sd: number; fd: number; detailEq: number };
+export type TotauxProduit = {
+  code: string;
+  nom: string;
+  aujourdhui: TotauxProduitPeriode;
+  semaine: TotauxProduitPeriode;
+  mois: TotauxProduitPeriode;
+  total: TotauxProduitPeriode;
+};
+
+/**
+ * Cartons vendus par produit (commandes validées) : aujourd'hui, semaine en cours (lundi → dimanche),
+ * mois en cours et depuis le début. « cartons » = vendus en cartons ; sachets et filets = vendus à l'unité.
+ */
+export async function getTotauxParProduit(): Promise<TotauxProduit[]> {
+  const jour = jourDouala();
+  const dow = new Date(`${jour}T00:00:00Z`).getUTCDay();
+  const debutSemaine = debutJour(ajouterJours(jour, -((dow + 6) % 7)));
+  const debutMois = debutJour(`${jour.slice(0, 7)}-01`);
+  const debutAujourdhui = debutJour(jour);
+
+  const lignes = await prisma.commandeLigne.findMany({
+    where: { commande: { statut: { in: ["EN_LIVRAISON", "LIVREE"] }, valideeAt: { not: null } } },
+    select: {
+      nbCartons: true,
+      nbSachets: true,
+      nbFilets: true,
+      detail: true,
+      commande: { select: { valideeAt: true } },
+      produit: { select: { code: true, nom: true, ...SELECT_CONV } },
+    },
+  });
+
+  const vide = (): TotauxProduitPeriode => ({ cartons: 0, sd: 0, fd: 0, detailEq: 0 });
+  const map = new Map<string, TotauxProduit>();
+  for (const l of lignes) {
+    const t = map.get(l.produit.code) ?? { code: l.produit.code, nom: l.produit.nom, aujourdhui: vide(), semaine: vide(), mois: vide(), total: vide() };
+    const v = volLigne(l, l.produit);
+    const quand = l.commande.valideeAt!;
+    const periodes: TotauxProduitPeriode[] = [t.total];
+    if (quand >= debutMois) periodes.push(t.mois);
+    if (quand >= debutSemaine) periodes.push(t.semaine);
+    if (quand >= debutAujourdhui) periodes.push(t.aujourdhui);
+    for (const p of periodes) {
+      p.cartons += v.gros;
+      p.sd += v.sd;
+      p.fd += v.fd;
+      p.detailEq += v.detailEq;
+    }
+    map.set(l.produit.code, t);
+  }
+  const arrondi = (p: TotauxProduitPeriode) => ({ ...p, cartons: arrondiCartons(p.cartons), detailEq: Math.round(p.detailEq * 100) / 100 });
+  return [...map.values()]
+    .sort((a, b) => a.code.localeCompare(b.code))
+    .map((t) => ({ ...t, aujourdhui: arrondi(t.aujourdhui), semaine: arrondi(t.semaine), mois: arrondi(t.mois), total: arrondi(t.total) }));
+}

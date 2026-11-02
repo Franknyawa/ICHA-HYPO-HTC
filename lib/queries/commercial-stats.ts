@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { valeurCatalogueLigne } from "@/lib/utils/tarifs";
+import { ventesBureau } from "@/lib/queries/ventes-bureau";
 import { cartonsEq, arrondiCartons, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 
 const DEFAUTS_INDIVIDUEL: Record<"JOURNALIER" | "HEBDOMADAIRE" | "MENSUEL", number> = {
@@ -49,7 +50,11 @@ async function cartonsVendus(where: { commercialId?: string; binomeId?: string }
     },
     select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV } },
   });
-  return arrondiCartons(lignes.reduce((s, l) => s + cartonsEq(l, l.produit), 0));
+  // + commandes saisies au bureau au nom du commercial (sans vente terrain)
+  const bureau = (await ventesBureau(depuis, jusqua)).filter(
+    (b) => (!where.commercialId || b.commercialId === where.commercialId) && (!where.binomeId || b.binomeId === where.binomeId)
+  );
+  return arrondiCartons(lignes.reduce((s, l) => s + cartonsEq(l, l.produit), 0) + bureau.reduce((s, b) => s + b.cartons, 0));
 }
 
 export async function getObjectifsIndividuels() {

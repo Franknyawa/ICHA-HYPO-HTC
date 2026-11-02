@@ -1,3 +1,4 @@
+import { ventesBureau } from "@/lib/queries/ventes-bureau";
 import { prisma } from "@/lib/prisma";
 import { cartonsEq, arrondiCartons, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 import { getObjectifsIndividuels, couleurPerformance } from "@/lib/queries/commercial-stats";
@@ -69,6 +70,11 @@ export async function getProgressionBinomes() {
   };
   const cartonsJourParBinome = sommeParBinome(lignesJour);
   const cartonsSemaineParBinome = sommeParBinome(lignesSemaine);
+  // + commandes saisies au bureau au nom d'un commercial
+  const [bureauJour, bureauSemaine] = await Promise.all([ventesBureau(debutJour, finJour), ventesBureau(debutSemaine)]);
+  for (const [m, liste] of [[cartonsJourParBinome, bureauJour], [cartonsSemaineParBinome, bureauSemaine]] as const) {
+    for (const b of liste) if (b.binomeId) m.set(b.binomeId, (m.get(b.binomeId) ?? 0) + b.cartons);
+  }
 
   const objectifParBinome = new Map<string, { jour?: number; semaine?: number }>();
   for (const o of objectifsActifs) {
@@ -125,6 +131,11 @@ export async function getProgressionCommerciaux() {
   const jourParCommercial = sommeParCommercial(lignesJour);
   const semaineParCommercial = sommeParCommercial(lignesSemaine);
   const moisParCommercial = sommeParCommercial(lignesMois);
+  // + commandes saisies au bureau au nom du commercial
+  const [bureauJour, bureauSemaine, bureauMois] = await Promise.all([ventesBureau(debutJour, finJour), ventesBureau(debutSemaine), ventesBureau(debutMois)]);
+  for (const [m, liste] of [[jourParCommercial, bureauJour], [semaineParCommercial, bureauSemaine], [moisParCommercial, bureauMois]] as const) {
+    for (const b of liste) m.set(b.commercialId, (m.get(b.commercialId) ?? 0) + b.cartons);
+  }
 
   return commerciaux.map((c) => ({
     id: c.id,

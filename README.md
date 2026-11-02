@@ -1794,3 +1794,7 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 
 ## Codes clients abandonnés (2026-10-29)
 - Fonction supprimée (service, API, bouton, affichage, recherche, export). SQL `docs/suppression-codes-clients-2026-10-29.sql` à passer après le déploiement.
+
+## Commandes saisies au bureau comptées pour le commercial + totaux par produit (2026-11-02)
+- Une commande saisie par un admin / superviseur « au nom d'un commercial » (champ « Commercial concerné ») compte maintenant dans ses chiffres : statistiques personnelles (app commerciale), progression et objectifs admin (commerciaux et binômes). Cartons commandés + vente au détail saisie au bureau ; commandes annulées ignorées (`lib/queries/ventes-bureau.ts`). Sans commercial choisi (« Bureau (moi) »), rien n'est attribué.
+- Tableau de bord : section « Cartons vendus par produit » (total depuis le début + aujourd'hui / semaine / mois, avec détail sachets et filets), `getTotauxParProduit`.

@@ -4,6 +4,7 @@ import {
   getCaParBinomeEtVendeur,
   getBilanValidees,
   getCommandesDuJour,
+  getTotauxParProduit,
   getObservationsRecentes,
   getVisitesParJour,
 } from "@/lib/queries/dashboard";
@@ -27,12 +28,13 @@ export default async function AdminDashboardPage() {
   // Deux lots de requêtes en parallèle plutôt qu'un seul gros : reste sous le
   // nombre de connexions du pool Prisma.
   const [kpis, visites] = await Promise.all([getDashboardKpis(), getVisitesParJour(30)]);
-  const [caisse, { parBinome, parVendeur }, observations, bilan, duJour] = await Promise.all([
+  const [caisse, { parBinome, parVendeur }, observations, bilan, duJour, totaux] = await Promise.all([
     getCaisseResume(debutJour(jour), finJour(jour)),
     getCaParBinomeEtVendeur(),
     getObservationsRecentes(6),
     getBilanValidees(),
     getCommandesDuJour(),
+    getTotauxParProduit(),
   ]);
 
   const dateLongue = new Date().toLocaleDateString("fr-FR", {
@@ -52,6 +54,7 @@ export default async function AdminDashboardPage() {
       kpis={kpis}
       bilan={bilan}
       duJour={duJour}
+      totaux={totaux}
       visites={visites}
       caisse={caisse}
       parBinome={parBinome}

@@ -1,4 +1,5 @@
-import type { DashboardKpis, VisitesParJour, BilanValidees, CommandesDuJour } from "@/lib/queries/dashboard";
+import type { DashboardKpis, VisitesParJour, BilanValidees, CommandesDuJour, TotauxProduit } from "@/lib/queries/dashboard";
+import { TotauxParProduitSection } from "@/components/admin/TotauxParProduitSection";
 import { CommandesDuJourSection } from "@/components/admin/CommandesDuJourSection";
 import { texteDetail } from "@/lib/utils/cartons-equiv";
 import type { getCaisseResume } from "@/lib/queries/caisse";
@@ -44,6 +45,7 @@ export function DashboardView({
   kpis,
   bilan,
   duJour,
+  totaux,
   visites,
   caisse,
   parBinome,
@@ -61,6 +63,7 @@ export function DashboardView({
   kpis: DashboardKpis;
   bilan: BilanValidees;
   duJour: CommandesDuJour;
+  totaux: TotauxProduit[];
   visites: VisitesParJour;
   caisse: Awaited<ReturnType<typeof getCaisseResume>>;
   parBinome: { nom: string; montant: number }[];
@@ -139,6 +142,8 @@ export function DashboardView({
             />
           </div>
         </section>
+
+        <TotauxParProduitSection data={totaux} />
 
         <CommandesDuJourSection data={duJour} bilan={bilan} />
 
