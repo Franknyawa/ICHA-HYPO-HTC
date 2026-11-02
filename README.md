@@ -1803,3 +1803,9 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Service worker v9 (`public/sw.js`) : pages `/admin/*` réseau d'abord (8 s), sinon dernière version enregistrée (clé = chemin + filtres, à défaut même page sans filtres) ; cache `siri-admin-v9` effacé à la déconnexion.
 - `components/admin/HorsLigneAdmin.tsx` : préchargement des rubriques en arrière-plan (au démarrage si > 20 min, ou via le bouton « Préparer le mode hors ligne » de la barre latérale), bandeau orange hors ligne avec la date des données, et blocage des modifications (POST/PATCH/PUT/DELETE renvoient un message « consultation seule »).
 - Cible : ordinateur (Chrome / Edge). Tracking (carte) non préchargé. Les données hors ligne restent celles du dernier enregistrement.
+
+## Mode hors ligne admin : code PIN et expiration (02/11/2026)
+- `lib/offline/admin-verrou.ts` : PIN local (PBKDF2, jamais envoyé au serveur), 5 erreurs = pause 5 min, 10 = PIN + pages effacés.
+- Hors ligne : écran PIN (redemandé après 30 min d'inactivité) ; au-delà de 24 h sans contact serveur, écran « expiré » et pages vidées.
+- PIN défini/changé/retiré depuis la barre latérale (avec internet). Effacé à la déconnexion.
+- Le PIN protège la consultation locale, ce n'est pas une connexion.

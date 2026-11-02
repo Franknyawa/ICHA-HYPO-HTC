@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { useState } from "react";
 import { clearOfflineCaches } from "@/lib/offline/db";
+import { effacerVerrou } from "@/lib/offline/admin-verrou";
 
 export function LogoutButton({ className }: { className?: string }) {
   const router = useRouter();
@@ -27,6 +28,7 @@ export function LogoutButton({ className }: { className?: string }) {
     // de référence effacées. Les visites en attente, elles, sont conservées
     // (et ne partiront que sous le compte qui les a saisies).
     await clearOfflineCaches();
+    effacerVerrou();
     const sw = await navigator.serviceWorker?.getRegistration();
     sw?.active?.postMessage({ type: "VIDER_PAGES" });
     router.push("/login");
