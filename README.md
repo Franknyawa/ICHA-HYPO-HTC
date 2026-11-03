@@ -1829,3 +1829,7 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 
 ## Documents antidatés (03/11/2026)
 - `lib/services/documents-data.ts` : facture, bon de livraison et bon de commande d'une commande `antidatee` portent la date de la commande (et non la date d'impression). Les numéros restent attribués dans l'ordre d'émission.
+
+## Correctif : total faux après modification d'une facture tarif bureau (03/11/2026)
+- `PUT /api/commandes/[id]` recalculait le détail au prix du catalogue (100 F) : le total d'une facture CLIENT DIVERS au tarif bureau passait de 5 120 à 6 400. Les prix déjà enregistrés sur les lignes de détail sont maintenant conservés (prix mélangés : quantités inchangées uniquement).
+- SQL `docs/correction-total-tarif-bureau-2026-11-03.sql` répare les factures déjà touchées.

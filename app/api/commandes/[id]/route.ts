@@ -251,7 +251,32 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     ]);
     const lignes = calculerLignesCommande(d.lignes, { produits, prixParType, paliers, typeId: existante.pointVente.typeId });
     if (lignes.length === 0) return NextResponse.json({ error: "Indiquez au moins une quantité." }, { status: 400 });
-    const total = lignes.reduce((t, l) => t + l.montant, 0);
+
+    // Ventes au détail déjà enregistrées à un autre prix (tarif personnel du bureau) : on garde ce prix,
+    // jamais celui du catalogue. Prix mélangés sur un même produit : seules des quantités inchangées sont acceptées.
+    const anciennesDetail = await prisma.commandeLigne.findMany({
+      where: { commandeId: params.id, detail: true },
+      select: { produitId: true, nbSachets: true, nbFilets: true, prixSachet: true, prixFilet: true, montant: true },
+    });
+    const lignesFinales: typeof lignes = [];
+    for (const l of lignes) {
+      const anc = l.detail ? anciennesDetail.filter((x) => x.produitId === l.produitId) : [];
+      if (anc.length === 0) {
+        lignesFinales.push(l);
+        continue;
+      }
+      const prix = new Set(anc.map((x) => `${Number(x.prixSachet)}|${Number(x.prixFilet)}`));
+      if (prix.size === 1) {
+        const ps = Number(anc[0].prixSachet);
+        const pf = Number(anc[0].prixFilet);
+        lignesFinales.push({ ...l, prixSachet: ps, prixFilet: pf, montant: l.nbSachets * ps + l.nbFilets * pf });
+      } else if (anc.reduce((t, x) => t + x.nbSachets, 0) === l.nbSachets && anc.reduce((t, x) => t + x.nbFilets, 0) === l.nbFilets) {
+        for (const x of anc) lignesFinales.push({ ...l, nbSachets: x.nbSachets, nbFilets: x.nbFilets, prixSachet: Number(x.prixSachet), prixFilet: Number(x.prixFilet), montant: Number(x.montant) });
+      } else {
+        return NextResponse.json({ error: "Cette facture mélange des ventes à des prix différents (tarif bureau) : modifier les quantités du détail n'est pas possible ici." }, { status: 409 });
+      }
+    }
+    const total = lignesFinales.reduce((t, l) => t + l.montant, 0);
 
     const maj = await prisma.$transaction(async (tx) => {
       await tx.commandeLigne.deleteMany({ where: { commandeId: params.id } });
@@ -264,7 +289,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           ...(d.dateLivraisonPrevue !== undefined
             ? { dateLivraisonPrevue: d.dateLivraisonPrevue ? new Date(`${d.dateLivraisonPrevue}T12:00:00`) : null }
             : {}),
-          lignes: { create: lignes },
+          lignes: { create: lignesFinales },
         },
         select: { id: true, montantTotal: true },
       });
