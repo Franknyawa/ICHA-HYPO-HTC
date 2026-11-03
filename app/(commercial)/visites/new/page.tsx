@@ -98,13 +98,20 @@ function nearestVille(
   return best;
 }
 
-type RoleRepondant = "PATRON" | "GERANT" | "EMPLOYE" | "AUTRE";
+type RoleRepondant = "PATRON" | "GERANT" | "EMPLOYE" | "DIVERS";
 const ROLES: { value: RoleRepondant; label: string }[] = [
   { value: "PATRON", label: "Patron" },
   { value: "GERANT", label: "Gérant" },
   { value: "EMPLOYE", label: "Employé" },
-  { value: "AUTRE", label: "Autre" },
+  { value: "DIVERS", label: "Client divers" },
 ];
+
+// Villes proposées au commercial, dans cet ordre (Douala par défaut).
+const VILLES_AUTORISEES = ["douala", "yaounde", "bafoussam", "buea", "bamenda"];
+const cle = (n: string) => n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+function villesProposees<T extends { nom: string }>(liste: T[]): T[] {
+  return VILLES_AUTORISEES.map((k) => liste.find((v) => cle(v.nom) === k)).filter(Boolean) as T[];
+}
 const TYPE_AUTRE = "__autre__";
 
 export default function NouvelleVisitePage() {
@@ -124,7 +131,6 @@ export default function NouvelleVisitePage() {
   // « Qui nous répond ? » : rôle, nom et téléphone du répondant ; si ce n'est
   // pas le patron, on demande aussi le nom et le téléphone du patron.
   const [role, setRole] = useState<RoleRepondant | "">("");
-  const [fonctionAutre, setFonctionAutre] = useState("");
   const [repondantNom, setRepondantNom] = useState("");
   const [repondantTel, setRepondantTel] = useState("");
   const [patronNom, setPatronNom] = useState("");
@@ -198,7 +204,10 @@ export default function NouvelleVisitePage() {
       .catch(() => {});
     chargerReferentiels()
       .then((d) => {
-        setVilles(d.villes ?? []);
+        const v = villesProposees<Ville>((d.villes ?? []) as Ville[]);
+        setVilles(v);
+        // Douala par défaut ; remplacée par la ville détectée dès que la position est capturée.
+        setVilleId((cur) => cur || (v[0]?.id ?? ""));
         setTypes(d.types ?? []);
         setProduits(trierProduits(d.produits ?? []));
         setPrixParType(d.prixParType ?? []);
@@ -269,8 +278,10 @@ export default function NouvelleVisitePage() {
     }
   }
 
-  const achatActif = veutCommander === true;
-  const commandeActive = commanderPlusTard === true;
+  const estDivers = role === "DIVERS";
+  // Client divers : seul l'achat du jour compte (pas de commande à livrer plus tard).
+  const achatActif = estDivers || veutCommander === true;
+  const commandeActive = !estDivers && commanderPlusTard === true;
 
   // Prix : base → type de boutique → grille tarifaire (selon les cartons
   // commandés). Les prix appliqués sont figés sur chaque ligne et servent à
@@ -304,14 +315,14 @@ export default function NouvelleVisitePage() {
   // modifiable ensuite — c'est une suggestion, pas un verrou.
   useEffect(() => {
     const unProduitQualifie =
-      achatActif &&
+      achatActif && !estDivers &&
       Object.entries(quantites).some(([code, q]) => q.cartons > 1 && (quantitesDetail[code]?.sachets ?? 0) > 30);
     if (unProduitQualifie && presentoir !== true) {
       setPresentoir(true);
       setPresentoirAuto(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quantites, quantitesDetail, achatActif]);
+  }, [quantites, quantitesDetail, achatActif, estDivers]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -339,7 +350,9 @@ export default function NouvelleVisitePage() {
       latitude: gps?.lat ?? null,
       longitude: gps?.lng ?? null,
       precisionGps: gps?.precision ?? null,
-      nouveauPointVente: {
+      ...(estDivers
+        ? { clientDivers: true }
+        : { nouveauPointVente: {
         uuidClient: uuid(),
         nom,
         // Le répondant reste l'interlocuteur du point de vente (champs
@@ -347,7 +360,6 @@ export default function NouvelleVisitePage() {
         vendeur: repondantNom.trim() || undefined,
         telephoneVendeur: repondantTel.trim() || undefined,
         repondantRole: role || undefined,
-        repondantFonction: role === "AUTRE" ? fonctionAutre.trim() || undefined : undefined,
         patronNom: (role === "PATRON" ? repondantNom : patronNom).trim() || undefined,
         telephonePatron: (role === "PATRON" ? repondantTel : patronTel).trim() || undefined,
         villeId,
@@ -357,7 +369,7 @@ export default function NouvelleVisitePage() {
         typeAutre: autreActif ? typeAutre.trim() || undefined : undefined,
         repere: repere || undefined,
         presentoir: presentoir ?? false,
-      },
+      } }),
       ...(lignesVente.length > 0
         ? {
             vente: {
@@ -388,8 +400,8 @@ export default function NouvelleVisitePage() {
             },
           }
         : {}),
-      ...payloadIndecis(indecis),
-      photos: photosPayload,
+      ...(estDivers ? {} : payloadIndecis(indecis)),
+      photos: estDivers ? [] : photosPayload,
       observation: observation || undefined,
     };
 
@@ -448,7 +460,7 @@ export default function NouvelleVisitePage() {
         date: bonRef.date,
         commercialNom: session ? `${session.prenom} ${session.nom}` : "—",
         client: {
-          nom: nom || "—",
+          nom: estDivers ? "CLIENT DIVERS" : nom || "—",
           ville,
           quartier: quartierNom.trim() || null,
           repere: repere.trim() || null,
@@ -570,17 +582,8 @@ export default function NouvelleVisitePage() {
             <Choix<RoleRepondant> options={ROLES} value={role} onChange={setRole} colonnes={4} />
           </Champ>
 
-          {roleChoisi && (
+          {roleChoisi && !estDivers && (
             <div className="space-y-4 rounded-xl border border-blue-100 bg-blue-50/60 p-4 dark:border-slate-800 dark:bg-slate-950">
-              {role === "AUTRE" && (
-                <Champ label="Sa fonction">
-                  <Saisie
-                    placeholder="Ex : fils du patron, caissière..."
-                    value={fonctionAutre}
-                    onChange={(e) => setFonctionAutre(e.target.value)}
-                  />
-                </Champ>
-              )}
               <Champ label="Nom du répondant">
                 <Saisie
                   placeholder="Nom et prénom"
@@ -622,6 +625,13 @@ export default function NouvelleVisitePage() {
             </div>
           )}
 
+          {estDivers && (
+            <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800 dark:bg-slate-800 dark:text-amber-300">
+              Client divers : aucune fiche client n'est créée. Saisis directement les quantités achetées plus bas.
+            </p>
+          )}
+
+          {!estDivers && (<>
           <Champ label="Nom du point de vente">
             <Saisie placeholder="Ex : Boutique Grâce" value={nom} onChange={(e) => setNom(e.target.value)} required />
           </Champ>
@@ -737,13 +747,16 @@ export default function NouvelleVisitePage() {
               ))}
             </div>
           </Champ>
+          </>)}
         </Carte>
 
         {/* Achat et commande */}
         <Carte titre="Achat et commande du jour" icone={ShoppingCart} accent="vert">
-          <Champ label="Le client veut commander ?">
-            <OuiNon value={veutCommander} onChange={setVeutCommander} />
-          </Champ>
+          {!estDivers && (
+            <Champ label="Le client veut commander ?">
+              <OuiNon value={veutCommander} onChange={setVeutCommander} />
+            </Champ>
+          )}
 
           {achatActif && (
             <div className="space-y-3">
@@ -786,9 +799,10 @@ export default function NouvelleVisitePage() {
             />
           )}
 
+          {!estDivers && (
           <Champ label="Veut-il commander plus tard ?">
             <OuiNon value={commanderPlusTard} onChange={setCommanderPlusTard} />
-          </Champ>
+          </Champ>)}
 
           {commandeActive && (
             <>
@@ -821,6 +835,7 @@ export default function NouvelleVisitePage() {
 
           {/* Présentoir : suggéré automatiquement d'après les quantités
               achetées, reste modifiable. */}
+          {!estDivers && (
           <Champ
             label="Installation du présentoir"
             aide={presentoirAuto && presentoir === true ? "Suggéré d'après les quantités achetées." : undefined}
@@ -832,11 +847,11 @@ export default function NouvelleVisitePage() {
                 setPresentoirAuto(false);
               }}
             />
-          </Champ>
+          </Champ>)}
         </Carte>
 
         {/* Observations */}
-        <BlocIndecis valeur={indecis} onChange={setIndecis} />
+        {!estDivers && <BlocIndecis valeur={indecis} onChange={setIndecis} />}
 
         <Carte titre="Observations" icone={MessageSquareText} accent="orange">
           <Champ label="Points importants à signaler (optionnel)">
@@ -853,7 +868,7 @@ export default function NouvelleVisitePage() {
       </form>
 
       <BarreAction>
-        <BoutonPrincipal form="visite-form" disabled={submitting || !nom || !villeId}>
+        <BoutonPrincipal form="visite-form" disabled={submitting || (estDivers ? lignesVente.length === 0 : !nom || !villeId)}>
           {submitting ? "Enregistrement..." : "Valider la visite"}
         </BoutonPrincipal>
       </BarreAction>

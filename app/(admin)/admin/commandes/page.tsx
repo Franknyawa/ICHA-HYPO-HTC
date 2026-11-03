@@ -234,8 +234,15 @@ export default async function CommandesPage({
                             Ventes au détail de la journée : une seule facture
                           </p>
                         )}
+                        {c.pointVente.nom !== "CLIENT DIVERS" && (c.pointVente.vendeur || c.pointVente.patronNom) && (
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            {c.pointVente.vendeur && <>Vendeur / répondant : {c.pointVente.vendeur}</>}
+                            {c.pointVente.vendeur && c.pointVente.patronNom && c.pointVente.patronNom !== c.pointVente.vendeur && " · "}
+                            {c.pointVente.patronNom && c.pointVente.patronNom !== c.pointVente.vendeur && <>Patron : {c.pointVente.patronNom}</>}
+                          </p>
+                        )}
                         <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
-                          {c.pointVente.nom} · {c.pointVente.ville?.nom ?? "—"} · {c.commercial.prenom} {c.commercial.nom}
+                          {c.pointVente.ville?.nom ?? "—"} · {c.commercial.prenom} {c.commercial.nom}
                         </p>
                       </div>
                       <StatutBadge statut={c.statut} />

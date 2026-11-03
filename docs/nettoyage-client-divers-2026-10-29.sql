@@ -2,5 +2,5 @@
 -- Ses commandes/factures du jour NE SONT PAS touchées : elles portent les ventes au détail réelles (stock et caisse).
 UPDATE points_vente
 SET vendeur = NULL, telephone_vendeur = NULL, telephone_patron = NULL, patron_nom = NULL,
-    repondant_role = NULL, repondant_fonction = NULL, code_client = NULL
+    repondant_role = NULL, repondant_fonction = NULL
 WHERE nom = 'CLIENT DIVERS';

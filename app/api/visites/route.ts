@@ -5,7 +5,7 @@ import { handleApiError } from "@/lib/api-errors";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import { createVisiteSchema } from "@/lib/validations/visite";
 import { InsufficientStockError } from "@/lib/services/stock";
-import { ajouterVentesDetail } from "@/lib/services/client-divers";
+import { ajouterVentesDetail, obtenirClientDivers } from "@/lib/services/client-divers";
 import { uploadPhoto, isTrustedPhotoUrl } from "@/lib/services/storage";
 import type { Prisma } from "@prisma/client";
 
@@ -95,6 +95,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(existingVisite, { status: 200 });
     }
 
+    // Client divers : pas de visite, idempotence sur l'identifiant de la vente.
+    if (input.clientDivers && input.vente) {
+      const dejaVente = await prisma.vente.findUnique({ where: { uuidClient: input.vente.uuidClient }, select: { id: true } });
+      if (dejaVente) return NextResponse.json({ vente: dejaVente }, { status: 200 });
+    }
+
     // --- Contrôles de plausibilité (après l'idempotence, pour ne jamais
     // refuser le rejeu d'une visite déjà enregistrée) -------------------
     const maintenant = Date.now();
@@ -147,6 +153,10 @@ export async function POST(req: NextRequest) {
       async (tx) => {
       // 1. Point de vente — existant ou créé à la volée
       let pointVenteId = input.pointVenteId;
+
+      if (!pointVenteId && input.clientDivers) {
+        pointVenteId = await obtenirClientDivers(tx, session.userId);
+      }
 
       if (!pointVenteId && input.nouveauPointVente) {
         const npv = input.nouveauPointVente;
@@ -203,7 +213,7 @@ export async function POST(req: NextRequest) {
       }
 
       // 2. Visite
-      const visite = await tx.visite.create({
+      const visite = input.clientDivers ? null : await tx.visite.create({
         data: {
           uuidClient: input.uuidClient,
           commercialId: session.userId,
@@ -220,7 +230,7 @@ export async function POST(req: NextRequest) {
       });
 
       // 3. Photos
-      if (photosTraitees.length > 0) {
+      if (visite && photosTraitees.length > 0) {
         await tx.photo.createMany({
           data: photosTraitees.map((p) => ({
             uuidClient: p.uuidClient,
@@ -244,7 +254,7 @@ export async function POST(req: NextRequest) {
         vente = await tx.vente.create({
           data: {
             uuidClient: input.vente.uuidClient,
-            visiteId: visite.id,
+            visiteId: visite?.id,
             pointVenteId,
             clientId: input.vente.clientId,
             commercialId: session.userId,
@@ -291,7 +301,7 @@ export async function POST(req: NextRequest) {
             userId: session.userId,
             date: new Date(input.dateVisite),
             origine: {
-              pointVenteNom: (await tx.pointVente.findUnique({ where: { id: pointVenteId }, select: { nom: true } }))?.nom ?? null,
+              pointVenteNom: input.clientDivers ? null : (await tx.pointVente.findUnique({ where: { id: pointVenteId }, select: { nom: true } }))?.nom ?? null,
               venteId: vente.id,
               source: "Terrain",
             },
@@ -392,7 +402,7 @@ export async function POST(req: NextRequest) {
       }
 
       // 7. Client indécis à relancer plus tard (idempotent par uuidClient).
-      if (input.indecis) {
+      if (visite && input.indecis) {
         await tx.prospectIndecis.upsert({
           where: { uuidClient: input.indecis.uuidClient },
           update: {},

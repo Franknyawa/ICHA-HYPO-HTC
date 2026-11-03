@@ -87,6 +87,7 @@ export async function listCommandes(params: ListCommandesParams) {
           select: {
             nom: true,
             vendeur: true,
+            patronNom: true,
             telephoneVendeur: true,
             ville: { select: { nom: true } },
             quartier: { select: { nom: true } },

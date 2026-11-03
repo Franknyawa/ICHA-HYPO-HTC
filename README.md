@@ -1815,3 +1815,10 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Nouvelle commande (admin / super admin seulement) : champ « Date de la commande ». Date passée → `dateCommande` à midi Douala, `antidatee = true`, livraison prévue = même jour. À la validation, `valideeAt` = la date de la commande (pas la date de validation), donc comptée dans le bon jour (dashboard, rapports, factures). Vente au détail antidatée : versée sur la facture CLIENT DIVERS du jour visé.
 - Stock (sortie à la livraison) et caisse (encaissements) gardent la date réelle de l'opération.
 - Tarif bureau : Paramètres > Tarif bureau (% de remise, défaut 20 → sachet 80 F, filet 800 F, 6 sachets = 480 F). Case « Tarif personnel du bureau » (vente au détail) ; ligne séparée sur la facture, source tracée « Personnel bureau (−20 %) ».
+
+## Client divers (formulaires) et villes (03/11/2026)
+- Formulaire commercial : « Qui nous répond ? » = Patron / Gérant / Employé / Client divers (l'option Autre est retirée). Client divers : plus de fiche, de visite ni de photos ; seules les quantités (achat du jour et vente au détail) sont saisies. API : `clientDivers: true` → point de vente `CLIENT DIVERS` existant, vente sans visite, détail versé sur la facture unique du jour.
+- Formulaire commande admin : 3e onglet « Client divers » (même principe).
+- Villes du commercial : Douala (défaut), Yaoundé, Bafoussam, Buea, Bamenda, dans cet ordre ; la détection GPS ne choisit que parmi elles.
+- Admin > Commandes : le nom du vendeur / répondant et du patron est affiché sous le nom de la boutique.
+- SQL `docs/suppression-clients-divers-2026-11-03.sql` : aperçu puis archivage des faux clients divers (commandes/ventes rattachées au vrai CLIENT DIVERS).

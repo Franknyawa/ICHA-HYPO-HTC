@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, UserPlus, X } from "lucide-react";
+import { Search, UserPlus, Users, X } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/client/apiFetch";
 import { preparerCommande, type ProduitForm, type QuantitesParCode } from "@/lib/utils/commande-terrain";
 import type { PalierTarif, PrixTypeTarif } from "@/lib/utils/tarifs";
@@ -77,7 +77,7 @@ export function NouvelleCommandeForm({
   const router = useRouter();
   const produits = useMemo(() => trierProduits(produitsRecus), [produitsRecus]);
 
-  const [mode, setMode] = useState<"EXISTANT" | "NOUVEAU">("EXISTANT");
+  const [mode, setMode] = useState<"EXISTANT" | "NOUVEAU" | "DIVERS">("EXISTANT");
   const [recherche, setRecherche] = useState("");
   const [resultats, setResultats] = useState<PV[]>([]);
   const [choisi, setChoisi] = useState<PV | null>(modif?.pv ?? null);
@@ -117,7 +117,7 @@ export function NouvelleCommandeForm({
     return () => clearTimeout(t);
   }, [recherche, mode, choisi]);
 
-  const typeEffectif = mode === "EXISTANT" ? choisi?.typeId ?? null : typeId || null;
+  const typeEffectif = mode === "DIVERS" ? null : mode === "EXISTANT" ? choisi?.typeId ?? null : typeId || null;
   const commande = useMemo(
     () => preparerCommande(produits, quantites, { typeId: typeEffectif, prixParType, paliers }, detailActif ? quantitesDetail : undefined, remiseActive),
     [produits, quantites, typeEffectif, prixParType, paliers, detailActif, quantitesDetail, remiseActive]
@@ -141,7 +141,7 @@ export function NouvelleCommandeForm({
     if (commande.lignes.length === 0) return setErreur("Indiquez au moins une quantité.");
     // Une vente uniquement au détail va sur le « client divers » : pas de client à choisir.
     const soloDetail = !modif && commande.lignes.every((l) => l.detail);
-    if (!soloDetail && !modif) {
+    if (!soloDetail && !modif && mode !== "DIVERS") {
       if (mode === "EXISTANT" && !choisi) return setErreur("Choisissez le point de vente dans la liste.");
       if (mode === "NOUVEAU" && (nom.trim().length < 2 || !villeId)) return setErreur("Indiquez le nom du client et sa ville.");
     }
@@ -152,7 +152,9 @@ export function NouvelleCommandeForm({
         method: modif ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...(modif || soloDetail
+          ...(mode === "DIVERS" && !modif
+            ? { clientDivers: true }
+            : modif || soloDetail
             ? {}
             : mode === "EXISTANT"
             ? { pointVenteId: choisi!.id }
@@ -201,10 +203,11 @@ export function NouvelleCommandeForm({
               <p className="text-xs text-slate-500 dark:text-slate-400">{[modif.pv.vendeur, modif.pv.quartierNom, modif.pv.villeNom].filter(Boolean).join(" · ")}</p>
             </div>
           ) : (<>
-          <div className="mb-4 grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+          <div className="mb-4 grid grid-cols-3 gap-1.5 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
             {([
               ["EXISTANT", "Point de vente existant", Search],
               ["NOUVEAU", "Nouveau client", UserPlus],
+              ["DIVERS", "Client divers", Users],
             ] as const).map(([id, label, Icone]) => (
               <button
                 key={id}
@@ -219,7 +222,11 @@ export function NouvelleCommandeForm({
             ))}
           </div>
 
-          {mode === "EXISTANT" ? (
+          {mode === "DIVERS" ? (
+            <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800 dark:bg-slate-800 dark:text-amber-300">
+              Client divers : aucune fiche client n&apos;est créée. Indiquez seulement les quantités achetées ; les ventes au détail rejoignent la facture unique de la journée.
+            </p>
+          ) : mode === "EXISTANT" ? (
             choisi ? (
               <div className="flex items-start justify-between gap-3 rounded-xl bg-blue-50 px-4 py-3 dark:bg-slate-800">
                 <div>

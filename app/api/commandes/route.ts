@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { listCommandes } from "@/lib/queries/commandes";
-import { ajouterVentesDetail } from "@/lib/services/client-divers";
+import { ajouterVentesDetail, obtenirClientDivers } from "@/lib/services/client-divers";
 import { jourDouala, debutJour } from "@/lib/utils/periode";
 import { getRemiseBureauPct } from "@/lib/services/remise-bureau";
 import { calculerLignesCommande, ErreurCalcul } from "@/lib/services/commande-calcul";
@@ -52,6 +52,8 @@ const schema = z
         typeId: z.string().uuid().optional().nullable(),
       })
       .optional(),
+    /** Achat par un « client divers » : aucun client créé. */
+    clientDivers: z.boolean().optional(),
     commercialId: z.string().uuid().optional(),
     lignes: z.array(z.object({ produitCode: z.string(), nbSachets: QTE, nbFilets: QTE, nbCartons: QTE_CARTONS, detail: z.boolean().optional() })).min(1),
     modePaiement: z.enum(["ESPECES", "MOBILE_MONEY", "CREDIT_PARTIEL", "CREDIT_TOTAL"]).optional(),
@@ -62,7 +64,7 @@ const schema = z
     tarifBureau: z.boolean().optional(),
   })
   // Une vente uniquement au détail va sur le « client divers » : aucun point de vente à choisir.
-  .refine((d) => d.pointVenteId || d.nouveauPointVente || d.lignes.every((l) => l.detail), { message: "Choisissez ou créez un point de vente." });
+  .refine((d) => d.pointVenteId || d.nouveauPointVente || d.clientDivers || d.lignes.every((l) => l.detail), { message: "Choisissez ou créez un point de vente." });
 
 /**
  * Commande saisie au bureau. Même traitement que sur le terrain : prix figés
@@ -113,6 +115,8 @@ export async function POST(req: NextRequest) {
         const pv = await tx.pointVente.findUnique({ where: { id: pointVenteId }, select: { typeId: true } });
         if (!pv) throw new ErreurMetier("Point de vente introuvable.", 404);
         typeId = pv.typeId;
+      } else if (d.clientDivers) {
+        pointVenteId = await obtenirClientDivers(tx, session.userId);
       } else if (d.nouveauPointVente) {
         const n = d.nouveauPointVente;
         const doublon = await tx.pointVente.findFirst({

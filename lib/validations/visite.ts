@@ -126,6 +126,8 @@ export const createVisiteSchema = z
     dateVisite: z.string().datetime(), // ISO — généré côté PWA au moment de la saisie
     pointVenteId: z.string().uuid().optional(),
     nouveauPointVente: nouveauPointVenteSchema.optional(),
+    /** Vente à un « client divers » : aucun point de vente créé, ni visite ; facture unique du jour. */
+    clientDivers: z.boolean().optional(),
     vente: venteSchema.optional(),
     commande: commandeSchema.optional(),
     indecis: indecisSchema.optional(),
@@ -133,7 +135,7 @@ export const createVisiteSchema = z
     observation: z.string().optional(),
   })
   .merge(gpsSchema)
-  .refine((data) => data.pointVenteId || data.nouveauPointVente, {
+  .refine((data) => data.pointVenteId || data.nouveauPointVente || (data.clientDivers && data.vente), {
     message: "Un point de vente (existant ou nouveau) est requis.",
     path: ["pointVenteId"],
   });
