@@ -1826,3 +1826,6 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 ## Client divers : Douala + lieu de l'achat (03/11/2026)
 - `obtenirClientDivers` crée le CLIENT DIVERS en ville Douala (plus la 1re ville par ordre alphabétique). SQL `docs/client-divers-douala-lieu-2026-11-03.sql` corrige l'existant et ajoute `ventes.lieu` / `commande_detail_origines.lieu`.
 - Client divers (commercial et admin) : ville (détectée par GPS côté commercial, Douala par défaut) + quartier saisi, enregistrés dans `lieu` et affichés dans le détail par commerciale de la facture.
+
+## Documents antidatés (03/11/2026)
+- `lib/services/documents-data.ts` : facture, bon de livraison et bon de commande d'une commande `antidatee` portent la date de la commande (et non la date d'impression). Les numéros restent attribués dans l'ordre d'émission.

@@ -126,6 +126,8 @@ export async function obtenirFacture(type: TypeDocument, id: string, agentId?: s
     pointVente: PointVenteBrut;
     lignes: LigneBrute[];
     paiements: { montant: unknown; modePaiement: string }[];
+    antidatee?: boolean;
+    dateCommande?: Date;
   } | null;
 
   if (type === "VENTE") {
@@ -144,6 +146,8 @@ export async function obtenirFacture(type: TypeDocument, id: string, agentId?: s
     doc = await prisma.commande.findUnique({
       where: { id },
       select: {
+        antidatee: true,
+        dateCommande: true,
         montantTotal: true,
         modePaiement: true,
         client: { select: { nom: true } },
@@ -180,7 +184,8 @@ export async function obtenirFacture(type: TypeDocument, id: string, agentId?: s
 
   return {
     numero: numeroFacture(facture.numero),
-    date: facture.createdAt.toISOString(),
+    // Commande antidatée : la facture porte la date de la commande, pas celle de l'impression.
+    date: (doc.antidatee && doc.dateCommande ? doc.dateCommande : facture.createdAt).toISOString(),
     agentId: facture.agentId,
     agentNom: facture.agent?.nom ?? null,
     client: versClient(doc.pointVente, doc.client?.nom),
@@ -197,6 +202,8 @@ export async function obtenirBonLivraison(commandeId: string): Promise<BonLivrai
   const c = await prisma.commande.findUnique({
     where: { id: commandeId },
     select: {
+      antidatee: true,
+      dateCommande: true,
       client: { select: { nom: true } },
       pointVente: { select: selectPointVente },
       lignes: { select: selectLigne },
@@ -216,7 +223,7 @@ export async function obtenirBonLivraison(commandeId: string): Promise<BonLivrai
   const agent = await agentParDefaut();
   return {
     numero: numeroBonLivraison(bon.numero),
-    date: bon.createdAt.toISOString(),
+    date: (c.antidatee ? c.dateCommande : bon.createdAt).toISOString(),
     agentNom: agent?.nom ?? null,
     client: versClient(c.pointVente, c.client?.nom),
     sources: versSources(c.lignes),
@@ -238,6 +245,8 @@ export async function obtenirBonCommande(commandeId: string): Promise<BonCommand
   const c = await prisma.commande.findUnique({
     where: { id: commandeId },
     select: {
+      antidatee: true,
+      dateCommande: true,
       dateLivraisonPrevue: true,
       client: { select: { nom: true } },
       commercial: { select: { nom: true, prenom: true } },
@@ -258,7 +267,7 @@ export async function obtenirBonCommande(commandeId: string): Promise<BonCommand
   if (!bon) return null;
   return {
     numero: numeroBonCommande(bon.numero),
-    date: bon.createdAt.toISOString(),
+    date: (c.antidatee ? c.dateCommande : bon.createdAt).toISOString(),
     commercialNom: `${c.commercial.prenom} ${c.commercial.nom}`.trim(),
     client: versClient(c.pointVente, c.client?.nom),
     sources: versSources(c.lignes),
