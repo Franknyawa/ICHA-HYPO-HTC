@@ -1822,3 +1822,7 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Villes du commercial : Douala (défaut), Yaoundé, Bafoussam, Buea, Bamenda, dans cet ordre ; la détection GPS ne choisit que parmi elles.
 - Admin > Commandes : le nom du vendeur / répondant et du patron est affiché sous le nom de la boutique.
 - SQL `docs/suppression-clients-divers-2026-11-03.sql` : aperçu puis archivage des faux clients divers (commandes/ventes rattachées au vrai CLIENT DIVERS).
+
+## Client divers : Douala + lieu de l'achat (03/11/2026)
+- `obtenirClientDivers` crée le CLIENT DIVERS en ville Douala (plus la 1re ville par ordre alphabétique). SQL `docs/client-divers-douala-lieu-2026-11-03.sql` corrige l'existant et ajoute `ventes.lieu` / `commande_detail_origines.lieu`.
+- Client divers (commercial et admin) : ville (détectée par GPS côté commercial, Douala par défaut) + quartier saisi, enregistrés dans `lieu` et affichés dans le détail par commerciale de la facture.

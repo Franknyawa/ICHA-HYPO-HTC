@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { listCommandes } from "@/lib/queries/commandes";
+import { texteLieu } from "@/lib/services/lieu-divers";
 import { ajouterVentesDetail, obtenirClientDivers } from "@/lib/services/client-divers";
 import { jourDouala, debutJour } from "@/lib/utils/periode";
 import { getRemiseBureauPct } from "@/lib/services/remise-bureau";
@@ -54,6 +55,7 @@ const schema = z
       .optional(),
     /** Achat par un « client divers » : aucun client créé. */
     clientDivers: z.boolean().optional(),
+    lieuDivers: z.object({ villeId: z.string().uuid(), quartierNom: z.string().trim().max(120).optional() }).optional(),
     commercialId: z.string().uuid().optional(),
     lignes: z.array(z.object({ produitCode: z.string(), nbSachets: QTE, nbFilets: QTE, nbCartons: QTE_CARTONS, detail: z.boolean().optional() })).min(1),
     modePaiement: z.enum(["ESPECES", "MOBILE_MONEY", "CREDIT_PARTIEL", "CREDIT_TOTAL"]).optional(),
@@ -169,7 +171,7 @@ export async function POST(req: NextRequest) {
             userId: session.userId,
             date: dateCmd ?? new Date(),
             antidatee,
-            origine: { source: sourceDetail },
+            origine: { source: sourceDetail, lieu: d.clientDivers ? await texteLieu(tx, d.lieuDivers) : null },
           })
         : null;
       if (lignesClient.length === 0) {

@@ -22,7 +22,10 @@ export async function obtenirClientDivers(tx: Tx, userId: string) {
     select: { id: true },
   });
   if (existant) return existant.id;
-  const ville = await tx.ville.findFirst({ where: { actif: true }, orderBy: { nom: "asc" }, select: { id: true } });
+  // Douala par défaut (sinon la première ville active).
+  const ville =
+    (await tx.ville.findFirst({ where: { actif: true, nom: { equals: "Douala", mode: "insensitive" } }, select: { id: true } })) ??
+    (await tx.ville.findFirst({ where: { actif: true }, orderBy: { nom: "asc" }, select: { id: true } }));
   if (!ville) throw new Error("Aucune ville configurée : impossible de créer le client divers.");
   const type = await tx.typePointVente.findFirst({ where: { nom: "Client divers" }, select: { id: true } });
   const cree = await tx.pointVente.create({
@@ -54,7 +57,7 @@ export async function ajouterVentesDetail(
     /** Saisie après coup par l'admin : la facture du jour visé est comptée à cette date. */
     antidatee?: boolean;
     /** D'où viennent ces ventes : point visité, vente d'origine, ou saisie au bureau. */
-    origine?: { pointVenteNom?: string | null; venteId?: string | null; source?: string };
+    origine?: { pointVenteNom?: string | null; venteId?: string | null; source?: string; lieu?: string | null };
   }
 ) {
   if (p.lignes.length === 0) return null;
@@ -101,6 +104,7 @@ export async function ajouterVentesDetail(
       commercialId: p.commercialId,
       commercialNom,
       pointVenteNom: p.origine?.pointVenteNom ?? null,
+      lieu: p.origine?.lieu ?? null,
       venteId: p.origine?.venteId ?? null,
       source: p.origine?.source ?? "Terrain",
       produitId: l.produitId,

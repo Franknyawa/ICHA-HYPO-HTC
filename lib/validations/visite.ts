@@ -128,6 +128,8 @@ export const createVisiteSchema = z
     nouveauPointVente: nouveauPointVenteSchema.optional(),
     /** Vente à un « client divers » : aucun point de vente créé, ni visite ; facture unique du jour. */
     clientDivers: z.boolean().optional(),
+    /** Où l'achat a eu lieu (client divers) : ville détectée ou choisie + quartier saisi. */
+    lieuDivers: z.object({ villeId: z.string().uuid(), quartierNom: z.string().trim().max(120).optional() }).optional(),
     vente: venteSchema.optional(),
     commande: commandeSchema.optional(),
     indecis: indecisSchema.optional(),

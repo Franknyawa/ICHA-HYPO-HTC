@@ -153,7 +153,7 @@ export function NouvelleCommandeForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...(mode === "DIVERS" && !modif
-            ? { clientDivers: true }
+            ? { clientDivers: true, lieuDivers: (villeId || villes.find((v) => v.nom.toLowerCase() === "douala")?.id) ? { villeId: villeId || villes.find((v) => v.nom.toLowerCase() === "douala")!.id, quartierNom: quartier.trim() || undefined } : undefined }
             : modif || soloDetail
             ? {}
             : mode === "EXISTANT"
@@ -223,9 +223,23 @@ export function NouvelleCommandeForm({
           </div>
 
           {mode === "DIVERS" ? (
-            <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800 dark:bg-slate-800 dark:text-amber-300">
-              Client divers : aucune fiche client n&apos;est créée. Indiquez seulement les quantités achetées ; les ventes au détail rejoignent la facture unique de la journée.
-            </p>
+            <div className="space-y-3">
+              <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800 dark:bg-slate-800 dark:text-amber-300">
+                Client divers : aucune fiche client n&apos;est créée. Indiquez le lieu et les quantités achetées ; les ventes au détail rejoignent la facture unique de la journée.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Etiquette texte="Ville">
+                  <select className={champ} value={villeId || villes.find((v) => v.nom.toLowerCase() === "douala")?.id || ""} onChange={(e) => setVilleId(e.target.value)}>
+                    {villes.map((v) => (
+                      <option key={v.id} value={v.id}>{v.nom}</option>
+                    ))}
+                  </select>
+                </Etiquette>
+                <Etiquette texte="Quartier">
+                  <input className={champ} value={quartier} onChange={(e) => setQuartier(e.target.value)} placeholder="Ex : Akwa" />
+                </Etiquette>
+              </div>
+            </div>
           ) : mode === "EXISTANT" ? (
             choisi ? (
               <div className="flex items-start justify-between gap-3 rounded-xl bg-blue-50 px-4 py-3 dark:bg-slate-800">

@@ -3,6 +3,7 @@ import { Users } from "lucide-react";
 type Origine = {
   commercialNom: string;
   pointVenteNom: string | null;
+  lieu?: string | null;
   source: string;
   produitCode: string;
   nbSachets: number;
@@ -55,6 +56,7 @@ export function OriginesDetail({ origines }: { origines: Origine[] }) {
                     <span className={`mr-2 rounded px-1.5 py-0.5 text-[10px] font-bold ${l.produitCode === "HYPO" ? "bg-blue-50 text-blue-700" : "bg-teal-50 text-teal-700"}`}>{l.produitCode}</span>
                     {qte(l)}
                     {l.pointVenteNom && <span className="text-slate-400"> · chez {l.pointVenteNom}</span>}
+                    {l.lieu && <span className="text-slate-400"> · {l.lieu}</span>}
                   </span>
                   <span className="tabular-nums text-slate-400">
                     {new Date(l.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Douala" })} · {fcfa(Number(l.montant))}

@@ -5,6 +5,7 @@ import { handleApiError } from "@/lib/api-errors";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import { createVisiteSchema } from "@/lib/validations/visite";
 import { InsufficientStockError } from "@/lib/services/stock";
+import { texteLieu } from "@/lib/services/lieu-divers";
 import { ajouterVentesDetail, obtenirClientDivers } from "@/lib/services/client-divers";
 import { uploadPhoto, isTrustedPhotoUrl } from "@/lib/services/storage";
 import type { Prisma } from "@prisma/client";
@@ -244,6 +245,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      const lieu = input.clientDivers ? await texteLieu(tx, input.lieuDivers) : null;
       const produits = await tx.produit.findMany();
       const produitParCode = new Map(produits.map((p) => [p.code, p]));
 
@@ -255,6 +257,7 @@ export async function POST(req: NextRequest) {
           data: {
             uuidClient: input.vente.uuidClient,
             visiteId: visite?.id,
+            lieu,
             pointVenteId,
             clientId: input.vente.clientId,
             commercialId: session.userId,
@@ -304,6 +307,7 @@ export async function POST(req: NextRequest) {
               pointVenteNom: input.clientDivers ? null : (await tx.pointVente.findUnique({ where: { id: pointVenteId }, select: { nom: true } }))?.nom ?? null,
               venteId: vente.id,
               source: "Terrain",
+              lieu,
             },
             lignes: lignesDetail.map((l) => {
               const produit = produitParCode.get(l.produitCode);

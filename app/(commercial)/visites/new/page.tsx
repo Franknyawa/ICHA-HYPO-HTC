@@ -351,7 +351,7 @@ export default function NouvelleVisitePage() {
       longitude: gps?.lng ?? null,
       precisionGps: gps?.precision ?? null,
       ...(estDivers
-        ? { clientDivers: true }
+        ? { clientDivers: true, lieuDivers: villeId ? { villeId, quartierNom: quartierNom.trim() || undefined } : undefined }
         : { nouveauPointVente: {
         uuidClient: uuid(),
         nom,
@@ -627,8 +627,36 @@ export default function NouvelleVisitePage() {
 
           {estDivers && (
             <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800 dark:bg-slate-800 dark:text-amber-300">
-              Client divers : aucune fiche client n'est créée. Saisis directement les quantités achetées plus bas.
+              Client divers : aucune fiche client n'est créée. Indique où tu es, puis saisis les quantités achetées plus bas.
             </p>
+          )}
+
+          {estDivers && (
+            <>
+              <Champ label="Position GPS" aide={gps ? `${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)} (± ${Math.round(gps.precision)} m)` : "Détecte la ville automatiquement."}>
+                <button
+                  type="button"
+                  onClick={captureGps}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-sm font-medium text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <MapPin size={18} />
+                  {gps ? "Position mise à jour" : "Récupérer la position"}
+                </button>
+                {gpsError && <p className="mt-1.5 text-xs text-alert">{gpsError}</p>}
+              </Champ>
+              <div className="grid grid-cols-2 gap-3">
+                <Champ label={villeAuto && villeId ? "Ville (détectée)" : "Ville"}>
+                  <Liste value={villeId} onChange={(v) => { setVilleId(v); setVilleAuto(false); }} required>
+                    {villes.map((v) => (
+                      <option key={v.id} value={v.id}>{v.nom}</option>
+                    ))}
+                  </Liste>
+                </Champ>
+                <Champ label="Quartier">
+                  <Saisie placeholder="Ex : Akwa" value={quartierNom} onChange={(e) => setQuartierNom(e.target.value)} />
+                </Champ>
+              </div>
+            </>
           )}
 
           {!estDivers && (<>
@@ -868,7 +896,7 @@ export default function NouvelleVisitePage() {
       </form>
 
       <BarreAction>
-        <BoutonPrincipal form="visite-form" disabled={submitting || (estDivers ? lignesVente.length === 0 : !nom || !villeId)}>
+        <BoutonPrincipal form="visite-form" disabled={submitting || (estDivers ? lignesVente.length === 0 || !villeId : !nom || !villeId)}>
           {submitting ? "Enregistrement..." : "Valider la visite"}
         </BoutonPrincipal>
       </BarreAction>

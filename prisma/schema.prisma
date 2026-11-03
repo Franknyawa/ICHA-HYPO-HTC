@@ -532,6 +532,8 @@ model Vente {
   // paiement n'a pas été validé par l'admin (table paiements).
   modePaiement   ModePaiement? @map("mode_paiement")
   montantAnnonce Decimal?      @map("montant_annonce") @db.Decimal(12, 2)
+  /// Ville · quartier de l'achat (client divers, sans fiche client).
+  lieu         String?
   createdAt    DateTime     @default(now()) @map("created_at")
 
   lignes    VenteLigne[]
@@ -621,6 +623,8 @@ model CommandeDetailOrigine {
   commercialNom  String   @map("commercial_nom")
   /// Point de vente visité où le détail a été vendu (null si saisi au bureau).
   pointVenteNom  String?  @map("point_vente_nom")
+  /// Ville · quartier de l'achat (client divers).
+  lieu           String?
   venteId        String?  @map("vente_id")
   /// « Terrain » ou « Admin · Prénom Nom » / « Superviseur · … » pour une saisie au bureau.
   source         String   @default("Terrain")
