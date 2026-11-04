@@ -170,6 +170,9 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
       <div className="p-4 md:p-6">
         {/* Onglets */}
         <div className="mb-4 flex flex-wrap gap-2 print:hidden">
+          <Link href="/admin/rapports/bilan" className="flex items-center gap-1.5 rounded-full bg-brand px-3.5 py-2 text-xs font-semibold text-white">
+            Bilan depuis le début
+          </Link>
           <Link href="/admin/rapports/periodiques?type=semaine" className="flex items-center gap-1.5 rounded-full bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white dark:bg-slate-100 dark:text-slate-900">
             Rapport hebdomadaire
           </Link>

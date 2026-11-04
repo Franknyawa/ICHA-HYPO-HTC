@@ -1833,3 +1833,6 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 ## Correctif : total faux après modification d'une facture tarif bureau (03/11/2026)
 - `PUT /api/commandes/[id]` recalculait le détail au prix du catalogue (100 F) : le total d'une facture CLIENT DIVERS au tarif bureau passait de 5 120 à 6 400. Les prix déjà enregistrés sur les lignes de détail sont maintenant conservés (prix mélangés : quantités inchangées uniquement).
 - SQL `docs/correction-total-tarif-bureau-2026-11-03.sql` répare les factures déjà touchées.
+
+## Bilan des ventes depuis le début (04/11/2026)
+- Rapports > « Bilan depuis le début » (`/admin/rapports/bilan`, `lib/queries/bilan-ventes.ts`) : commandes LIVRÉES depuis la première, par produit et par mois (avec cumul), rapprochées de la caisse (ventes nettes d'avoirs, encaissé, reste à encaisser, écart, soldes espèces / OM-MoMo / banque). Boutons Imprimer et Télécharger PDF.
