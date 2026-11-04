@@ -89,6 +89,11 @@ export async function getBilanVentes() {
     caisse: {
       solde: caisse.solde as Record<Canal, number>,
       soldeTotal: caisse.soldeTotal,
+      /** Passage de « encaissé sur les ventes livrées » au solde de caisse. */
+      encaissementsHorsLivrees: Math.round(caisse.encaissementsVentes - encaisse),
+      autresRecettes: caisse.autresRecettes,
+      remboursements: caisse.remboursements,
+      depenses: caisse.depenses,
     },
   };
 }

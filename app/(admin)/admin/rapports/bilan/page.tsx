@@ -107,6 +107,31 @@ export default async function BilanVentesPage() {
           </div>
         </div>
 
+        {/* Du chiffre d'affaires au solde de caisse */}
+        <div className={`${carte} !p-0 overflow-hidden`}>
+          <div className="border-b border-slate-100 px-5 py-3 dark:border-slate-800">
+            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">De l&apos;encaissé au solde de la caisse</h2>
+            <p className="text-[11px] text-slate-400">Le solde de caisse n&apos;est pas égal aux ventes : il tient aussi compte des autres mouvements d&apos;argent.</p>
+          </div>
+          <table className="w-full text-sm">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {([
+                ["Encaissé sur les ventes livrées", b.encaisse, false],
+                ["+ Encaissements hors commandes livrées (acomptes, commandes pas encore livrées)", b.caisse.encaissementsHorsLivrees, false],
+                ["+ Autres recettes saisies en caisse", b.caisse.autresRecettes, false],
+                ["− Remboursements de clients", -b.caisse.remboursements, false],
+                ["− Dépenses", -b.caisse.depenses, false],
+                ["= Solde de la caisse", b.caisse.soldeTotal, true],
+              ] as const).map(([l, v, fort]) => (
+                <tr key={l} className={fort ? "bg-slate-50 font-bold dark:bg-slate-800/40" : ""}>
+                  <td className="px-5 py-2.5 text-slate-600 dark:text-slate-300">{l}</td>
+                  <td className="px-5 py-2.5 text-right font-semibold tabular-nums text-slate-800 dark:text-slate-100">{v < 0 ? `− ${fcfa(-v)}` : fcfa(v)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
         {/* Par produit */}
         <div className={`${carte} !p-0 overflow-hidden`}>
           <div className="border-b border-slate-100 px-5 py-3 dark:border-slate-800">
