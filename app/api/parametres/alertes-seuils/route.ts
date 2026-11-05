@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getSeuilsAlertes, CLES_SEUILS } from "@/lib/jobs/alertes";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -27,7 +28,7 @@ const schema = z.object({
   valeur: z.number().int().min(1).max(365),
 });
 
-export async function PATCH(req: NextRequest) {
+async function PATCH_(req: NextRequest) {
   try {
     await requireModule("parametres");
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -45,3 +46,5 @@ export async function PATCH(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);

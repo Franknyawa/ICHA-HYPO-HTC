@@ -3,11 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getCaisse } from "@/lib/queries/caisse";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
 /** Supprime une opération manuelle de la caisse (erreur de saisie). */
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+async function DELETE_(_req: Request, { params }: { params: { id: string } }) {
   try {
     await requireModule("caisse");
     const op = await prisma.operationCaisse.findUnique({ where: { id: params.id }, select: { referenceType: true, referenceId: true, type: true, canal: true, montant: true } });
@@ -53,3 +54,5 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     return handleApiError(error);
   }
 }
+
+export const DELETE = avecJournal(DELETE_);

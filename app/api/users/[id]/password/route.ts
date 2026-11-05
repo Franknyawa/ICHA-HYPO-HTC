@@ -5,6 +5,7 @@ import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { hashPassword } from "@/lib/auth/password";
 import { revoquerSessionsUtilisateur } from "@/lib/auth/session";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,7 @@ const schema = z.object({
   newPassword: z.string().min(6, "Au moins 6 caractères."),
 });
 
-export async function PATCH(
+async function PATCH_(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -43,3 +44,5 @@ export async function PATCH(
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);

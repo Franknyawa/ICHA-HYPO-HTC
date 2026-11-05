@@ -6,6 +6,7 @@ import { peutModifier } from "@/lib/auth/permissions";
 import { handleApiError } from "@/lib/api-errors";
 import { applyStockMovement } from "@/lib/services/stock";
 import { rafraichirAlerteLivraison } from "@/lib/jobs/alertes";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,7 @@ const schema = z.object({ motif: z.string().trim().max(200).optional() });
  *  - la commande passe en « Annulée » ; la vente du commercial (statistiques) n'est pas touchée.
  * Refusé s'il existe un avoir ou un retour (la correction passe alors par ces documents).
  */
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+async function POST_(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await requireModule("commandes");
     if (!peutModifier(session.role)) {
@@ -104,3 +105,5 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

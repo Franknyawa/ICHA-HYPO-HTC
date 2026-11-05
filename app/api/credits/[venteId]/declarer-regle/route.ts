@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,7 @@ const schema = z.object({
  * ensuite confirmer (voir PATCH /api/alertes/[id]) pour qu'elle soit
  * définitivement écartée du dashboard.
  */
-export async function POST(
+async function POST_(
   req: NextRequest,
   { params }: { params: { venteId: string } }
 ) {
@@ -100,3 +101,5 @@ export async function POST(
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

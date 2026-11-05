@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ export async function GET(
 }
 
 // Déconnecte l'utilisateur de partout d'un coup.
-export async function DELETE(
+async function DELETE_(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -37,3 +38,5 @@ export async function DELETE(
     return handleApiError(error);
   }
 }
+
+export const DELETE = avecJournal(DELETE_);

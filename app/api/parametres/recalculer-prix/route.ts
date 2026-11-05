@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { recalculerMontants } from "@/lib/services/recalcul-prix";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -15,7 +16,7 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+async function POST_() {
   try {
     await requireModule("parametres");
     return NextResponse.json(await recalculerMontants(true));
@@ -23,3 +24,5 @@ export async function POST() {
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

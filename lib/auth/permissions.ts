@@ -21,7 +21,9 @@ export type Module =
   | "rapports"
   | "archives"
   | "parametres"
-  | "utilisateurs";
+  | "utilisateurs"
+  | "journal"
+  | "sauvegarde";
 
 /** Qui a le droit d'ouvrir chaque rubrique de l'administration. */
 export const ACCES: Record<Module, RoleId[]> = {
@@ -40,6 +42,9 @@ export const ACCES: Record<Module, RoleId[]> = {
   archives: ["SUPER_ADMIN", "ADMIN"],
   parametres: ["SUPER_ADMIN"],
   utilisateurs: ["SUPER_ADMIN"],
+  // Journal des modifications : super admin seulement. Sauvegarde / export complet : admin et super admin.
+  journal: ["SUPER_ADMIN"],
+  sauvegarde: ["SUPER_ADMIN", "ADMIN"],
 };
 
 export const LIBELLES_ROLES: Record<RoleId, { nom: string; description: string }> = {
@@ -78,6 +83,8 @@ const PAGES: Record<string, Module> = {
   archives: "archives",
   parametres: "parametres",
   utilisateurs: "utilisateurs",
+  journal: "journal",
+  sauvegarde: "sauvegarde",
 };
 
 const API: Record<string, Module> = {
@@ -95,6 +102,8 @@ const API: Record<string, Module> = {
   parametres: "parametres",
   users: "utilisateurs",
   sessions: "utilisateurs",
+  journal: "journal",
+  sauvegarde: "sauvegarde",
 };
 
 /** Rubrique concernée par une adresse (/admin/stock → "stock", /api/caisse/… → "caisse"). */

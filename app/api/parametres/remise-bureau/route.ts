@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getRemiseBureauPct, setRemiseBureauPct } from "@/lib/services/remise-bureau";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,7 @@ export async function GET() {
 
 const schema = z.object({ pct: z.number().min(0).max(90) });
 
-export async function PATCH(req: NextRequest) {
+async function PATCH_(req: NextRequest) {
   try {
     await requireModule("parametres");
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -28,3 +29,5 @@ export async function PATCH(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);

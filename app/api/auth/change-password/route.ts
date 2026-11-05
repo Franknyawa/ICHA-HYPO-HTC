@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { revoquerSessionsUtilisateur } from "@/lib/auth/session";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ const schema = z.object({
   newPassword: z.string().min(6, "Au moins 6 caractères."),
 });
 
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     const session = await requireAuth();
 
@@ -46,3 +47,5 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

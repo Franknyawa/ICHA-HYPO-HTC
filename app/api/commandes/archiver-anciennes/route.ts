@@ -3,13 +3,14 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
 const schema = z.object({ jours: z.number().int().min(7).max(730).default(30) });
 
 /** Archive d'un coup toutes les commandes livrées ou annulées depuis plus de N jours. */
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     await requireModule("archives");
     const parsed = schema.safeParse(await req.json().catch(() => ({})));
@@ -25,3 +26,5 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

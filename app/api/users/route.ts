@@ -5,6 +5,7 @@ import { requireModule } from "@/lib/auth/rbac";
 import { ROLES } from "@/lib/auth/permissions";
 import { handleApiError } from "@/lib/api-errors";
 import { hashPassword } from "@/lib/auth/password";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -44,7 +45,7 @@ const createUserSchema = z.object({
   binomeId: z.string().optional().nullable(),
 });
 
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     await requireModule("utilisateurs");
 
@@ -94,3 +95,5 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

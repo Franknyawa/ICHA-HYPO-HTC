@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -18,7 +19,7 @@ export async function GET() {
 
 const schema = z.object({ nom: z.string().trim().min(2).max(80) });
 
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     await requireModule("parametres");
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -29,3 +30,5 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

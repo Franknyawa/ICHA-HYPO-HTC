@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { applyStockMovement, InsufficientStockError } from "@/lib/services/stock";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ const schema = z.object({
 // Ajustement manuel du stock — réassort (ENTREE) ou correction/perte
 // (SORTIE). Réutilise le même service que la déduction automatique lors
 // d'une vente, avec le même verrou optimiste (§18 CDC).
-export async function POST(
+async function POST_(
   req: NextRequest,
   { params }: { params: { produitId: string } }
 ) {
@@ -87,3 +88,5 @@ export async function POST(
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

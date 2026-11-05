@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { creditsCommande } from "@/lib/services/compte";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,7 @@ const schema = z.object({
  * résolue. L'argent entre en caisse automatiquement (la caisse additionne
  * tous les paiements).
  */
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     const session = await requireModule("caisse");
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -96,3 +97,5 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

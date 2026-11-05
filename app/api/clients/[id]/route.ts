@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getClientDetail } from "@/lib/queries/clients";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -31,7 +32,7 @@ const updateClientSchema = z.object({
   statut: z.enum(["ACTIF", "INACTIF"]).optional(),
 });
 
-export async function PATCH(
+async function PATCH_(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -55,3 +56,5 @@ export async function PATCH(
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);

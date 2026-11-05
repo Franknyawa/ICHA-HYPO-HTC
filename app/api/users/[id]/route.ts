@@ -6,6 +6,7 @@ import { ROLES } from "@/lib/auth/permissions";
 import { handleApiError } from "@/lib/api-errors";
 import { revoquerSessionsUtilisateur } from "@/lib/auth/session";
 import { isTrustedPhotoUrl } from "@/lib/services/storage";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -24,7 +25,7 @@ const updateUserSchema = z.object({
   avatarUrl: z.string().url().refine(isTrustedPhotoUrl, "URL non autorisée.").optional().nullable(),
 });
 
-export async function PATCH(
+async function PATCH_(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -99,7 +100,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+async function DELETE_(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -169,3 +170,6 @@ export async function DELETE(
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);
+export const DELETE = avecJournal(DELETE_);

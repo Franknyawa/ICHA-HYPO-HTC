@@ -9,6 +9,7 @@ import { ajouterVentesDetail, obtenirClientDivers } from "@/lib/services/client-
 import { jourDouala, debutJour } from "@/lib/utils/periode";
 import { getRemiseBureauPct } from "@/lib/services/remise-bureau";
 import { calculerLignesCommande, ErreurCalcul } from "@/lib/services/commande-calcul";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -74,7 +75,7 @@ const schema = z
  * encaisser. Un nouveau client entre dans la liste des points de vente.
  * Les prix sont TOUJOURS recalculés ici, jamais repris du navigateur.
  */
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     const session = await requireModule("commandes");
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -207,3 +208,5 @@ class ErreurMetier extends Error {
     super(message);
   }
 }
+
+export const POST = avecJournal(POST_);

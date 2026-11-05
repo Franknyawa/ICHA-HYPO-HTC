@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { creerRetour, CorrectionError, InsufficientStockError } from "@/lib/services/corrections";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -21,7 +22,7 @@ const schema = z.object({
 });
 
 /** Émet une facture retour (FR00001…), remet en stock ou en avaries, et réduit le solde du client (remboursement en caisse si trop-perçu). */
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     const session = await requireModule("factures");
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -36,3 +37,5 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

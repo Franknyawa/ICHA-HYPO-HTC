@@ -4,6 +4,7 @@ import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { listPointsVente } from "@/lib/queries/points-vente";
 import { createPointVenteSchema } from "@/lib/validations/point-vente";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     const session = await requireModule("points-vente");
 
@@ -70,3 +71,5 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

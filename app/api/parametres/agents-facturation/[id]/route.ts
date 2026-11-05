@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -11,7 +12,7 @@ const schema = z.object({
   actif: z.boolean().optional(),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+async function PATCH_(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireModule("parametres");
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -25,7 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 /** Suppression réelle seulement si l'agent n'apparaît sur aucune facture ; sinon on propose de le désactiver. */
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+async function DELETE_(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireModule("parametres");
     const factures = await prisma.facture.count({ where: { agentId: params.id } });
@@ -41,3 +42,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);
+export const DELETE = avecJournal(DELETE_);

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { NOMS_REGIONS } from "@/lib/geo/cameroun";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -25,7 +26,7 @@ const schema = z.object({
   valeurCartons: z.number().int().min(0).max(10_000_000).nullable(),
 });
 
-export async function PUT(req: NextRequest) {
+async function PUT_(req: NextRequest) {
   try {
     await requireModule("parametres");
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -54,3 +55,5 @@ export async function PUT(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const PUT = avecJournal(PUT_);

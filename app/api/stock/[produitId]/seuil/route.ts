@@ -4,12 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { peutModifier } from "@/lib/auth/permissions";
 import { handleApiError } from "@/lib/api-errors";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
 const schema = z.object({ seuilAlerte: z.number().int().min(0) });
 
-export async function PATCH(
+async function PATCH_(
   req: NextRequest,
   { params }: { params: { produitId: string } }
 ) {
@@ -31,3 +32,5 @@ export async function PATCH(
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);

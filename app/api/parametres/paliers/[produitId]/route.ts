@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { validerGrille } from "@/lib/utils/tarifs";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,7 @@ const schema = z.object({
 });
 
 /** Remplace d'un coup toute la grille tarifaire d'un produit (liste vide = pas de grille). */
-export async function PUT(req: NextRequest, { params }: { params: { produitId: string } }) {
+async function PUT_(req: NextRequest, { params }: { params: { produitId: string } }) {
   try {
     await requireModule("parametres");
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -43,3 +44,5 @@ export async function PUT(req: NextRequest, { params }: { params: { produitId: s
     return handleApiError(error);
   }
 }
+
+export const PUT = avecJournal(PUT_);

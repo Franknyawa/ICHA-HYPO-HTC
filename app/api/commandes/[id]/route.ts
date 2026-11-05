@@ -7,6 +7,7 @@ import { applyStockMovement, InsufficientStockError } from "@/lib/services/stock
 import { convertToSachets } from "@/lib/services/produits";
 import { rafraichirAlerteLivraison } from "@/lib/jobs/alertes";
 import { calculerLignesCommande, ErreurCalcul } from "@/lib/services/commande-calcul";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,7 @@ const schema = z.object({
   dateLivraisonPrevue: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 }).refine((d) => d.statut !== undefined || d.dateLivraisonPrevue !== undefined, { message: "Rien à modifier." });
 
-export async function PATCH(
+async function PATCH_(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -215,7 +216,7 @@ const schemaModif = z.object({
  * Possible tant que la commande n'est pas livrée ni annulée et qu'aucun paiement, avoir ou retour n'existe :
  * ensuite, la correction passe par une facture d'avoir. Les prix sont recalculés côté serveur.
  */
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+async function PUT_(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireModule("commandes");
     const parsed = schemaModif.safeParse(await req.json().catch(() => null));
@@ -309,3 +310,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);
+export const PUT = avecJournal(PUT_);

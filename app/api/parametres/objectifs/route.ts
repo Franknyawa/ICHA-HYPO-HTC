@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -68,7 +69,7 @@ const createSchema = z.object({
 
 // Crée l'objectif de la période en cours pour un binôme qui n'en a pas
 // encore (ex: nouveau binôme, ou période jamais initialisée).
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     await requireModule("parametres");
     const parsed = createSchema.safeParse(await req.json().catch(() => null));
@@ -98,7 +99,7 @@ const appliquerSchema = z.object({
 
 // « Objectif binôme » unique : la valeur saisie s'applique à tous les binômes
 // actifs (met à jour l'objectif de la période en cours, ou le crée).
-export async function PUT(req: NextRequest) {
+async function PUT_(req: NextRequest) {
   try {
     await requireModule("parametres");
     const parsed = appliquerSchema.safeParse(await req.json().catch(() => null));
@@ -129,3 +130,6 @@ export async function PUT(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);
+export const PUT = avecJournal(PUT_);

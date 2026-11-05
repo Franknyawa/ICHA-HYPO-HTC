@@ -23,6 +23,8 @@ import {
   Target,
   Wallet,
   Archive,
+  History,
+  DatabaseBackup,
   CalendarClock,
   type LucideIcon,
 } from "lucide-react";
@@ -73,6 +75,8 @@ const GROUPES: { titre: string; items: Item[] }[] = [
       { href: "/admin/utilisateurs", label: "Utilisateurs", icon: UserCog, module: "utilisateurs" },
       { href: "/admin/parametres", label: "Paramètres", icon: Settings, module: "parametres" },
       { href: "/admin/archives", label: "Archives", icon: Archive, module: "archives" },
+      { href: "/admin/sauvegarde", label: "Sauvegarde et export", icon: DatabaseBackup, module: "sauvegarde" },
+      { href: "/admin/journal", label: "Journal des modifications", icon: History, module: "journal" },
     ],
   },
 ];

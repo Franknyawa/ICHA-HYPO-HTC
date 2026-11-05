@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -11,7 +12,7 @@ const schema = z.object({
   actif: z.boolean().optional(),
 });
 
-export async function PATCH(
+async function PATCH_(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -29,7 +30,7 @@ export async function PATCH(
 }
 
 /** Suppression réelle seulement si le binôme n'a ni membre, ni visite, ni objectif ; sinon on propose de le désactiver. */
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+async function DELETE_(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireModule("parametres");
     const [membres, visites, objectifs] = await Promise.all([
@@ -49,3 +50,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);
+export const DELETE = avecJournal(DELETE_);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { fusionnerClients, FusionError } from "@/lib/services/fusion-clients";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ const schema = z.object({
 });
 
 /** Fusion de clients en doublon (super administrateur uniquement). */
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     const session = await requireModule("clients");
     if (session.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Réservé au super administrateur." }, { status: 403 });
@@ -26,3 +27,5 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

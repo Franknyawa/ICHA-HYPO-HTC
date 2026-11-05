@@ -917,3 +917,28 @@ model PerformanceBinome {
   @@unique([binomeId, periode])
   @@map("agg_performance_binome")
 }
+
+/// Journal des modifications : qui a fait quoi, quand (consultable par le super admin seulement).
+model JournalModification {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now()) @map("created_at")
+  userId      String?  @map("user_id")
+  userNom     String   @map("user_nom")
+  role        String
+  /// Code de l'action (ex. COMMANDE_CREE) et son libellé lisible.
+  action      String
+  libelle     String
+  /// Type d'élément concerné (COMMANDE, POINT_VENTE, CAISSE, STOCK, UTILISATEUR, PARAMETRE, EXPORT…).
+  entiteType  String?  @map("entite_type")
+  entiteId    String?  @map("entite_id")
+  resume      String?
+  details     Json?
+  methode     String
+  chemin      String
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([action])
+  @@index([entiteType])
+  @@map("journal_modifications")
+}

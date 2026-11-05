@@ -5,6 +5,7 @@ import { handleApiError } from "@/lib/api-errors";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import { createClientSchema } from "@/lib/validations/point-vente";
 import type { Prisma } from "@prisma/client";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     await requireModule("clients");
 
@@ -68,3 +69,5 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

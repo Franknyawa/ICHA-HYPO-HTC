@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { creerAvoir, CorrectionError } from "@/lib/services/corrections";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ const schema = z.object({
 });
 
 /** Émet une facture d'avoir (FA00001…). Réservé Admin / Super Admin (module « factures »). */
-export async function POST(req: NextRequest) {
+async function POST_(req: NextRequest) {
   try {
     const session = await requireModule("factures");
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -34,3 +35,5 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

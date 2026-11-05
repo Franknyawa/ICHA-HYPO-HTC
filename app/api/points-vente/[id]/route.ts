@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth, requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { updatePointVenteSchema } from "@/lib/validations/point-vente";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -45,7 +46,7 @@ export async function GET(
 // Modification d'un point de vente existant : admin uniquement. Un
 // commercial recense un point de vente via sa visite (création) mais ne
 // peut pas réécrire la fiche d'un point de vente existant (nom, GPS...).
-export async function PATCH(
+async function PATCH_(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -73,3 +74,5 @@ export async function PATCH(
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);

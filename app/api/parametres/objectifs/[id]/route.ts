@@ -3,12 +3,13 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
 const schema = z.object({ valeurCartons: z.number().int().min(0) });
 
-export async function PATCH(
+async function PATCH_(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -27,3 +28,5 @@ export async function PATCH(
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);

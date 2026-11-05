@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ const schema = z.object({ versQuartierId: z.string() });
 // puis le premier est désactivé (jamais supprimé — l'historique des
 // visites/ventes qui le référencent indirectement via PointVente reste
 // intact, cohérent avec le reste de l'app).
-export async function POST(
+async function POST_(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -56,3 +57,5 @@ export async function POST(
     return handleApiError(error);
   }
 }
+
+export const POST = avecJournal(POST_);

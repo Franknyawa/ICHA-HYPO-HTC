@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -18,7 +19,7 @@ const schema = z.object({
   actif: z.boolean().optional(),
 });
 
-export async function PATCH(
+async function PATCH_(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -49,7 +50,7 @@ export async function PATCH(
 // contraire, on refuse clairement plutôt que de casser des ventes passées
 // et on suggère la désactivation, cohérent avec le reste de l'app
 // (villes/types/binômes : jamais de suppression physique si déjà utilisé).
-export async function DELETE(
+async function DELETE_(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -82,3 +83,6 @@ export async function DELETE(
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);
+export const DELETE = avecJournal(DELETE_);

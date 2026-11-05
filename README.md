@@ -1839,3 +1839,9 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 
 ## Saisie au bureau : au nom du commercial (05/11/2026)
 - Formulaire commande admin : « Commercial concerné » obligatoire (Choisir… / Bureau). La commande et le détail CLIENT DIVERS sont rangés sous le nom du commercial choisi ; « Saisi par … » apparaît sur chaque ligne (OriginesDetail). Le tarif bureau garde son bloc propre.
+
+## Journal des modifications et sauvegarde (2026-11-05)
+- Table `journal_modifications` (SQL : `docs/journal-sauvegarde-2026-11-05.sql`, à exécuter AVANT le déploiement).
+- `lib/services/journal.ts` : `avecJournal(handler)` enveloppe les routes d'écriture (commandes, caisse, clients, points de vente, stock, utilisateurs, paramètres…). L'action est inscrite après succès, sans jamais bloquer ; mots de passe/jetons masqués. L'historique démarre au déploiement ; visites terrain et connexions ne sont pas journalisées.
+- `/admin/journal` : SUPER_ADMIN uniquement (filtres personne, type, dates, recherche, pagination, impression/PDF).
+- `/admin/sauvegarde` : ADMIN + SUPER_ADMIN. `/api/sauvegarde/excel` (exceljs, une feuille par domaine) et `/api/sauvegarde/pdf` (jspdf-autotable). Les exports sont eux-mêmes journalisés. Aucun hash de mot de passe exporté.

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
 import { getDureeSessionMinutes } from "@/lib/auth/session";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -21,7 +22,7 @@ export async function GET() {
 // absurdes tout en permettant des réglages fins (ex: 30 min).
 const schema = z.object({ minutes: z.number().int().min(5).max(43200) });
 
-export async function PATCH(req: NextRequest) {
+async function PATCH_(req: NextRequest) {
   try {
     await requireModule("parametres");
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -38,3 +39,5 @@ export async function PATCH(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);

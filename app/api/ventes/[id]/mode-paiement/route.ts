@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
+import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
 
@@ -14,7 +15,7 @@ const schema = z.object({ modePaiement: z.enum(["ESPECES", "MOBILE_MONEY", "BANQ
  * canal d'origine : seule l'information affichée sur la commande et la
  * facture change.
  */
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+async function PATCH_(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireModule("factures");
     const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -27,3 +28,5 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return handleApiError(error);
   }
 }
+
+export const PATCH = avecJournal(PATCH_);
