@@ -139,6 +139,7 @@ export function NouvelleCommandeForm({
     e.preventDefault();
     setErreur(null);
     if (commande.lignes.length === 0) return setErreur("Indiquez au moins une quantité.");
+    if (!modif && !commercialId) return setErreur("Choisissez le commercial concerné (ou « Bureau »).");
     // Une vente uniquement au détail va sur le « client divers » : pas de client à choisir.
     const soloDetail = !modif && commande.lignes.every((l) => l.detail);
     if (!soloDetail && !modif && mode !== "DIVERS") {
@@ -169,7 +170,7 @@ export function NouvelleCommandeForm({
                   typeId: typeId || undefined,
                 },
               }),
-          commercialId: commercialId || undefined,
+          commercialId: commercialId && commercialId !== "BUREAU" ? commercialId : undefined,
           lignes: commande.lignes.map((l) => ({
             produitCode: l.produitCode,
             nbSachets: l.nbSachets,
@@ -394,7 +395,8 @@ export function NouvelleCommandeForm({
             </Etiquette>
             <Etiquette texte="Commercial concerné">
               <select className={champ} value={commercialId} onChange={(e) => setCommercialId(e.target.value)}>
-                <option value="">Bureau (moi)</option>
+                {!modif && <option value="">Choisir le commercial…</option>}
+                <option value="BUREAU">Bureau (sans commercial)</option>
                 {commerciaux.map((c) => (
                   <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>
                 ))}

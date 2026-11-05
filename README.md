@@ -1836,3 +1836,6 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 
 ## Bilan des ventes depuis le début (04/11/2026)
 - Rapports > « Bilan depuis le début » (`/admin/rapports/bilan`, `lib/queries/bilan-ventes.ts`) : commandes LIVRÉES depuis la première, par produit et par mois (avec cumul), rapprochées de la caisse (ventes nettes d'avoirs, encaissé, reste à encaisser, écart, soldes espèces / OM-MoMo / banque). Boutons Imprimer et Télécharger PDF.
+
+## Saisie au bureau : au nom du commercial (05/11/2026)
+- Formulaire commande admin : « Commercial concerné » obligatoire (Choisir… / Bureau). La commande et le détail CLIENT DIVERS sont rangés sous le nom du commercial choisi ; « Saisi par … » apparaît sur chaque ligne (OriginesDetail). Le tarif bureau garde son bloc propre.

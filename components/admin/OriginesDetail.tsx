@@ -23,11 +23,13 @@ const qte = (o: { nbSachets: number; nbFilets: number }) =>
  * avec le détail de chaque vente pour retrouver l'origine d'une erreur.
  */
 export function OriginesDetail({ origines }: { origines: Origine[] }) {
+  // Un bloc par commercial concerné, même si la vente a été saisie au bureau (le « saisi par » apparaît sur la ligne).
+  // Seul le tarif du personnel du bureau a son propre bloc.
   const groupes = new Map<string, { titre: string; bureau: boolean; lignes: Origine[]; total: number }>();
   for (const o of origines) {
-    const bureau = o.source !== "Terrain";
-    const cle = bureau ? `bureau:${o.source}` : `terrain:${o.commercialNom}`;
-    const g = groupes.get(cle) ?? { titre: bureau ? o.source : o.commercialNom, bureau, lignes: [], total: 0 };
+    const personnel = o.source.startsWith("Personnel bureau");
+    const cle = personnel ? `pers:${o.source}` : `c:${o.commercialNom}`;
+    const g = groupes.get(cle) ?? { titre: personnel ? o.source.split(" · ")[0] : o.commercialNom, bureau: personnel, lignes: [], total: 0 };
     g.lignes.push(o);
     g.total += Number(o.montant);
     groupes.set(cle, g);
@@ -45,7 +47,7 @@ export function OriginesDetail({ origines }: { origines: Origine[] }) {
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <p className="font-bold text-slate-800 dark:text-slate-100">
                 {g.titre}
-                {g.bureau && <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">Saisie au bureau</span>}
+                {g.bureau && <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">Tarif bureau</span>}
               </p>
               <p className="font-bold tabular-nums text-slate-700 dark:text-slate-200">{fcfa(g.total)}</p>
             </div>
@@ -57,6 +59,11 @@ export function OriginesDetail({ origines }: { origines: Origine[] }) {
                     {qte(l)}
                     {l.pointVenteNom && <span className="text-slate-400"> · chez {l.pointVenteNom}</span>}
                     {l.lieu && <span className="text-slate-400"> · {l.lieu}</span>}
+                    {l.source !== "Terrain" && (
+                      <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+                        Saisi par {l.source.startsWith("Personnel bureau") ? l.source.split(" · ").slice(1).join(" · ") : l.source}
+                      </span>
+                    )}
                   </span>
                   <span className="tabular-nums text-slate-400">
                     {new Date(l.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Douala" })} · {fcfa(Number(l.montant))}
