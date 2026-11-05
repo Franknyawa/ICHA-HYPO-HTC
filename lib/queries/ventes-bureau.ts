@@ -4,7 +4,7 @@ import { cartonsEq, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 export type VenteBureau = { commercialId: string; binomeId: string | null; cartons: number };
 
 /**
- * Commandes saisies au bureau (administrateur ou superviseur) au nom d'un commercial : elles n'ont pas de « vente terrain »,
+ * Commandes sans « vente terrain » : saisies au bureau (administrateur ou superviseur) au nom d'un commercial, ou prises sur le terrain en visite de réassort ;
  * mais elles comptent dans les chiffres de ce commercial (objectifs, progression, statistiques personnelles).
  * Comprend les cartons commandés et la vente au détail saisie au bureau (facture « CLIENT DIVERS »).
  * Les commandes annulées sont ignorées.
@@ -13,7 +13,7 @@ export async function ventesBureau(depuis: Date, jusqua?: Date): Promise<VenteBu
   const plage = { gte: depuis, ...(jusqua ? { lte: jusqua } : {}) };
   const [commandes, origines, produits] = await Promise.all([
     prisma.commande.findMany({
-      where: { saisiePar: { not: null }, venteId: null, statut: { not: "ANNULEE" }, dateCommande: plage, commercial: { role: "COMMERCIAL" } },
+      where: { venteId: null, statut: { not: "ANNULEE" }, dateCommande: plage, commercial: { role: "COMMERCIAL" } },
       select: {
         commercialId: true,
         commercial: { select: { binomeId: true } },

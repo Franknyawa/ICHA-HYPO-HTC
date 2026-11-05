@@ -14,6 +14,8 @@ const REGLES: Regle[] = [
   ["PATCH", /^\/api\/commandes\/[^/]+$/, "COMMANDE_STATUT", "Statut ou date de livraison d'une commande", "COMMANDE"],
   ["PUT", /^\/api\/commandes\/[^/]+$/, "COMMANDE_MODIFIEE", "Commande modifiée", "COMMANDE"],
   ["PATCH", /^\/api\/commandes\/[^/]+\/mode-paiement$/, "COMMANDE_PAIEMENT", "Mode de paiement d'une commande", "COMMANDE"],
+  ["PATCH", /^\/api\/commandes\/[^/]+\/origines\/[^/]+$/, "ORIGINE_MODIFIEE", "Ligne du détail client divers corrigée", "COMMANDE"],
+  ["DELETE", /^\/api\/commandes\/[^/]+\/origines\/[^/]+$/, "ORIGINE_SUPPRIMEE", "Ligne du détail client divers supprimée", "COMMANDE"],
   ["POST", /^\/api\/commandes\/[^/]+\/archiver$/, "COMMANDE_ARCHIVEE", "Commande archivée / restaurée", "COMMANDE"],
   ["POST", /^\/api\/commandes\/[^/]+\/annuler-doublon$/, "COMMANDE_DOUBLON", "Commande annulée comme doublon", "COMMANDE"],
   ["POST", /^\/api\/commandes\/archiver-anciennes$/, "COMMANDES_ARCHIVEES", "Archivage des anciennes commandes", "COMMANDE"],

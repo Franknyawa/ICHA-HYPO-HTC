@@ -1,5 +1,6 @@
 "use client";
 
+import { idStable, viderIds } from "@/lib/utils/ids-formulaire";
 import { trierProduits } from "@/lib/utils/produits-ordre";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -192,6 +193,7 @@ export default function NouvelleVisitePage() {
   const [acompteCommande, setAcompteCommande] = useState(0);
 
   const [submitting, setSubmitting] = useState(false);
+  const enCours = useRef(false);
   const [observation, setObservation] = useState("");
   const [indecis, setIndecis] = useState<EtatIndecis>(ETAT_INDECIS_INITIAL);
   const [error, setError] = useState<string | null>(null);
@@ -327,9 +329,11 @@ export default function NouvelleVisitePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (enCours.current) return;
+    enCours.current = true;
     setSubmitting(true);
 
-    const visiteUuid = uuid();
+    const visiteUuid = idStable("visite-new", "u1");
     const maintenant = new Date();
     setBonRef({ reference: referenceBonCommande(maintenant, visiteUuid), date: maintenant });
     const photosPayload = photoUrls
@@ -337,7 +341,7 @@ export default function NouvelleVisitePage() {
         const finalUrl = url ?? photoPreviews[i];
         if (!finalUrl) return null;
         return {
-          uuidClient: photoUuids[i] ?? uuid(),
+          uuidClient: photoUuids[i] ?? idStable("visite-new", `photo${i}`),
           url: finalUrl,
           type: i === 0 ? "DEVANTURE_1" : "DEVANTURE_2",
         };
@@ -353,7 +357,7 @@ export default function NouvelleVisitePage() {
       ...(estDivers
         ? { clientDivers: true, lieuDivers: villeId ? { villeId, quartierNom: quartierNom.trim() || undefined } : undefined }
         : { nouveauPointVente: {
-        uuidClient: uuid(),
+        uuidClient: idStable("visite-new", "u3"),
         nom,
         // Le répondant reste l'interlocuteur du point de vente (champs
         // historiques vendeur / téléphone) ; le patron est renseigné à part.
@@ -373,14 +377,14 @@ export default function NouvelleVisitePage() {
       ...(lignesVente.length > 0
         ? {
             vente: {
-              uuidClient: uuid(),
+              uuidClient: idStable("visite-new", "u4"),
               lignes: lignesVente,
               // Valeur catalogue de la vente — distincte de ce qui a été
               // effectivement perçu (paiement.montant), qui peut être
               // inférieur en cas de crédit partiel/total.
               montantTotal: montantCalcule,
               paiement: {
-                uuidClient: uuid(),
+                uuidClient: idStable("visite-new", "u5"),
                 montant: montantAnnonce,
                 modePaiement,
               },
@@ -390,7 +394,7 @@ export default function NouvelleVisitePage() {
       ...(commandeActive && commandeLignes.length > 0
         ? {
             commande: {
-              uuidClient: uuid(),
+              uuidClient: idStable("visite-new", "u6"),
               lignes: commandeLignes,
               montantTotal: montantCommandeCalcule,
               modePaiement: modePaiementCommande,
@@ -407,7 +411,9 @@ export default function NouvelleVisitePage() {
 
     if (!navigator.onLine) {
       await queuePendingVisite(visiteUuid, payload);
+      viderIds("visite-new");
       setQueuedOffline(true);
+      enCours.current = false;
       setSubmitting(false);
       return;
     }
@@ -430,15 +436,18 @@ export default function NouvelleVisitePage() {
         const numero = numeroBonCommande(d.bonCommande.numero);
         setBonRef((prev) => (prev ? { ...prev, reference: numero } : prev));
       }
+      viderIds("visite-new");
       setSuccess(true);
       if (!aUneCommande) {
         setTimeout(() => router.push("/dashboard"), 1200);
       }
     } catch {
       await queuePendingVisite(visiteUuid, payload);
+      viderIds("visite-new");
       setQueuedOffline(true);
       syncPendingVisites();
     } finally {
+      enCours.current = false;
       setSubmitting(false);
     }
   }

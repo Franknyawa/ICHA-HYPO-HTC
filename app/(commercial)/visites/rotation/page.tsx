@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { idStable, viderIds } from "@/lib/utils/ids-formulaire";
+import { useState , useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, CheckCircle2, Clock, ShoppingCart, Search, MessageSquareText } from "lucide-react";
 import { PointVenteSearch, type ResultatRecherche } from "@/components/commercial/PointVenteSearch";
@@ -35,6 +36,7 @@ export default function RotationPage() {
   const [observation, setObservation] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
+  const enCours = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [queuedOffline, setQueuedOffline] = useState(false);
@@ -73,9 +75,11 @@ export default function RotationPage() {
     e.preventDefault();
     if (!pointVente) return;
     setError(null);
+    if (enCours.current) return;
+    enCours.current = true;
     setSubmitting(true);
 
-    const visiteUuid = uuid();
+    const visiteUuid = idStable("visite-rotation", "u1");
     const finalPhotoUrl = photoUrl ?? photoPreview;
     const payload = {
       uuidClient: visiteUuid,
@@ -83,13 +87,15 @@ export default function RotationPage() {
       pointVenteId: pointVente.id,
       observation: observation || undefined,
       photos: finalPhotoUrl
-        ? [{ uuidClient: photoUuid ?? uuid(), url: finalPhotoUrl, type: "ROTATION_SELFIE" }]
+        ? [{ uuidClient: photoUuid ?? idStable("visite-rotation", "u2"), url: finalPhotoUrl, type: "ROTATION_SELFIE" }]
         : [],
     };
 
     if (!navigator.onLine) {
       await queuePendingVisite(visiteUuid, payload);
+      viderIds("visite-rotation");
       setQueuedOffline(true);
+      enCours.current = false;
       setSubmitting(false);
       return;
     }
@@ -107,12 +113,15 @@ export default function RotationPage() {
         return;
       }
 
+      viderIds("visite-rotation");
       setSuccess(true);
     } catch {
       await queuePendingVisite(visiteUuid, payload);
+      viderIds("visite-rotation");
       setQueuedOffline(true);
       syncPendingVisites();
     } finally {
+      enCours.current = false;
       setSubmitting(false);
     }
   }

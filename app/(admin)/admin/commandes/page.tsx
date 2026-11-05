@@ -264,7 +264,7 @@ export default async function CommandesPage({
                       ))}
                     </div>
 
-                    {c.origines.length > 0 && <OriginesDetail origines={c.origines} />}
+                    {c.origines.length > 0 && <OriginesDetail origines={c.origines} commandeId={c.id} modifiable={peutModifier(session.role) && (c.statut === "EN_ATTENTE" || c.statut === "EN_LIVRAISON")} />}
 
                     <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
                       <span className="font-bold tabular-nums text-slate-800 dark:text-slate-100">

@@ -1845,3 +1845,8 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - `lib/services/journal.ts` : `avecJournal(handler)` enveloppe les routes d'écriture (commandes, caisse, clients, points de vente, stock, utilisateurs, paramètres…). L'action est inscrite après succès, sans jamais bloquer ; mots de passe/jetons masqués. L'historique démarre au déploiement ; visites terrain et connexions ne sont pas journalisées.
 - `/admin/journal` : SUPER_ADMIN uniquement (filtres personne, type, dates, recherche, pagination, impression/PDF).
 - `/admin/sauvegarde` : ADMIN + SUPER_ADMIN. `/api/sauvegarde/excel` (exceljs, une feuille par domaine) et `/api/sauvegarde/pdf` (jspdf-autotable). Les exports sont eux-mêmes journalisés. Aucun hash de mot de passe exporté.
+
+## Correctifs du 2026-11-05 (soir)
+- Détail CLIENT DIVERS modifiable par commerciale : crayon / corbeille sur chaque ligne (admin, super admin ; commande non livrée). `PATCH|DELETE /api/commandes/[id]/origines/[oid]` recalcule la ligne cumulée, le total de la commande et la vente terrain (statistiques). Journalisé.
+- Anti-doublon : `lib/utils/ids-formulaire.ts` — les identifiants d'envoi sont conservés (sessionStorage) tant que l'envoi n'a pas abouti, + verrou anti double-clic, sur les formulaires visite / réassort / rotation. Un nouvel appui sur « Valider » ne recrée plus rien.
+- Réassort : `ventesBureau` inclut maintenant les commandes sans vente terrain (réassort) dans les cartons de la vendeuse.

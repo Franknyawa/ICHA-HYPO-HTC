@@ -1,7 +1,8 @@
 "use client";
 
+import { idStable, viderIds } from "@/lib/utils/ids-formulaire";
 import { trierProduits } from "@/lib/utils/produits-ordre";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense , useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Clock, Download, Search, ShoppingCart, Wallet, MessageSquareText } from "lucide-react";
 import { PointVenteSearch, type ResultatRecherche } from "@/components/commercial/PointVenteSearch";
@@ -56,6 +57,7 @@ function ReassortContent() {
   const [indecis, setIndecis] = useState<EtatIndecis>(ETAT_INDECIS_INITIAL);
 
   const [submitting, setSubmitting] = useState(false);
+  const enCours = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [queuedOffline, setQueuedOffline] = useState(false);
@@ -135,9 +137,11 @@ function ReassortContent() {
     e.preventDefault();
     if (!pointVente) return;
     setError(null);
+    if (enCours.current) return;
+    enCours.current = true;
     setSubmitting(true);
 
-    const visiteUuid = uuid();
+    const visiteUuid = idStable("visite-reassort", "u1");
     const maintenant = new Date();
     setBonRef({ reference: referenceBonCommande(maintenant, visiteUuid), date: maintenant });
     const payload = {
@@ -147,7 +151,7 @@ function ReassortContent() {
       ...(lignes.length > 0
         ? {
             commande: {
-              uuidClient: uuid(),
+              uuidClient: idStable("visite-reassort", "u2"),
               lignes,
               montantTotal: montantCalcule,
               modePaiement,
@@ -163,7 +167,9 @@ function ReassortContent() {
 
     if (!navigator.onLine) {
       await queuePendingVisite(visiteUuid, payload);
+      viderIds("visite-reassort");
       setQueuedOffline(true);
+      enCours.current = false;
       setSubmitting(false);
       return;
     }
@@ -186,12 +192,15 @@ function ReassortContent() {
         const numero = numeroBonCommande(d.bonCommande.numero);
         setBonRef((prev) => (prev ? { ...prev, reference: numero } : prev));
       }
+      viderIds("visite-reassort");
       setSuccess(true);
     } catch {
       await queuePendingVisite(visiteUuid, payload);
+      viderIds("visite-reassort");
       setQueuedOffline(true);
       syncPendingVisites();
     } finally {
+      enCours.current = false;
       setSubmitting(false);
     }
   }

@@ -1,6 +1,8 @@
 import { Users } from "lucide-react";
+import { OrigineActions } from "@/components/admin/OrigineActions";
 
 type Origine = {
+  id: string;
   commercialNom: string;
   pointVenteNom: string | null;
   lieu?: string | null;
@@ -22,7 +24,7 @@ const qte = (o: { nbSachets: number; nbFilets: number }) =>
  * Facture « CLIENT DIVERS » : qui a vendu quoi. Un bloc par commerciale (ou saisie au bureau),
  * avec le détail de chaque vente pour retrouver l'origine d'une erreur.
  */
-export function OriginesDetail({ origines }: { origines: Origine[] }) {
+export function OriginesDetail({ origines, commandeId, modifiable = false }: { origines: Origine[]; commandeId?: string; modifiable?: boolean }) {
   // Un bloc par commercial concerné, même si la vente a été saisie au bureau (le « saisi par » apparaît sur la ligne).
   // Seul le tarif du personnel du bureau a son propre bloc.
   const groupes = new Map<string, { titre: string; bureau: boolean; lignes: Origine[]; total: number }>();
@@ -63,6 +65,9 @@ export function OriginesDetail({ origines }: { origines: Origine[] }) {
                       <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
                         Saisi par {l.source.startsWith("Personnel bureau") ? l.source.split(" · ").slice(1).join(" · ") : l.source}
                       </span>
+                    )}
+                    {modifiable && commandeId && (
+                      <OrigineActions commandeId={commandeId} origineId={l.id} nbSachets={l.nbSachets} nbFilets={l.nbFilets} lieu={l.lieu ?? null} />
                     )}
                   </span>
                   <span className="tabular-nums text-slate-400">
