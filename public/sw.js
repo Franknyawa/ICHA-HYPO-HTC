@@ -17,10 +17,10 @@ const VERSION = "v9";
 const STATIC_CACHE = `siri-static-${VERSION}`;
 const PAGES_CACHE = `siri-pages-${VERSION}`;
 const ADMIN_CACHE = `siri-admin-${VERSION}`;
-const DELAI_ADMIN_MS = 8000;
+const DELAI_ADMIN_MS = 12000;
 const PAGES_TERRAIN = ["/dashboard", "/visites/new", "/visites/rotation", "/visites/reassort", "/historique", "/profil"];
 const PAGE_DE_SECOURS = "/visites/new";
-const DELAI_RESEAU_MS = 4000;
+const DELAI_RESEAU_MS = 8000;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -42,6 +42,16 @@ self.addEventListener("activate", (event) => {
   );
   self.clients.claim();
 });
+
+// Pages servies depuis la copie locale parce que le réseau était trop lent : url -> true.
+// La page demande son état au chargement (message ETAT_PAGE) pour afficher un bandeau d'avertissement.
+const pagesPerimees = new Map();
+
+async function prevenirFraiche(url) {
+  if (!pagesPerimees.has(url)) return;
+  const clients = await self.clients.matchAll();
+  clients.forEach((c) => c.postMessage({ type: "PAGE_FRAICHE_PRETE", url }));
+}
 
 function cleDePage(pathname) {
   return new Request(self.location.origin + pathname);
@@ -88,11 +98,19 @@ async function pageReseauDAbord(event) {
   }
 
   // Une version locale existe : on laisse le réseau répondre, mais pas plus de 4 s.
-  const delai = new Promise((resolve) => setTimeout(() => resolve(enCache), DELAI_RESEAU_MS));
-  event.waitUntil(reseau.catch(() => {}));
+  const cleUrl = url.pathname + url.search;
+  pagesPerimees.delete(cleUrl);
+  const delai = new Promise((resolve) =>
+    setTimeout(() => {
+      pagesPerimees.set(cleUrl, true);
+      resolve(enCache);
+    }, DELAI_RESEAU_MS)
+  );
+  event.waitUntil(reseau.then(() => prevenirFraiche(cleUrl)).catch(() => {}));
   try {
     return await Promise.race([reseau, delai]);
   } catch {
+    pagesPerimees.set(cleUrl, true);
     return enCache;
   }
 }
@@ -123,11 +141,19 @@ async function pageAdmin(event) {
     }
   }
   // Une version locale existe : le réseau a priorité (8 s max), sinon la dernière version connue.
-  const delai = new Promise((resolve) => setTimeout(() => resolve(enCache), DELAI_ADMIN_MS));
-  event.waitUntil(reseau.catch(() => {}));
+  const cleUrl = url.pathname + url.search;
+  pagesPerimees.delete(cleUrl);
+  const delai = new Promise((resolve) =>
+    setTimeout(() => {
+      pagesPerimees.set(cleUrl, true);
+      resolve(enCache);
+    }, DELAI_ADMIN_MS)
+  );
+  event.waitUntil(reseau.then(() => prevenirFraiche(cleUrl)).catch(() => {}));
   try {
     return await Promise.race([reseau, delai]);
   } catch {
+    pagesPerimees.set(cleUrl, true);
     return enCache;
   }
 }
@@ -238,6 +264,9 @@ self.addEventListener("message", (event) => {
         clients.forEach((c) => c.postMessage({ type: "ADMIN_PRECHARGE_OK", date: Date.now() }));
       })
     );
+  } else if (data.type === "ETAT_PAGE") {
+    const url = typeof data.url === "string" ? data.url : "";
+    event.source && event.source.postMessage({ type: "ETAT_PAGE", url, perimee: pagesPerimees.has(url) });
   } else if (data.type === "VIDER_PAGES") {
     // Déconnexion : on ne laisse pas les pages d'un utilisateur sur le téléphone.
     event.waitUntil(Promise.all([caches.delete(PAGES_CACHE), caches.delete(ADMIN_CACHE)]));

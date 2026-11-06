@@ -6,6 +6,7 @@ import {
   markAttemptFailed,
   cachePut,
 } from "./db";
+import { fetchAvecDelai } from "@/lib/utils/fetch-delai";
 
 // §11 CDC : « Dès que la connexion revient, les données sont envoyées
 // automatiquement. Le serveur confirme la synchronisation. »
@@ -16,7 +17,7 @@ import {
 // - Idempotent : rejouer un envoi déjà reçu par le serveur ne crée jamais de
 //   doublon (uuidClient) — l'API renvoie l'existant.
 // - Erreur réseau / serveur (5xx) : nouvel essai plus tard, avec une attente
-//   qui double à chaque échec (15 s … 15 min).
+//   qui double à chaque échec (10 s … 2 min).
 // - Refus définitif (4xx : données invalides, stock insuffisant, date trop
 //   ancienne…) : la visite n'est plus rejouée toute seule, elle reste visible
 //   avec le motif pour que le commercial décide (réessayer ou supprimer).
@@ -37,7 +38,7 @@ export type SyncResult = {
 const RIEN: SyncResult = { synced: 0, failed: 0, autreCompte: 0, sessionExpiree: false };
 
 function attente(attempts: number) {
-  return Math.min(15 * 60_000, 15_000 * 2 ** Math.min(attempts, 10));
+  return Math.min(2 * 60_000, 10_000 * 2 ** Math.min(attempts, 10));
 }
 
 export async function syncPendingVisites(opts: { force?: boolean } = {}): Promise<SyncResult> {
@@ -53,7 +54,7 @@ export async function syncPendingVisites(opts: { force?: boolean } = {}): Promis
     // Qui est connecté ? (valide aussi que la session est toujours active)
     let userId: string | undefined;
     try {
-      const me = await fetch("/api/me", { cache: "no-store" });
+      const me = await fetchAvecDelai("/api/me", { cache: "no-store" }, 10_000);
       if (me.status === 401) return { ...result, sessionExpiree: true };
       if (!me.ok) return result;
       const d = await me.json();
@@ -74,7 +75,7 @@ export async function syncPendingVisites(opts: { force?: boolean } = {}): Promis
       if (!opts.force && item.nextRetryAt && item.nextRetryAt > maintenant) continue;
 
       try {
-        const res = await fetch("/api/visites", {
+        const res = await fetchAvecDelai("/api/visites", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(item.payload),

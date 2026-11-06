@@ -1850,3 +1850,9 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Détail CLIENT DIVERS modifiable par commerciale : crayon / corbeille sur chaque ligne (admin, super admin ; commande non livrée). `PATCH|DELETE /api/commandes/[id]/origines/[oid]` recalcule la ligne cumulée, le total de la commande et la vente terrain (statistiques). Journalisé.
 - Anti-doublon : `lib/utils/ids-formulaire.ts` — les identifiants d'envoi sont conservés (sessionStorage) tant que l'envoi n'a pas abouti, + verrou anti double-clic, sur les formulaires visite / réassort / rotation. Un nouvel appui sur « Valider » ne recrée plus rien.
 - Réassort : `ventesBureau` inclut maintenant les commandes sans vente terrain (réassort) dans les cartons de la vendeuse.
+
+## Fiabilité de la synchro (2026-11-06)
+- `lib/utils/fetch-delai.ts` : délai max 25 s sur les envois (formulaires + synchro) ; un envoi suspendu bascule en file d'attente au lieu de bloquer le bouton / le verrou de synchro. Reprise automatique plus rapide (attente max 2 min).
+- Service worker : délai réseau relevé (terrain 8 s, admin 12 s) et `BandeauPageCache` prévient quand la page affichée est la copie locale (« Réseau lent… » + Actualiser ; « Données plus récentes disponibles » quand le réseau a fini).
+- Bandeau terrain : dernier motif d'échec affiché, bouton « Tout renvoyer » pour les visites refusées.
+- Serveur : une date de visite dans le futur (horloge du téléphone) est ramenée à maintenant au lieu d'être refusée.

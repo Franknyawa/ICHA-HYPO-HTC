@@ -12,6 +12,7 @@ import {
 } from "@/lib/offline/db";
 import { registerAutoSync, syncPendingVisites } from "@/lib/offline/sync";
 import { rafraichirCaches } from "@/lib/offline/referentiels";
+import { BandeauPageCache } from "@/components/BandeauPageCache";
 
 const PAGES_A_PRECHARGER = [
   "/dashboard",
@@ -122,10 +123,16 @@ export function OfflineManager() {
   const refusees = attente.filter((p) => p.permanent);
   const enAttente = attente.filter((p) => !p.permanent);
 
-  if (enLigne && attente.length === 0 && !sessionExpiree) return null;
+  if (enLigne && attente.length === 0 && !sessionExpiree)
+    return (
+      <div className="print:hidden">
+        <BandeauPageCache />
+      </div>
+    );
 
   return (
     <div className="print:hidden">
+      <BandeauPageCache />
       {!enLigne && (
         <div className="flex items-center gap-2 bg-slate-800 px-4 py-2 text-sm text-slate-100">
           <WifiOff size={16} className="shrink-0 text-[#fbbf24]" />
@@ -150,6 +157,7 @@ export function OfflineManager() {
             <CloudUpload size={16} className="shrink-0" />
             {enAttente.length} visite{enAttente.length > 1 ? "s" : ""} en attente d&apos;envoi
             {autreCompte > 0 && ` (+${autreCompte} d'un autre compte)`}
+            {enAttente[0]?.lastError && <span className="text-xs opacity-75"> · {enAttente[0].lastError}</span>}
           </span>
           {enLigne && (
             <button
@@ -166,6 +174,17 @@ export function OfflineManager() {
 
       {refusees.length > 0 && (
         <div className="bg-red-50 px-4 py-2 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
+          {enLigne && (
+            <button
+              onClick={async () => {
+                for (const p of refusees) await resetPendingVisite(p.uuidClient);
+                lancerSynchro(true);
+              }}
+              className="float-right ml-2 flex items-center gap-1 text-xs font-semibold underline"
+            >
+              <RefreshCw size={12} /> Tout renvoyer
+            </button>
+          )}
           <button onClick={() => setDetail((v) => !v)} className="flex w-full items-center gap-2 text-left font-medium">
             <TriangleAlert size={16} className="shrink-0" />
             {refusees.length} visite{refusees.length > 1 ? "s" : ""} refusée{refusees.length > 1 ? "s" : ""} par le

@@ -1,6 +1,7 @@
 "use client";
 
 import { idStable, viderIds } from "@/lib/utils/ids-formulaire";
+import { fetchAvecDelai } from "@/lib/utils/fetch-delai";
 import { useState , useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, CheckCircle2, Clock, ShoppingCart, Search, MessageSquareText } from "lucide-react";
@@ -101,7 +102,7 @@ export default function RotationPage() {
     }
 
     try {
-      const res = await fetch("/api/visites", {
+      const res = await fetchAvecDelai("/api/visites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

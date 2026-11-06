@@ -1,6 +1,7 @@
 "use client";
 
 import { idStable, viderIds } from "@/lib/utils/ids-formulaire";
+import { fetchAvecDelai } from "@/lib/utils/fetch-delai";
 import { trierProduits } from "@/lib/utils/produits-ordre";
 import { useEffect, useState, Suspense , useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -175,7 +176,7 @@ function ReassortContent() {
     }
 
     try {
-      const res = await fetch("/api/visites", {
+      const res = await fetchAvecDelai("/api/visites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -105,6 +105,8 @@ export async function POST(req: NextRequest) {
     // --- Contrôles de plausibilité (après l'idempotence, pour ne jamais
     // refuser le rejeu d'une visite déjà enregistrée) -------------------
     const maintenant = Date.now();
+    // Horloge du téléphone en avance : la visite est datée de maintenant au lieu d'être refusée.
+    if (new Date(input.dateVisite).getTime() > maintenant) input.dateVisite = new Date(maintenant).toISOString();
     const dateVisiteMs = new Date(input.dateVisite).getTime();
     if (
       dateVisiteMs > maintenant + DATE_FUTURE_TOLEREE_MS ||

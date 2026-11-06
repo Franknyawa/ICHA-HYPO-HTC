@@ -1,5 +1,6 @@
 "use client";
 
+import { BandeauPageCache } from "@/components/BandeauPageCache";
 import { IchaLogo } from "@/components/brand/IchaLogo";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -214,6 +215,7 @@ export function AdminShell({
           <LogoutButton className="flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 backdrop-blur dark:bg-slate-900/95 dark:text-slate-300 dark:ring-slate-700" />
         </div>
         <HorsLigneAdmin hrefs={hrefsHorsLigne} />
+        <BandeauPageCache />
         {children}
       </div>
 
