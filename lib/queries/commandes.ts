@@ -44,20 +44,14 @@ function filtresRecherche(params: { search?: string; typeId?: string }): Prisma.
   return out;
 }
 
-export async function listCommandes(params: ListCommandesParams) {
-  await assurerMontantsConformes();
-  const sp = new URLSearchParams();
-  if (params.page) sp.set("page", String(params.page));
-  if (params.pageSize) sp.set("pageSize", String(params.pageSize));
-  const { page, pageSize, skip, take } = getPaginationParams(sp);
-
+function construireWhere(params: ListCommandesParams): Prisma.CommandeWhereInput {
   // Livraison prévue un autre jour que le jour même, pour une commande pas encore partie.
   // Dans la liste principale, une commande prise AUJOURD'HUI reste toujours visible (même avec une livraison future).
   const aVenir: Prisma.CommandeWhereInput = {
     dateLivraisonPrevue: { gt: finJour(jourDouala()) },
     statut: { in: ["EN_ATTENTE", "EN_LIVRAISON"] },
   };
-  const where: Prisma.CommandeWhereInput = {
+  return {
     archivedAt: null,
     AND: [...filtresRecherche(params), ...(params.livraison === "avenir" ? [aVenir] : [])],
     ...(params.livraison === "courantes" ? { NOT: { AND: [aVenir, { dateCommande: { lt: debutJour(jourDouala()) } }] } } : {}),
@@ -74,6 +68,16 @@ export async function listCommandes(params: ListCommandesParams) {
         }
       : {}),
   };
+}
+
+export async function listCommandes(params: ListCommandesParams) {
+  await assurerMontantsConformes();
+  const sp = new URLSearchParams();
+  if (params.page) sp.set("page", String(params.page));
+  if (params.pageSize) sp.set("pageSize", String(params.pageSize));
+  const { page, pageSize, skip, take } = getPaginationParams(sp);
+
+  const where = construireWhere(params);
 
   const [data, total] = await Promise.all([
     prisma.commande.findMany({
@@ -146,4 +150,10 @@ export async function countCommandesParStatut(
 
   const total = Object.values(parStatut).reduce((a, b) => a + b, 0);
   return { parStatut, total };
+}
+
+/** Nombre de commandes correspondant aux filtres, sans charger les lignes (pastille « Livraisons à venir »). */
+export async function compterCommandes(params: ListCommandesParams) {
+  await assurerMontantsConformes();
+  return prisma.commande.count({ where: construireWhere(params) });
 }

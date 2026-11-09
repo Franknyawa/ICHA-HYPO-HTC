@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
@@ -78,7 +79,7 @@ export function clearSessionCookie() {
 // d'API et chaque page.
 const INTERVALLE_LAST_SEEN_MS = 5 * 60 * 1000;
 
-export async function getSession(): Promise<SessionPayload | null> {
+async function lireSession(): Promise<SessionPayload | null> {
   const store = cookies();
   const token = store.get(COOKIE_NAME)?.value;
   if (!token) return null;
@@ -132,6 +133,9 @@ export async function getSession(): Promise<SessionPayload | null> {
     binomeNom: session.user.binome?.nom ?? null,
   };
 }
+
+/** Une seule lecture de la session par requête (layout + page + garde-fous la demandaient chacun : 3 à 5 requêtes SQL). */
+export const getSession = cache(lireSession);
 
 /**
  * Révoque les sessions actives d'un utilisateur (désactivation du compte,

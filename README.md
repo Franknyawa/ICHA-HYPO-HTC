@@ -1856,3 +1856,14 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Service worker : délai réseau relevé (terrain 8 s, admin 12 s) et `BandeauPageCache` prévient quand la page affichée est la copie locale (« Réseau lent… » + Actualiser ; « Données plus récentes disponibles » quand le réseau a fini).
 - Bandeau terrain : dernier motif d'échec affiché, bouton « Tout renvoyer » pour les visites refusées.
 - Serveur : une date de visite dans le futur (horloge du téléphone) est ramenée à maintenant au lieu d'être refusée.
+
+## Erreur P2024 « Timed out fetching a new connection » (2026-11-09)
+- Cause : `connection_limit=3` ; plusieurs requêtes simultanées (pages admin, préchargement) épuisaient le pool de l'instance.
+- `lib/prisma.ts` : plafond relevé à 10 et `pool_timeout` à 30 s (surchargeable par `PRISMA_CONNECTION_LIMIT` / `PRISMA_POOL_TIMEOUT`).
+- `getSession` est mémorisée par requête (`React.cache`) : 1 lecture SQL de session au lieu de 3 à 5.
+- Vercel : `DATABASE_URL` doit utiliser le pooler Supabase en mode transaction (port 6543, `?pgbouncer=true`).
+
+## Allègement Caisse et Commandes (2026-11-09)
+- Caisse : totaux de la période par agrégats SQL (groupBy / count) ; seules les 80 lignes les plus récentes du journal sont lues (avant : tout l'historique de la période, y compris « depuis le début »).
+- Commandes : une seule liste chargée selon la vue (du jour OU livraisons à venir) ; l'autre est juste comptée (`compterCommandes`). Avant, 100 commandes à venir étaient toujours chargées avec leurs origines et lignes.
+- `assurerMontantsConformes` : ne relit plus tout l'historique à chaque démarrage d'instance — uniquement les 7 derniers jours, au plus toutes les 5 min.

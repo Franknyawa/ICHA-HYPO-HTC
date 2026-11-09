@@ -26,7 +26,25 @@ export function trouverUrlBase(): { nom: string; url: string } | null {
 
 const trouvee = trouverUrlBase();
 if (!trouvee) console.error("Aucune adresse de base valide (DATABASE_URL doit commencer par postgresql://).");
-const urlNettoyee = trouvee?.url;
+// Pool de connexions : « connection_limit=3 » (valeur conseillée à l'origine) est trop juste dès que plusieurs
+// requêtes arrivent en même temps sur une même instance (pages admin = beaucoup de requêtes en parallèle) :
+// erreur P2024 « Timed out fetching a new connection ». On relève le plafond et le délai d'attente, sauf si
+// l'URL ou les variables PRISMA_CONNECTION_LIMIT / PRISMA_POOL_TIMEOUT en décident autrement.
+function avecPool(url: string | undefined) {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    const limite = Number(process.env.PRISMA_CONNECTION_LIMIT) || 10;
+    const delai = Number(process.env.PRISMA_POOL_TIMEOUT) || 30;
+    const actuelle = Number(u.searchParams.get("connection_limit")) || 0;
+    if (process.env.PRISMA_CONNECTION_LIMIT || actuelle < limite) u.searchParams.set("connection_limit", String(limite));
+    if (process.env.PRISMA_POOL_TIMEOUT || !u.searchParams.has("pool_timeout")) u.searchParams.set("pool_timeout", String(delai));
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+const urlNettoyee = avecPool(trouvee?.url);
 
 export const prisma =
   globalForPrisma.prisma ??

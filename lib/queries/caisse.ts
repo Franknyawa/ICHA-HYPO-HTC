@@ -172,9 +172,18 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
   await assurerMontantsConformes();
   const plage = debut && fin ? { gte: debut, lte: fin } : undefined;
 
-  const [paiementsPeriode, paiementsTotal, opsPeriode, opsTotal, commandesValidees, avoirsPeriode, retoursPeriode, credits, stock] = await Promise.all([
+  const wherePaiement = plage ? { datePaiement: plage } : {};
+  const whereOp = plage ? { dateOperation: plage } : {};
+  const LIMITE_JOURNAL = 80;
+
+  // Totaux de la période calculés par la base (agrégats) ; seules les 80 lignes les plus récentes du journal
+  // sont chargées : plus de lecture de tout l'historique quand la période est « depuis le début ».
+  const [paiementsParMode, nbPaiements, opsParType, paiementsRecents, opsRecentes, nbOps, paiementsTotal, opsTotal, commandesValidees, avoirsPeriode, retoursPeriode, credits, stock] = await Promise.all([
+    prisma.paiement.groupBy({ by: ["modePaiement"], where: wherePaiement, _sum: { montant: true } }),
+    prisma.paiement.count({ where: { ...wherePaiement, montant: { gt: 0 } } }),
+    prisma.operationCaisse.groupBy({ by: ["type", "canal", "referenceType"], where: whereOp, _sum: { montant: true } }),
     prisma.paiement.findMany({
-      where: plage ? { datePaiement: plage } : {},
+      where: { ...wherePaiement, montant: { gt: 0 } },
       select: {
         id: true,
         montant: true,
@@ -185,12 +194,11 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
         commande: { select: { pointVente: { select: { nom: true } } } },
       },
       orderBy: { datePaiement: "desc" },
+      take: LIMITE_JOURNAL,
     }),
+    prisma.operationCaisse.findMany({ where: whereOp, orderBy: { dateOperation: "desc" }, take: LIMITE_JOURNAL }),
+    prisma.operationCaisse.count({ where: whereOp }),
     prisma.paiement.groupBy({ by: ["modePaiement"], _sum: { montant: true } }),
-    prisma.operationCaisse.findMany({
-      where: plage ? { dateOperation: plage } : {},
-      orderBy: { dateOperation: "desc" },
-    }),
     prisma.operationCaisse.groupBy({ by: ["type", "canal"], _sum: { montant: true } }),
     // Commandes validées par l'admin sur la période (chiffre facturé), et non
     // plus les « ventes » saisies par les commerciaux, qui incluent des
@@ -213,6 +221,8 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
     getCreditsAEncaisser(),
     getStockValorise(),
   ]);
+  const opsPeriode = opsRecentes;
+  const paiementsPeriode = paiementsRecents;
 
   // --- Période ---------------------------------------------------------
   const parCanalPeriode: Record<Canal, { entrees: number; sorties: number }> = {
@@ -221,12 +231,11 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
     BANQUE: { entrees: 0, sorties: 0 },
   };
   let encaissementsVentes = 0;
-  let nbEncaissements = 0;
-  for (const p of paiementsPeriode) {
-    const m = num(p.montant);
+  const nbEncaissements = nbPaiements;
+  for (const g of paiementsParMode) {
+    const m = num(g._sum.montant);
     encaissementsVentes += m;
-    if (m > 0) nbEncaissements += 1;
-    parCanalPeriode[canalDe(p.modePaiement)].entrees += m;
+    parCanalPeriode[canalDe(g.modePaiement)].entrees += m;
   }
   let autresRecettes = 0;
   let depenses = 0;
@@ -234,8 +243,8 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
   // Remboursements de clients générés par une facture d'avoir : de l'argent
   // qui sort, mais qui vient en déduction des recettes (pas une dépense).
   let remboursements = 0;
-  for (const o of opsPeriode) {
-    const m = num(o.montant);
+  for (const o of opsParType) {
+    const m = num(o._sum.montant);
     if (o.referenceType === "TRANSFERT") {
       // Mouvement interne d'un compte à l'autre : ni recette ni dépense.
       parCanalPeriode[o.canal][o.type === "RECETTE" ? "entrees" : "sorties"] += m;
@@ -295,6 +304,7 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
       supprimable: o.referenceType !== "AVOIR" && o.referenceType !== "RETOUR" && o.referenceType !== "DOUBLON",
     })),
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
+  const journalComplet = nbPaiements + nbOps;
 
   const creditsTotal = credits.reduce((s, c) => s + c.du, 0);
   const valeurStockVente = stock.reduce((s, l) => s + l.valeurVente, 0);
@@ -325,8 +335,8 @@ export async function getCaisse(debut: Date | null, fin: Date | null) {
     valeurStockVente,
     valeurStockCout,
     cartonsEnStock,
-    journal: journal.slice(0, 80),
-    journalComplet: journal.length,
+    journal: journal.slice(0, LIMITE_JOURNAL),
+    journalComplet,
   };
 }
 

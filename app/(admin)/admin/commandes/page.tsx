@@ -2,7 +2,7 @@ import { listerVilles } from "@/lib/geo/synchro-villes";
 import { Fragment } from "react";
 import Link from "next/link";
 import { Search, Plus, Phone, Truck, Clock, XCircle, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Pencil, UserCog, CalendarClock } from "lucide-react";
-import { listCommandes, countCommandesParStatut, type StatutCommandeFiltre } from "@/lib/queries/commandes";
+import { listCommandes, compterCommandes, countCommandesParStatut, type StatutCommandeFiltre } from "@/lib/queries/commandes";
 import { prisma } from "@/lib/prisma";
 import { jourDouala } from "@/lib/utils/periode";
 import { formatFcfa } from "@/lib/utils/format";
@@ -81,8 +81,14 @@ export default async function CommandesPage({
 
   const filtresSansStatut = { villeId, commercialId, binomeId, dateFrom, dateTo, search: q };
 
-  const [{ data, pagination }, { parStatut, total: totalToutStatut }, villes, commerciaux, binomes] = await Promise.all([
-    listCommandes({ page, statut, ...filtresSansStatut, livraison: "courantes" }),
+  const vueAvenir = searchParams.vue === "avenir";
+
+  // Une seule liste est chargée selon la vue : la liste du jour OU les livraisons à venir (l'autre n'est que comptée).
+  const [liste, avenir, { parStatut, total: totalToutStatut }, villes, commerciaux, binomes] = await Promise.all([
+    vueAvenir ? null : listCommandes({ page, statut, ...filtresSansStatut, livraison: "courantes" }),
+    vueAvenir
+      ? listCommandes({ pageSize: 100, statut, ...filtresSansStatut, livraison: "avenir" })
+      : compterCommandes({ statut, ...filtresSansStatut, livraison: "avenir" }),
     countCommandesParStatut(filtresSansStatut),
     listerVilles(),
     prisma.user.findMany({
@@ -92,10 +98,11 @@ export default async function CommandesPage({
     }),
     prisma.binome.findMany({ orderBy: { nom: "asc" }, select: { id: true, nom: true } }),
   ]);
-
-  // Livraisons à venir (hors du jour) : chargées à part, sur la 1re page seulement.
-  const vueAvenir = searchParams.vue === "avenir";
-  const aVenirListe = (await listCommandes({ pageSize: 100, statut, ...filtresSansStatut, livraison: "avenir" })).data;
+  type Liste = Awaited<ReturnType<typeof listCommandes>>;
+  const vide: Liste = { data: [], pagination: { page: 1, pageSize: 0, total: 0, totalPages: 1 } } as unknown as Liste;
+  const { data, pagination } = liste ?? vide;
+  const aVenirListe = typeof avenir === "number" ? vide.data : avenir.data;
+  const aVenirNombre = typeof avenir === "number" ? avenir : avenir.data.length;
 
   const baseQuery = { statut, villeId, commercialId, binomeId, dateFrom, dateTo, q };
 
@@ -137,7 +144,7 @@ export default async function CommandesPage({
             >
               <CalendarClock size={16} />
               Livraisons à venir
-              <span className="rounded-full bg-white/25 px-2 py-0.5 text-xs font-bold tabular-nums">{aVenirListe.length}</span>
+              <span className="rounded-full bg-white/25 px-2 py-0.5 text-xs font-bold tabular-nums">{aVenirNombre}</span>
             </Link>
           )}
         </div>

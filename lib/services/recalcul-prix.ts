@@ -9,7 +9,7 @@ import { sousTotal } from "@/lib/utils/tarifs";
  */
 const DETAIL = { OR: [{ nbSachets: { gt: 0 } }, { nbFilets: { gt: 0 } }] };
 
-export async function recalculerMontants(appliquer: boolean, seulementDetail = false) {
+export async function recalculerMontants(appliquer: boolean, seulementDetail = false, depuis?: Date) {
   const produitSel = { sachetsParCarton: true, sachetsParFilet: true, prixSachet: true, prixFilet: true, prixCarton: true } as const;
 
   const calcul = (l: {
@@ -34,7 +34,7 @@ export async function recalculerMontants(appliquer: boolean, seulementDetail = f
   let ecart = 0;
 
   const commandes = await prisma.commande.findMany({
-    where: { statut: { not: "ANNULEE" }, ...(seulementDetail ? { lignes: { some: DETAIL } } : {}) },
+    where: { statut: { not: "ANNULEE" }, ...(seulementDetail ? { lignes: { some: DETAIL } } : {}), ...(depuis ? { createdAt: { gte: depuis } } : {}) },
     select: {
       id: true,
       montantTotal: true,
@@ -58,7 +58,7 @@ export async function recalculerMontants(appliquer: boolean, seulementDetail = f
   }
 
   const ventes = await prisma.vente.findMany({
-    where: seulementDetail ? { lignes: { some: DETAIL } } : undefined,
+    where: { ...(seulementDetail ? { lignes: { some: DETAIL } } : {}), ...(depuis ? { createdAt: { gte: depuis } } : {}) },
     select: {
       id: true,
       montantTotal: true,
@@ -84,12 +84,14 @@ export async function recalculerMontants(appliquer: boolean, seulementDetail = f
 
 
 let dernierControle = 0;
-/** Mise en conformité automatique (au plus une fois par minute et par instance) : appelée par les pages admin. */
+/** Mise en conformité automatique (au plus une fois toutes les 5 minutes par instance, sur les 7 derniers jours) : appelée par les pages admin. */
 export async function assurerMontantsConformes() {
-  if (Date.now() - dernierControle < 60_000) return;
+  if (Date.now() - dernierControle < 5 * 60_000) return;
   dernierControle = Date.now();
   try {
-    await recalculerMontants(true, true);
+    // Seules les commandes / ventes récentes peuvent être non conformes (les anciennes l'ont déjà été) :
+    // inutile de relire tout l'historique à chaque démarrage d'instance.
+    await recalculerMontants(true, true, new Date(Date.now() - 7 * 24 * 3600_000));
   } catch (e) {
     console.error("Mise en conformité des montants impossible", e);
   }
