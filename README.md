@@ -1871,3 +1871,9 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 ## Dates des factures et commandes antidatées (2026-11-10)
 - Facture, bon de commande et bon de livraison portent toujours la date de la commande (`dateCommande`), plus la date du premier téléchargement.
 - Après création d'une commande antidatée, la liste s'ouvre filtrée sur ce jour, et « Commandes précédentes » est déplié quand un filtre de date ou une recherche est actif (avant : la commande était noyée dans les pages anciennes).
+
+## Audit complet (novembre 2026)
+- Banc de tests automatisé (47 tests : tarifs, cartons, périodes, flux terrain, commandes bureau, antidatation, client divers, corrections du détail, caisse, encaissements simultanés).
+- CORRIGÉ : la liste « commandes courantes » masquait toute commande plus ancienne qu'aujourd'hui sans date de livraison prévue (logique NOT/NULL SQL).
+- CORRIGÉ : filtres de dates (commandes, ventes, rapports, visites) décalés d'une heure (Douala UTC+1) : une commande entre 00:00 et 01:00 sortait du bon jour.
+- CORRIGÉ : session.ts compatible hors Next (React.cache).

@@ -1,3 +1,4 @@
+import { debutJour, finJour } from "@/lib/utils/periode";
 import { prisma } from "@/lib/prisma";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import type { Prisma } from "@prisma/client";
@@ -23,8 +24,8 @@ export async function listVentes(params: ListVentesParams) {
     ...(params.dateFrom || params.dateTo
       ? {
           createdAt: {
-            ...(params.dateFrom ? { gte: new Date(params.dateFrom) } : {}),
-            ...(params.dateTo ? { lte: new Date(`${params.dateTo}T23:59:59`) } : {}),
+            ...(params.dateFrom ? { gte: debutJour(params.dateFrom.slice(0, 10)) } : {}),
+            ...(params.dateTo ? { lte: finJour(params.dateTo.slice(0, 10)) } : {}),
           },
         }
       : {}),

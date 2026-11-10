@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { debutJour, finJour } from "@/lib/utils/periode";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, requireAdmin } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
@@ -41,8 +42,8 @@ export async function GET(req: NextRequest) {
       ...(dateFrom || dateTo
         ? {
             dateVisite: {
-              ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
-              ...(dateTo ? { lte: new Date(dateTo) } : {}),
+              ...(dateFrom ? { gte: debutJour(dateFrom.slice(0, 10)) } : {}),
+              ...(dateTo ? { lte: finJour(dateTo.slice(0, 10)) } : {}),
             },
           }
         : {}),

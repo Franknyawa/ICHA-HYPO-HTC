@@ -1,5 +1,5 @@
 import "server-only";
-import { cache } from "react";
+import * as React from "react";
 import { SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
@@ -135,7 +135,9 @@ async function lireSession(): Promise<SessionPayload | null> {
 }
 
 /** Une seule lecture de la session par requête (layout + page + garde-fous la demandaient chacun : 3 à 5 requêtes SQL). */
-export const getSession = cache(lireSession);
+// `React.cache` n'existe que dans l'environnement serveur de Next : repli sans mémoire ailleurs (tests, scripts).
+const memoriser: <T extends (...a: never[]) => unknown>(f: T) => T = (React as unknown as { cache?: <T>(f: T) => T }).cache ?? ((f) => f);
+export const getSession = memoriser(lireSession);
 
 /**
  * Révoque les sessions actives d'un utilisateur (désactivation du compte,

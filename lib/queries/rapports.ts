@@ -1,3 +1,4 @@
+import { debutJour, finJour } from "@/lib/utils/periode";
 import { prisma } from "@/lib/prisma";
 import { assurerMontantsConformes } from "@/lib/services/recalcul-prix";
 import type { Prisma } from "@prisma/client";
@@ -163,8 +164,8 @@ function valeurCatalogue(
 // ---------------------------------------------------------------------------
 
 function bornes(filters: RapportFilters) {
-  const gte = filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00`) : undefined;
-  const lte = filters.dateTo ? new Date(`${filters.dateTo}T23:59:59.999`) : undefined;
+  const gte = filters.dateFrom ? debutJour(filters.dateFrom.slice(0, 10)) : undefined;
+  const lte = filters.dateTo ? finJour(filters.dateTo.slice(0, 10)) : undefined;
   return { gte, lte };
 }
 

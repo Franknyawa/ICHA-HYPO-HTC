@@ -54,7 +54,17 @@ function construireWhere(params: ListCommandesParams): Prisma.CommandeWhereInput
   return {
     archivedAt: null,
     AND: [...filtresRecherche(params), ...(params.livraison === "avenir" ? [aVenir] : [])],
-    ...(params.livraison === "courantes" ? { NOT: { AND: [aVenir, { dateCommande: { lt: debutJour(jourDouala()) } }] } } : {}),
+    // Écrit en positif (un NOT(...) renvoie NULL, donc masque la ligne, quand dateLivraisonPrevue est vide).
+    ...(params.livraison === "courantes"
+      ? {
+          OR: [
+            { dateCommande: { gte: debutJour(jourDouala()) } },
+            { dateLivraisonPrevue: null },
+            { dateLivraisonPrevue: { lte: finJour(jourDouala()) } },
+            { statut: { notIn: ["EN_ATTENTE", "EN_LIVRAISON"] } },
+          ],
+        }
+      : {}),
     ...(params.statut ? { statut: params.statut } : params.statuts ? { statut: { in: params.statuts } } : {}),
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),
     ...(params.commercialId ? { commercialId: params.commercialId } : {}),
@@ -62,8 +72,8 @@ function construireWhere(params: ListCommandesParams): Prisma.CommandeWhereInput
     ...(params.dateFrom || params.dateTo
       ? {
           dateCommande: {
-            ...(params.dateFrom ? { gte: new Date(params.dateFrom) } : {}),
-            ...(params.dateTo ? { lte: new Date(`${params.dateTo}T23:59:59`) } : {}),
+            ...(params.dateFrom ? { gte: debutJour(params.dateFrom.slice(0, 10)) } : {}),
+            ...(params.dateTo ? { lte: finJour(params.dateTo.slice(0, 10)) } : {}),
           },
         }
       : {}),
@@ -127,8 +137,8 @@ export async function countCommandesParStatut(
     ...(params.dateFrom || params.dateTo
       ? {
           dateCommande: {
-            ...(params.dateFrom ? { gte: new Date(params.dateFrom) } : {}),
-            ...(params.dateTo ? { lte: new Date(`${params.dateTo}T23:59:59`) } : {}),
+            ...(params.dateFrom ? { gte: debutJour(params.dateFrom.slice(0, 10)) } : {}),
+            ...(params.dateTo ? { lte: finJour(params.dateTo.slice(0, 10)) } : {}),
           },
         }
       : {}),
