@@ -184,8 +184,8 @@ export async function obtenirFacture(type: TypeDocument, id: string, agentId?: s
 
   return {
     numero: numeroFacture(facture.numero),
-    // Commande antidatée : la facture porte la date de la commande, pas celle de l'impression.
-    date: (doc.antidatee && doc.dateCommande ? doc.dateCommande : facture.createdAt).toISOString(),
+    // La facture porte toujours la date de la commande (pas celle du téléchargement) : une commande du 06/11 téléchargée le 09/11 reste datée du 06/11.
+    date: (doc.dateCommande ?? facture.createdAt).toISOString(),
     agentId: facture.agentId,
     agentNom: facture.agent?.nom ?? null,
     client: versClient(doc.pointVente, doc.client?.nom),
@@ -223,7 +223,7 @@ export async function obtenirBonLivraison(commandeId: string): Promise<BonLivrai
   const agent = await agentParDefaut();
   return {
     numero: numeroBonLivraison(bon.numero),
-    date: (c.antidatee ? c.dateCommande : bon.createdAt).toISOString(),
+    date: (c.dateCommande ?? bon.createdAt).toISOString(),
     agentNom: agent?.nom ?? null,
     client: versClient(c.pointVente, c.client?.nom),
     sources: versSources(c.lignes),
@@ -267,7 +267,7 @@ export async function obtenirBonCommande(commandeId: string): Promise<BonCommand
   if (!bon) return null;
   return {
     numero: numeroBonCommande(bon.numero),
-    date: (c.antidatee ? c.dateCommande : bon.createdAt).toISOString(),
+    date: (c.dateCommande ?? bon.createdAt).toISOString(),
     commercialNom: `${c.commercial.prenom} ${c.commercial.nom}`.trim(),
     client: versClient(c.pointVente, c.client?.nom),
     sources: versSources(c.lignes),

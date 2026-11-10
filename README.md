@@ -1867,3 +1867,7 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Caisse : totaux de la période par agrégats SQL (groupBy / count) ; seules les 80 lignes les plus récentes du journal sont lues (avant : tout l'historique de la période, y compris « depuis le début »).
 - Commandes : une seule liste chargée selon la vue (du jour OU livraisons à venir) ; l'autre est juste comptée (`compterCommandes`). Avant, 100 commandes à venir étaient toujours chargées avec leurs origines et lignes.
 - `assurerMontantsConformes` : ne relit plus tout l'historique à chaque démarrage d'instance — uniquement les 7 derniers jours, au plus toutes les 5 min.
+
+## Dates des factures et commandes antidatées (2026-11-10)
+- Facture, bon de commande et bon de livraison portent toujours la date de la commande (`dateCommande`), plus la date du premier téléchargement.
+- Après création d'une commande antidatée, la liste s'ouvre filtrée sur ce jour, et « Commandes précédentes » est déplié quand un filtre de date ou une recherche est actif (avant : la commande était noyée dans les pages anciennes).

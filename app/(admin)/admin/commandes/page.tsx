@@ -404,7 +404,7 @@ export default async function CommandesPage({
                   </>
                 )}
                 {precedentes.length > 0 && (
-                  <details className="group pt-2">
+                  <details className="group pt-2" open={!!(dateFrom || dateTo || q)}>
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 [&::-webkit-details-marker]:hidden">
                       <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                         <ChevronDown size={16} className="transition-transform group-open:rotate-180" />

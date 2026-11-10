@@ -186,7 +186,8 @@ export function NouvelleCommandeForm({
             : { dateLivraisonPrevue: livraison ? new Date(livraison).toISOString() : undefined }),
         }),
       });
-      router.push("/admin/commandes");
+      // Commande antidatée : on ouvre la liste sur CE jour-là, sinon elle se perd dans les pages d'anciennes commandes.
+      router.push(!modif && peutAntidater && dateCmd ? `/admin/commandes?dateFrom=${dateCmd}&dateTo=${dateCmd}` : "/admin/commandes");
       router.refresh();
     } catch (err) {
       setErreur(err instanceof ApiError ? err.message : "Échec de l'enregistrement.");
