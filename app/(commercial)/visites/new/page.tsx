@@ -34,6 +34,9 @@ import {
   BarreAction,
   BoutonPrincipal,
   BlocPaiement,
+  ChampEchantillon,
+  payloadEchantillons,
+  type EchantillonsSaisis,
   type ModePaiementTerrain,
 } from "@/components/commercial/form-ui";
 
@@ -152,6 +155,7 @@ export default function NouvelleVisitePage() {
   }
   const [presentoir, setPresentoir] = useState<boolean | null>(null);
   const [presentoirAuto, setPresentoirAuto] = useState(false);
+  const [echantillons, setEchantillons] = useState<EchantillonsSaisis>({});
   // Deux photos de devanture (demande de Victor) — tableaux de taille 2,
   // chaque index traité indépendamment (compression + upload propres).
   const [photoPreviews, setPhotoPreviews] = useState<(string | null)[]>([null, null]);
@@ -406,6 +410,7 @@ export default function NouvelleVisitePage() {
           }
         : {}),
       ...(estDivers ? {} : payloadIndecis(indecis)),
+      ...(!estDivers && payloadEchantillons(echantillons).length > 0 ? { echantillons: payloadEchantillons(echantillons) } : {}),
       photos: estDivers ? [] : photosPayload,
       observation: observation || undefined,
     };
@@ -886,6 +891,8 @@ export default function NouvelleVisitePage() {
               }}
             />
           </Champ>)}
+
+          {!estDivers && <ChampEchantillon produits={produits} valeur={echantillons} onChange={setEchantillons} />}
         </Carte>
 
         {/* Observations */}

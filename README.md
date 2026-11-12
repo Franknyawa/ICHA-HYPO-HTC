@@ -1877,3 +1877,10 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - CORRIGÉ : la liste « commandes courantes » masquait toute commande plus ancienne qu'aujourd'hui sans date de livraison prévue (logique NOT/NULL SQL).
 - CORRIGÉ : filtres de dates (commandes, ventes, rapports, visites) décalés d'une heure (Douala UTC+1) : une commande entre 00:00 et 01:00 sortait du bon jour.
 - CORRIGÉ : session.ts compatible hors Next (React.cache).
+
+## Modifications du 12 novembre 2026
+- Superviseur (saisie de commande) : bouton « Récupérer la position » pour un nouveau client (latitude, longitude, précision enregistrées sur le point de vente) ; avertissement « ce client existe peut-être déjà » pendant la saisie du nom, avec sélection en un clic ; recherche élargie (contact, téléphone, repère).
+- Type de boutique « Client divers » retiré de toutes les listes de choix (la ligne reste en base : elle sert à la facture unique CLIENT DIVERS).
+- Champ « Échantillon » (sachets par produit) après « Installation du présentoir » (app terrain) et dans la commande du superviseur : mouvement de stock ECHANTILLON (sortie, jamais facturé), idempotent, ne bloque jamais l'enregistrement. Visible dans Stock > sorties hors vente. Aucune migration SQL.
+- Tableau de bord commercial : cartons, filets et sachets vendus (et par produit) pour aujourd'hui, la semaine et le mois ; jour/semaine/mois calculés à l'heure de Douala.
+- Accueil commercial : « Nouveau recensement » et « Visite de réassort » en deux gros boutons ; bouton rotation/achalandage retiré (la page existe toujours).

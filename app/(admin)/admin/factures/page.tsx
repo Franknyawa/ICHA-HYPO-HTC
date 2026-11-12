@@ -51,7 +51,7 @@ export default async function FacturesPage({
         })
       : Promise.resolve([]),
     !estFactures ? listerCorrections(onglet === "avoirs" ? "AVOIR" : "RETOUR") : Promise.resolve([]),
-    prisma.typePointVente.findMany({ where: { actif: true }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
+    prisma.typePointVente.findMany({ where: { actif: true, nom: { not: "Client divers" } }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
   ]);
   const data = liste?.data ?? [];
   const pagination = liste?.pagination ?? { page: 1, totalPages: 1, total: 0 };

@@ -38,7 +38,7 @@ export default async function ClientsPage({
   const [clients, villes, types] = await Promise.all([
     getClientsAcheteurs(f),
     listerVilles(),
-    prisma.typePointVente.findMany({ where: { actif: true }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
+    prisma.typePointVente.findMany({ where: { actif: true, nom: { not: "Client divers" } }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
   ]);
 
   const page = Math.max(1, Number(searchParams.page) || 1);

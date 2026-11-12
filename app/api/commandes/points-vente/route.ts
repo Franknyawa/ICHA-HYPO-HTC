@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
           { nom: { contains: q, mode: "insensitive" } },
           { vendeur: { contains: q, mode: "insensitive" } },
           { telephoneVendeur: { contains: q } },
+          { patronNom: { contains: q, mode: "insensitive" } },
+          { repere: { contains: q, mode: "insensitive" } },
         ],
       },
       take: 8,

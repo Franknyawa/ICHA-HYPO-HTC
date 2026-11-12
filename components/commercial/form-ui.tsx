@@ -536,3 +536,53 @@ export function BlocPaiement({
     </>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Échantillons : sachets donnés au client, retirés du stock sans être facturés
+// ---------------------------------------------------------------------------
+
+export type EchantillonsSaisis = Record<string, number>;
+
+export function payloadEchantillons(saisie: EchantillonsSaisis): { produitCode: string; sachets: number }[] {
+  return Object.entries(saisie)
+    .map(([produitCode, n]) => ({ produitCode, sachets: Math.max(0, Math.floor(Number(n) || 0)) }))
+    .filter((l) => l.sachets > 0);
+}
+
+export function ChampEchantillon({
+  produits,
+  valeur,
+  onChange,
+}: {
+  produits: { code: string; nom: string }[];
+  valeur: EchantillonsSaisis;
+  onChange: (v: EchantillonsSaisis) => void;
+}) {
+  return (
+    <Champ label="Échantillon" aide="Sachets donnés en échantillon : retirés du stock, jamais facturés.">
+      <div className="grid grid-cols-2 gap-2.5">
+        {produits.map((p) => (
+          <label key={p.code} className="block">
+            <span className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">{p.nom || p.code}</span>
+            <div className="flex items-center gap-2">
+              <Saisie
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={5000}
+                step={1}
+                placeholder="0"
+                value={valeur[p.code] ? String(valeur[p.code]) : ""}
+                onChange={(e) => {
+                  const n = e.target.value === "" ? 0 : Math.max(0, Math.min(5000, Math.floor(Number(e.target.value) || 0)));
+                  onChange({ ...valeur, [p.code]: n });
+                }}
+              />
+              <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">sachets</span>
+            </div>
+          </label>
+        ))}
+      </div>
+    </Champ>
+  );
+}

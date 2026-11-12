@@ -6,6 +6,7 @@ import { handleApiError } from "@/lib/api-errors";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import { createVisiteSchema } from "@/lib/validations/visite";
 import { InsufficientStockError } from "@/lib/services/stock";
+import { enregistrerEchantillons } from "@/lib/services/echantillons";
 import { texteLieu } from "@/lib/services/lieu-divers";
 import { ajouterVentesDetail, obtenirClientDivers } from "@/lib/services/client-divers";
 import { uploadPhoto, isTrustedPhotoUrl } from "@/lib/services/storage";
@@ -422,6 +423,17 @@ export async function POST(req: NextRequest) {
             note: input.indecis.note,
             dateRelance: new Date(input.indecis.dateRelance),
           },
+        });
+      }
+
+      // 8. Échantillons donnés : sortie de stock sans facturation (jamais bloquant).
+      if (input.echantillons?.length && !input.clientDivers) {
+        const pv = await tx.pointVente.findUnique({ where: { id: pointVenteId }, select: { nom: true } });
+        await enregistrerEchantillons(tx, {
+          cle: input.uuidClient,
+          lignes: input.echantillons,
+          referenceId: visite?.id,
+          note: `Échantillon · ${pv?.nom ?? "client"} · saisi par ${[session.prenom, session.nom].filter(Boolean).join(" ") || "commercial"}`,
         });
       }
 

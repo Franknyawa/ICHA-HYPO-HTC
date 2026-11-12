@@ -110,7 +110,7 @@ export default async function RapportsPage({ searchParams }: { searchParams: Par
     }),
     prisma.binome.findMany({ orderBy: { nom: "asc" } }),
     listerVilles(),
-    prisma.typePointVente.findMany({ orderBy: { nom: "asc" } }),
+    prisma.typePointVente.findMany({ where: { nom: { not: "Client divers" } }, orderBy: { nom: "asc" } }),
     prisma.produit.findMany({ orderBy: { code: "asc" }, select: { code: true, nom: true, gamme: true } }),
   ]);
 

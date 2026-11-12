@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { cartonsEq, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 
-export type VenteBureau = { commercialId: string; binomeId: string | null; cartons: number };
+export type QteBrute = { code: string; nbCartons: number; nbFilets: number; nbSachets: number };
+export type VenteBureau = { commercialId: string; binomeId: string | null; cartons: number; qte: QteBrute[] };
 
 /**
  * Commandes sans « vente terrain » : saisies au bureau (administrateur ou superviseur) au nom d'un commercial, ou prises sur le terrain en visite de réassort ;
@@ -17,20 +18,27 @@ export async function ventesBureau(depuis: Date, jusqua?: Date): Promise<VenteBu
       select: {
         commercialId: true,
         commercial: { select: { binomeId: true } },
-        lignes: { where: { detail: false }, select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV } } },
+        lignes: { where: { detail: false }, select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: { code: true, ...SELECT_CONV } } } },
       },
     }),
     prisma.commandeDetailOrigine.findMany({
       where: { source: { not: "Terrain" }, createdAt: plage, commande: { statut: { not: "ANNULEE" } } },
       select: { commercialId: true, produitId: true, nbSachets: true, nbFilets: true },
     }),
-    prisma.produit.findMany({ select: { id: true, ...SELECT_CONV } }),
+    prisma.produit.findMany({ select: { id: true, code: true, ...SELECT_CONV } }),
   ]);
 
   const sortie: VenteBureau[] = [];
   for (const c of commandes) {
     const cartons = c.lignes.reduce((s, l) => s + cartonsEq(l, l.produit), 0);
-    if (cartons > 0) sortie.push({ commercialId: c.commercialId, binomeId: c.commercial.binomeId, cartons });
+    if (cartons > 0) {
+      sortie.push({
+        commercialId: c.commercialId,
+        binomeId: c.commercial.binomeId,
+        cartons,
+        qte: c.lignes.map((l) => ({ code: l.produit.code, nbCartons: l.nbCartons, nbFilets: l.nbFilets, nbSachets: l.nbSachets })),
+      });
+    }
   }
   if (origines.length) {
     const pParId = new Map(produits.map((p) => [p.id, p]));
@@ -42,7 +50,14 @@ export async function ventesBureau(depuis: Date, jusqua?: Date): Promise<VenteBu
       const p = pParId.get(o.produitId);
       if (!p) continue;
       const cartons = cartonsEq({ nbCartons: 0, nbSachets: o.nbSachets, nbFilets: o.nbFilets }, p);
-      if (cartons > 0) sortie.push({ commercialId: o.commercialId, binomeId: binomeDe.get(o.commercialId) ?? null, cartons });
+      if (cartons > 0) {
+        sortie.push({
+          commercialId: o.commercialId,
+          binomeId: binomeDe.get(o.commercialId) ?? null,
+          cartons,
+          qte: [{ code: p.code, nbCartons: 0, nbFilets: o.nbFilets, nbSachets: o.nbSachets }],
+        });
+      }
     }
   }
   return sortie;

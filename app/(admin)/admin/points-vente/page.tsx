@@ -63,7 +63,7 @@ export default async function PointsVentePage({
       where: villeId ? { villeId } : undefined,
       orderBy: { nom: "asc" },
     }),
-    prisma.typePointVente.findMany({ orderBy: { nom: "asc" } }),
+    prisma.typePointVente.findMany({ where: { nom: { not: "Client divers" } }, orderBy: { nom: "asc" } }),
   ]);
 
   const baseQuery = { search, villeId, quartierId, typeId, triCommandes };

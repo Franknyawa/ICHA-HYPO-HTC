@@ -116,6 +116,11 @@ const indecisSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
+/** Échantillons donnés (sachets) : sortent du stock sans être facturés. */
+export const echantillonsSchema = z
+  .array(z.object({ produitCode: z.string().min(1).max(40), sachets: z.number().int().min(1).max(5000) }))
+  .max(12);
+
 export const createVisiteSchema = z
   .object({
     uuidClient: z.string().uuid(),
@@ -135,6 +140,7 @@ export const createVisiteSchema = z
     indecis: indecisSchema.optional(),
     photos: z.array(photoSchema).default([]),
     observation: z.string().optional(),
+    echantillons: echantillonsSchema.optional(),
   })
   .merge(gpsSchema)
   .refine((data) => data.pointVenteId || data.nouveauPointVente || (data.clientDivers && data.vente), {

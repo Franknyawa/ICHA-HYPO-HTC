@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { valeurCatalogueLigne } from "@/lib/utils/tarifs";
 import { ventesBureau } from "@/lib/queries/ventes-bureau";
+import { debutJour, finJour, jourDouala, ajouterJours } from "@/lib/utils/periode";
 import { cartonsEq, arrondiCartons, SELECT_CONV } from "@/lib/utils/cartons-equiv";
 
 const DEFAUTS_INDIVIDUEL: Record<"JOURNALIER" | "HEBDOMADAIRE" | "MENSUEL", number> = {
@@ -10,21 +11,18 @@ const DEFAUTS_INDIVIDUEL: Record<"JOURNALIER" | "HEBDOMADAIRE" | "MENSUEL", numb
 };
 
 function plages() {
-  const now = new Date();
-
-  const debutJour = new Date(now);
-  debutJour.setHours(0, 0, 0, 0);
-  const finJour = new Date(now);
-  finJour.setHours(23, 59, 59, 999);
-
-  const jourSemaine = (now.getDay() + 6) % 7; // 0 = lundi
-  const debutSemaine = new Date(now);
-  debutSemaine.setDate(now.getDate() - jourSemaine);
-  debutSemaine.setHours(0, 0, 0, 0);
-
-  const debutMois = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  return { debutJour, finJour, debutSemaine, debutMois, maintenant: now };
+  // Jours, semaines et mois calculés à l'heure de Douala (le serveur Vercel est en UTC).
+  const aujourdhui = jourDouala();
+  const jourSemaine = (new Date(`${aujourdhui}T12:00:00Z`).getUTCDay() + 6) % 7; // 0 = lundi
+  const lundi = ajouterJours(aujourdhui, -jourSemaine);
+  const premierDuMois = `${aujourdhui.slice(0, 7)}-01`;
+  return {
+    debutJour: debutJour(aujourdhui),
+    finJour: finJour(aujourdhui),
+    debutSemaine: debutJour(lundi),
+    debutMois: debutJour(premierDuMois),
+    maintenant: new Date(),
+  };
 }
 
 /**
@@ -39,7 +37,12 @@ export function couleurPerformance(pourcentage: number): "rouge" | "orange" | "v
   return "rouge";
 }
 
-async function cartonsVendus(where: { commercialId?: string; binomeId?: string }, depuis: Date, jusqua?: Date) {
+export type DetailProduit = { code: string; cartons: number; filets: number; sachets: number };
+export type DetailVentes = { cartons: number; filets: number; sachets: number; parProduit: DetailProduit[] };
+export type PerfPeriode = { realise: number; detail: DetailVentes };
+
+/** Cartons (équivalent) + détail brut : cartons, filets et sachets vendus, au total et par produit. */
+async function ventesVendues(where: { commercialId?: string; binomeId?: string }, depuis: Date, jusqua?: Date): Promise<PerfPeriode> {
   const lignes = await prisma.venteLigne.findMany({
     where: {
       vente: {
@@ -48,13 +51,28 @@ async function cartonsVendus(where: { commercialId?: string; binomeId?: string }
         ...(where.binomeId ? { commercial: { binomeId: where.binomeId } } : {}),
       },
     },
-    select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: SELECT_CONV } },
+    select: { nbCartons: true, nbSachets: true, nbFilets: true, produit: { select: { code: true, ...SELECT_CONV } } },
   });
   // + commandes saisies au bureau au nom du commercial (sans vente terrain)
   const bureau = (await ventesBureau(depuis, jusqua)).filter(
     (b) => (!where.commercialId || b.commercialId === where.commercialId) && (!where.binomeId || b.binomeId === where.binomeId)
   );
-  return arrondiCartons(lignes.reduce((s, l) => s + cartonsEq(l, l.produit), 0) + bureau.reduce((s, b) => s + b.cartons, 0));
+  const parCode = new Map<string, DetailProduit>();
+  const ajouter = (code: string, c: number, f: number, s: number) => {
+    const d = parCode.get(code) ?? { code, cartons: 0, filets: 0, sachets: 0 };
+    d.cartons += c;
+    d.filets += f;
+    d.sachets += s;
+    parCode.set(code, d);
+  };
+  for (const l of lignes) ajouter(l.produit.code, l.nbCartons, l.nbFilets, l.nbSachets);
+  for (const b of bureau) for (const q of b.qte) ajouter(q.code, q.nbCartons, q.nbFilets, q.nbSachets);
+  const parProduit = [...parCode.values()].sort((x, y) => x.code.localeCompare(y.code));
+  const somme = (k: "cartons" | "filets" | "sachets") => parProduit.reduce((t, d) => t + d[k], 0);
+  return {
+    realise: arrondiCartons(lignes.reduce((t, l) => t + cartonsEq(l, l.produit), 0) + bureau.reduce((t, b) => t + b.cartons, 0)),
+    detail: { cartons: somme("cartons"), filets: somme("filets"), sachets: somme("sachets"), parProduit },
+  };
 }
 
 export async function getObjectifsIndividuels() {
@@ -73,16 +91,17 @@ export async function getStatsPersonnelles(commercialId: string) {
   const objectifs = await getObjectifsIndividuels();
 
   const [jour, semaine, mois] = await Promise.all([
-    cartonsVendus({ commercialId }, debutJour, finJour),
-    cartonsVendus({ commercialId }, debutSemaine),
-    cartonsVendus({ commercialId }, debutMois),
+    ventesVendues({ commercialId }, debutJour, finJour),
+    ventesVendues({ commercialId }, debutSemaine),
+    ventesVendues({ commercialId }, debutMois),
   ]);
 
-  const withPct = (realise: number, objectif: number) => ({
-    realise,
+  const withPct = (perf: PerfPeriode, objectif: number) => ({
+    realise: perf.realise,
+    detail: perf.detail,
     objectif,
-    pourcentage: objectif > 0 ? Math.min(999, Math.round((realise / objectif) * 100)) : 0,
-    couleur: couleurPerformance(objectif > 0 ? (realise / objectif) * 100 : 0),
+    pourcentage: objectif > 0 ? Math.min(999, Math.round((perf.realise / objectif) * 100)) : 0,
+    couleur: couleurPerformance(objectif > 0 ? (perf.realise / objectif) * 100 : 0),
   });
 
   return {
@@ -101,8 +120,8 @@ export async function getStatsBinome(binomeId: string) {
   const { debutJour, finJour, debutSemaine, maintenant } = plages();
 
   const [jourCartons, semaineCartons, objectifJournalier, objectifHebdo] = await Promise.all([
-    cartonsVendus({ binomeId }, debutJour, finJour),
-    cartonsVendus({ binomeId }, debutSemaine),
+    ventesVendues({ binomeId }, debutJour, finJour),
+    ventesVendues({ binomeId }, debutSemaine),
     prisma.objectif.findFirst({
       where: {
         binomeId,
@@ -124,11 +143,12 @@ export async function getStatsBinome(binomeId: string) {
   const objJour = objectifJournalier?.valeurCartons ?? 42;
   const objSemaine = objectifHebdo?.valeurCartons ?? 2500;
 
-  const withPct = (realise: number, objectif: number) => ({
-    realise,
+  const withPct = (perf: PerfPeriode, objectif: number) => ({
+    realise: perf.realise,
+    detail: perf.detail,
     objectif,
-    pourcentage: objectif > 0 ? Math.min(999, Math.round((realise / objectif) * 100)) : 0,
-    couleur: couleurPerformance(objectif > 0 ? (realise / objectif) * 100 : 0),
+    pourcentage: objectif > 0 ? Math.min(999, Math.round((perf.realise / objectif) * 100)) : 0,
+    couleur: couleurPerformance(objectif > 0 ? (perf.realise / objectif) * 100 : 0),
   });
 
   return {

@@ -5,7 +5,7 @@ import { listerVilles } from "@/lib/geo/synchro-villes";
 export async function chargerReferentielsCommande() {
   const [villes, types, produits, prixParType, paliers, commerciaux] = await Promise.all([
     listerVilles(),
-    prisma.typePointVente.findMany({ where: { actif: true }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
+    prisma.typePointVente.findMany({ where: { actif: true, nom: { not: "Client divers" } }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
     prisma.produit.findMany({ where: { actif: true }, orderBy: { code: "desc" } }),
     prisma.prixParType.findMany(),
     prisma.palierPrix.findMany(),

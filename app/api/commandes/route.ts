@@ -9,6 +9,8 @@ import { ajouterVentesDetail, obtenirClientDivers } from "@/lib/services/client-
 import { jourDouala, debutJour } from "@/lib/utils/periode";
 import { getRemiseBureauPct } from "@/lib/services/remise-bureau";
 import { calculerLignesCommande, ErreurCalcul } from "@/lib/services/commande-calcul";
+import { enregistrerEchantillons } from "@/lib/services/echantillons";
+import { echantillonsSchema } from "@/lib/validations/visite";
 import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
@@ -52,6 +54,9 @@ const schema = z
         quartierNom: z.string().trim().max(120).optional(),
         repere: z.string().trim().max(300).optional(),
         typeId: z.string().uuid().optional().nullable(),
+        latitude: z.number().min(-90).max(90).optional(),
+        longitude: z.number().min(-180).max(180).optional(),
+        precisionGps: z.number().min(0).max(99999).optional(),
       })
       .optional(),
     /** Achat par un « client divers » : aucun client créé. */
@@ -65,6 +70,9 @@ const schema = z
     dateCommande: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     /** Tarif du personnel du bureau (remise sur la vente au détail). */
     tarifBureau: z.boolean().optional(),
+    /** Échantillons donnés (sachets) : sortent du stock sans être facturés. */
+    echantillons: echantillonsSchema.optional(),
+    /** Position GPS de la boutique saisie pour un nouveau client. */
   })
   // Une vente uniquement au détail va sur le « client divers » : aucun point de vente à choisir.
   .refine((d) => d.pointVenteId || d.nouveauPointVente || d.clientDivers || d.lignes.every((l) => l.detail), { message: "Choisissez ou créez un point de vente." });
@@ -148,6 +156,9 @@ async function POST_(req: NextRequest) {
             repere: n.repere || undefined,
             typeId: n.typeId ?? undefined,
             typesIds: n.typeId ? [n.typeId] : [],
+            ...(n.latitude != null && n.longitude != null
+              ? { latitude: n.latitude, longitude: n.longitude, precisionGps: n.precisionGps != null ? Math.min(9999.99, n.precisionGps) : undefined }
+              : {}),
             createdById: session.userId,
           },
         });
@@ -175,11 +186,22 @@ async function POST_(req: NextRequest) {
             origine: { source: sourceDetail, lieu: d.clientDivers ? await texteLieu(tx, d.lieuDivers) : null },
           })
         : null;
+      const noterEchantillons = async (pvId: string | null, refId: string) => {
+        if (!d.echantillons?.length) return;
+        const pv = pvId ? await tx.pointVente.findUnique({ where: { id: pvId }, select: { nom: true } }) : null;
+        await enregistrerEchantillons(tx, {
+          cle: crypto.randomUUID(),
+          lignes: d.echantillons,
+          referenceId: refId,
+          note: `Échantillon · ${pv?.nom ?? "client"} · saisi par ${saisiePar}`,
+        });
+      };
       if (lignesClient.length === 0) {
         const c = await tx.commande.findUniqueOrThrow({ where: { id: idDivers! }, select: { id: true, montantTotal: true } });
+        await noterEchantillons(pointVenteId ?? null, c.id);
         return c;
       }
-      return tx.commande.create({
+      const creee = await tx.commande.create({
         data: {
           uuidClient: crypto.randomUUID(),
           saisiePar,
@@ -193,6 +215,8 @@ async function POST_(req: NextRequest) {
         },
         select: { id: true, montantTotal: true },
       });
+      await noterEchantillons(pointVenteId!, creee.id);
+      return creee;
     });
 
     return NextResponse.json({ id: commande.id, montantTotal: Number(commande.montantTotal) }, { status: 201 });

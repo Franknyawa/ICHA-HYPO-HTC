@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     await requireModule("parametres");
-    const types = await prisma.typePointVente.findMany({ orderBy: { ordre: "asc" } });
+    const types = await prisma.typePointVente.findMany({ where: { nom: { not: "Client divers" } }, orderBy: { ordre: "asc" } });
     return NextResponse.json({ data: types });
   } catch (error) {
     return handleApiError(error);

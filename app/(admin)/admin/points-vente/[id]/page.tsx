@@ -68,7 +68,7 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
     }),
     prisma.ville.findMany({ where: { actif: true }, orderBy: { nom: "asc" }, select: { id: true, nom: true } }),
     prisma.quartier.findMany({ where: { actif: true }, orderBy: { nom: "asc" }, select: { id: true, nom: true, villeId: true } }),
-    prisma.typePointVente.findMany({ where: { actif: true }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
+    prisma.typePointVente.findMany({ where: { actif: true, nom: { not: "Client divers" } }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
     prisma.commande.count({ where: { pointVenteId: params.id, statut: { in: ["EN_LIVRAISON", "LIVREE"] } } }),
   ]);
   if (!pv || !brut) {

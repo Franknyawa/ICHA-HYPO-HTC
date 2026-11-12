@@ -32,7 +32,7 @@ export default async function TrackingPage({
       ? await Promise.all([
           getPointsVenteCarte({ villeId, typeId, statut: statutPv, commercialId }),
           listerVilles(),
-          prisma.typePointVente.findMany({ where: { actif: true }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
+          prisma.typePointVente.findMany({ where: { actif: true, nom: { not: "Client divers" } }, orderBy: { ordre: "asc" }, select: { id: true, nom: true } }),
         ])
       : [null, [], []];
 

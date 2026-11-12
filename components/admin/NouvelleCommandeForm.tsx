@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, UserPlus, Users, X } from "lucide-react";
+import { Crosshair, Search, UserPlus, Users, X } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/client/apiFetch";
 import { preparerCommande, type ProduitForm, type QuantitesParCode } from "@/lib/utils/commande-terrain";
 import type { PalierTarif, PrixTypeTarif } from "@/lib/utils/tarifs";
-import { BlocPaiement, QuantitesProduit, QuantitesDetail, CaseVenteDetail, type ModePaiementTerrain } from "@/components/commercial/form-ui";
+import { BlocPaiement, QuantitesProduit, QuantitesDetail, CaseVenteDetail, ChampEchantillon, payloadEchantillons, type EchantillonsSaisis, type ModePaiementTerrain } from "@/components/commercial/form-ui";
 import { formatFcfa } from "@/lib/utils/format";
 import { trierProduits } from "@/lib/utils/produits-ordre";
 
@@ -89,6 +89,11 @@ export function NouvelleCommandeForm({
   const [quartier, setQuartier] = useState("");
   const [repere, setRepere] = useState("");
   const [typeId, setTypeId] = useState("");
+  const [gps, setGps] = useState<{ lat: number; lng: number; precision: number } | null>(null);
+  const [gpsEnCours, setGpsEnCours] = useState(false);
+  const [gpsErreur, setGpsErreur] = useState<string | null>(null);
+  const [similaires, setSimilaires] = useState<PV[]>([]);
+  const [echantillons, setEchantillons] = useState<EchantillonsSaisis>({});
 
   const [quantites, setQuantites] = useState<QuantitesParCode>(modif?.quantites ?? {});
   const [detailActif, setDetailActif] = useState(Object.keys(modif?.quantitesDetail ?? {}).length > 0);
@@ -116,6 +121,38 @@ export function NouvelleCommandeForm({
     }, 250);
     return () => clearTimeout(t);
   }, [recherche, mode, choisi]);
+
+  // Nouveau client : avant de le créer, on vérifie qu'il n'existe pas déjà (nom, contact ou téléphone proches).
+  useEffect(() => {
+    const q = nom.trim();
+    if (mode !== "NOUVEAU" || modif || q.length < 3) {
+      setSimilaires([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      apiFetch<{ data: PV[] }>(`/api/commandes/points-vente?search=${encodeURIComponent(q)}`)
+        .then((d) => setSimilaires(d.data ?? []))
+        .catch(() => setSimilaires([]));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [nom, mode, modif]);
+
+  function capturerPosition() {
+    setGpsErreur(null);
+    if (!navigator.geolocation) return setGpsErreur("Géolocalisation non supportée par ce navigateur.");
+    setGpsEnCours(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude, precision: pos.coords.accuracy });
+        setGpsEnCours(false);
+      },
+      () => {
+        setGpsErreur("Impossible de récupérer la position (autorisation refusée ?).");
+        setGpsEnCours(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }
 
   const typeEffectif = mode === "DIVERS" ? null : mode === "EXISTANT" ? choisi?.typeId ?? null : typeId || null;
   const commande = useMemo(
@@ -168,6 +205,7 @@ export function NouvelleCommandeForm({
                   quartierNom: quartier.trim() || undefined,
                   repere: repere.trim() || undefined,
                   typeId: typeId || undefined,
+                  ...(gps ? { latitude: gps.lat, longitude: gps.lng, precisionGps: Math.round(gps.precision * 100) / 100 } : {}),
                 },
               }),
           commercialId: commercialId && commercialId !== "BUREAU" ? commercialId : undefined,
@@ -179,6 +217,7 @@ export function NouvelleCommandeForm({
             detail: l.detail ?? false,
           })),
           modePaiement,
+          ...(!modif && payloadEchantillons(echantillons).length > 0 ? { echantillons: payloadEchantillons(echantillons) } : {}),
           ...(!modif && peutAntidater && dateCmd ? { dateCommande: dateCmd } : {}),
           ...(!modif && remiseActive > 0 ? { tarifBureau: true } : {}),
           ...(modif
@@ -294,6 +333,32 @@ export function NouvelleCommandeForm({
                 <Etiquette texte="Nom du point de vente *">
                   <input className={champ} value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Ex : Boutique Mbarga" />
                 </Etiquette>
+                {similaires.length > 0 && (
+                  <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-slate-800">
+                    <p className="mb-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                      Ce client existe peut-être déjà. Sélectionnez-le pour lui affecter la vente :
+                    </p>
+                    <ul className="divide-y divide-amber-100 dark:divide-slate-700">
+                      {similaires.map((p) => (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setChoisi(p);
+                              setMode("EXISTANT");
+                              setSimilaires([]);
+                            }}
+                            className="w-full py-2 text-left hover:opacity-80"
+                          >
+                            <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{p.nom}</p>
+                            <p className="text-xs text-slate-500">{[p.vendeur, p.telephoneVendeur, p.quartierNom, p.villeNom].filter(Boolean).join(" · ")}</p>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-1.5 text-[11px] text-slate-500">Aucun ne correspond ? Continuez : le client sera recensé.</p>
+                  </div>
+                )}
               </div>
               <Etiquette texte="Personne à contacter">
                 <input className={champ} value={contact} onChange={(e) => setContact(e.target.value)} />
@@ -315,6 +380,28 @@ export function NouvelleCommandeForm({
               <div className="sm:col-span-2">
                 <Etiquette texte="Repère exact">
                   <input className={champ} value={repere} onChange={(e) => setRepere(e.target.value)} placeholder="Ex : en face de la pharmacie" />
+                </Etiquette>
+              </div>
+              <div className="sm:col-span-2">
+                <Etiquette texte="Position GPS de la boutique">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={capturerPosition}
+                      disabled={gpsEnCours}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#1e3a8a] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                    >
+                      <Crosshair size={16} />
+                      {gpsEnCours ? "Localisation…" : gps ? "Mettre à jour la position" : "Récupérer la position"}
+                    </button>
+                    {gps && (
+                      <span className="text-xs text-slate-600 dark:text-slate-300">
+                        {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)} (± {Math.round(gps.precision)} m)
+                      </span>
+                    )}
+                  </div>
+                  <span className="mt-1 block text-[11px] text-slate-500">À faire une fois sur place, devant la boutique : la localisation exacte sera enregistrée.</span>
+                  {gpsErreur && <span className="mt-1 block text-xs text-red-600">{gpsErreur}</span>}
                 </Etiquette>
               </div>
               <div className="sm:col-span-2">
@@ -372,6 +459,12 @@ export function NouvelleCommandeForm({
               ))}
           </div>
         </Section>
+
+        {!modif && (
+          <Section titre="Échantillons">
+            <ChampEchantillon produits={produits} valeur={echantillons} onChange={setEchantillons} />
+          </Section>
+        )}
       </div>
 
       <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">

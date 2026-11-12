@@ -16,7 +16,6 @@ import { StatBar } from "@/components/StatBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   ClipboardList,
-  RefreshCw,
   Package,
   Clock,
   Users2,
@@ -75,31 +74,30 @@ export default async function CommercialDashboardPage() {
 
       <div className="-mt-4 space-y-4 px-4">
         {/* Actions terrain */}
-        <div className="grid grid-cols-1 gap-2.5">
-          <Link
-            href="/visites/new"
-            className="flex items-center justify-center gap-2 rounded-2xl bg-blue-700 py-4 text-center text-base font-bold text-white shadow-sm"
-          >
-            <ClipboardList size={19} />
-            Nouveau recensement
-          </Link>
-          <Link
-            href="/visites/rotation"
-            className="flex items-center justify-center gap-2 rounded-2xl bg-white dark:bg-slate-900 py-3.5 text-sm font-semibold text-indigo-700 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800"
-          >
-            <RefreshCw size={17} />
-            Visite de rotation et d'achalandage
-          </Link>
-          <Link
-            href="/visites/reassort"
-            className="flex items-center justify-center gap-2 rounded-2xl bg-white dark:bg-slate-900 py-3.5 text-sm font-semibold text-teal-700 shadow-sm ring-1 ring-slate-100 dark:ring-slate-800"
-          >
-            <Package size={17} />
-            Visite de réassort
-          </Link>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Link
+              href="/visites/new"
+              className="flex min-h-[132px] flex-col items-center justify-center gap-3 rounded-2xl bg-blue-700 px-3 py-5 text-center text-base font-extrabold leading-tight text-white shadow-lg shadow-blue-900/20 active:scale-[0.98]"
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15">
+                <ClipboardList size={26} />
+              </span>
+              Nouveau recensement
+            </Link>
+            <Link
+              href="/visites/reassort"
+              className="flex min-h-[132px] flex-col items-center justify-center gap-3 rounded-2xl bg-teal-700 px-3 py-5 text-center text-base font-extrabold leading-tight text-white shadow-lg shadow-teal-900/20 active:scale-[0.98]"
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15">
+                <Package size={26} />
+              </span>
+              Visite de réassort
+            </Link>
+          </div>
           <Link
             href="/historique"
-            className="text-center text-xs font-medium text-slate-400 dark:text-slate-500 underline underline-offset-2"
+            className="block text-center text-xs font-medium text-slate-400 dark:text-slate-500 underline underline-offset-2"
           >
             Voir l'historique de mes visites
           </Link>
