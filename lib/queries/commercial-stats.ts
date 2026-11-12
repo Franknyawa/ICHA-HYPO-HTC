@@ -57,9 +57,11 @@ async function ventesVendues(where: { commercialId?: string; binomeId?: string }
   const bureau = (await ventesBureau(depuis, jusqua)).filter(
     (b) => (!where.commercialId || b.commercialId === where.commercialId) && (!where.binomeId || b.binomeId === where.binomeId)
   );
-  const catalogue = await prisma.produit.findMany({ select: { code: true, nom: true, ...SELECT_CONV } });
+  const catalogue = await prisma.produit.findMany({ select: { code: true, nom: true, actif: true, ...SELECT_CONV } });
   const convDe = new Map(catalogue.map((p) => [p.code, p]));
   const parCode = new Map<string, DetailProduit>();
+  // Tous les produits actifs figurent au détail, même à zéro (HYPO et HTC toujours visibles).
+  for (const p of catalogue) if (p.actif) parCode.set(p.code, { code: p.code, nom: p.nom, cartons: 0, filets: 0, sachets: 0, equivalent: 0 });
   const ajouter = (code: string, c: number, f: number, s: number) => {
     const d = parCode.get(code) ?? { code, nom: convDe.get(code)?.nom ?? code, cartons: 0, filets: 0, sachets: 0, equivalent: 0 };
     d.cartons += c;

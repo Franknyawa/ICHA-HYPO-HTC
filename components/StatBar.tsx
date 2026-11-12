@@ -1,4 +1,3 @@
-import { Boxes, Layers, Package } from "lucide-react";
 import { descriptionProduit } from "@/lib/utils/produit-libelle";
 
 const COULEUR_CLASSES: Record<string, { bar: string; text: string; bg: string; badge: string }> = {
@@ -56,54 +55,51 @@ export function StatBar({
 }
 
 function Recap({ detail }: { detail: DetailQuantites }) {
-  const produits = detail.parProduit.filter((d) => d.cartons + d.filets + d.sachets > 0);
-  const vide = detail.cartons + detail.filets + detail.sachets === 0;
-  const tuiles = [
-    { lib: "Cartons", n: detail.cartons, Icone: Package },
-    { lib: "Filets", n: detail.filets, Icone: Layers },
-    { lib: "Sachets", n: detail.sachets, Icone: Boxes },
-  ];
+  const produits = detail.parProduit;
+  const equivTotal = produits.reduce((t, d) => t + (d.equivalent ?? 0), 0);
+  const grille = "grid grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))] items-center gap-1";
+  const cellule = "text-right tabular-nums";
   return (
-    <div className="mt-3 space-y-2.5 border-t border-white pt-3 dark:border-slate-700">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Récap</p>
-      <div className="grid grid-cols-3 gap-2">
-        {tuiles.map(({ lib, n, Icone }) => (
-          <div key={lib} className="rounded-xl bg-white px-2 py-2 text-center shadow-sm dark:bg-slate-900">
-            <Icone size={14} className="mx-auto mb-0.5 text-slate-400" aria-hidden />
-            <p className="text-base font-extrabold leading-tight tabular-nums text-slate-800 dark:text-slate-100">{nb(n)}</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{lib}</p>
-          </div>
-        ))}
-      </div>
-
-      {vide ? (
-        <p className="rounded-xl bg-white px-3 py-2 text-center text-xs text-slate-400 dark:bg-slate-900">Aucune vente sur cette période.</p>
-      ) : (
-        <div className="overflow-hidden rounded-xl bg-white shadow-sm dark:bg-slate-900">
-          <div className="grid grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,1fr))] items-center gap-1 bg-slate-100 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-            <span>Produit</span>
-            <span className="text-right">Cartons</span>
-            <span className="text-right">Filets</span>
-            <span className="text-right">Sachets</span>
-          </div>
-          {produits.map((d) => (
+    <div className="mt-3 border-t border-white pt-3 dark:border-slate-700">
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Détail par produit</p>
+      <div className="overflow-hidden rounded-xl bg-white shadow-sm dark:bg-slate-900">
+        <div className={`${grille} bg-slate-100 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400`}>
+          <span>Produit</span>
+          <span className="text-right">Cartons</span>
+          <span className="text-right">Filets</span>
+          <span className="text-right">Sachets</span>
+        </div>
+        {produits.map((d) => {
+          const aucun = d.cartons + d.filets + d.sachets === 0;
+          return (
             <div key={d.code} className="border-t border-slate-100 px-3 py-2 dark:border-slate-800">
-              <div className="grid grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,1fr))] items-center gap-1 text-sm tabular-nums">
+              <div className={`${grille} text-sm ${aucun ? "text-slate-300 dark:text-slate-600" : "text-slate-700 dark:text-slate-200"}`}>
                 <span className="min-w-0">
-                  <span className="block truncate font-extrabold text-slate-800 dark:text-slate-100">{d.code}</span>
+                  <span className={`block truncate font-extrabold ${aucun ? "" : "text-slate-800 dark:text-slate-100"}`}>{d.code}</span>
                   {descriptionProduit(d.code) && <span className="block text-[10px] font-medium leading-tight text-slate-400">{descriptionProduit(d.code)}</span>}
                 </span>
-                <span className="text-right font-semibold text-slate-700 dark:text-slate-200">{nb(d.cartons)}</span>
-                <span className="text-right font-semibold text-slate-700 dark:text-slate-200">{nb(d.filets)}</span>
-                <span className="text-right font-semibold text-slate-700 dark:text-slate-200">{nb(d.sachets)}</span>
+                <span className={`${cellule} font-semibold`}>{nb(d.cartons)}</span>
+                <span className={`${cellule} font-semibold`}>{nb(d.filets)}</span>
+                <span className={`${cellule} font-semibold`}>{nb(d.sachets)}</span>
               </div>
-              {d.equivalent !== undefined && (
+              {d.equivalent !== undefined && !aucun && (
                 <p className="mt-0.5 text-[11px] text-slate-400">Soit {nb(d.equivalent)} carton{d.equivalent > 1 ? "s" : ""} équivalent{d.equivalent > 1 ? "s" : ""}</p>
               )}
             </div>
-          ))}
+          );
+        })}
+        <div className="border-t-2 border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800">
+          <div className={`${grille} text-sm font-extrabold text-slate-900 dark:text-slate-50`}>
+            <span className="text-xs uppercase tracking-wide">Cumul</span>
+            <span className={cellule}>{nb(detail.cartons)}</span>
+            <span className={cellule}>{nb(detail.filets)}</span>
+            <span className={cellule}>{nb(detail.sachets)}</span>
+          </div>
+          <p className="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            Soit {nb(Math.round(equivTotal * 10) / 10)} carton{equivTotal > 1 ? "s" : ""} équivalent{equivTotal > 1 ? "s" : ""} au total
+          </p>
         </div>
-      )}
+      </div>
     </div>
   );
 }

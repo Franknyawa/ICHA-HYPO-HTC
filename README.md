@@ -1892,3 +1892,6 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 
 ## Noms des produits (12 novembre 2026, 3)
 - Performances et échantillons : « HYPO » (eau de javel) et « HTC » (nettoyant toilettes) affichés par leur code + description (lib/utils/produit-libelle.ts).
+
+## Performances : détail par produit avec cumul (12 novembre 2026, 4)
+- HYPO et HTC toujours listés (même à zéro), lignes cartons / filets / sachets, ligne « Cumul » + équivalent en cartons.
