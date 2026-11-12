@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { descriptionProduit } from "@/lib/utils/produit-libelle";
 import { ArrowLeft, ChevronDown, Minus, Plus, type LucideIcon } from "lucide-react";
 
 const VERT = "#359980";
@@ -574,11 +575,11 @@ export function ChampEchantillon({
               className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-3 ${i > 0 ? "border-t border-slate-100 dark:border-slate-800" : ""} ${n > 0 ? "bg-teal-50/60 dark:bg-slate-800/60" : ""}`}
             >
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">{p.nom || p.code}</p>
-                <p className="text-[11px] text-slate-400">sachets donnés</p>
+                <p className="truncate text-base font-extrabold text-slate-800 dark:text-slate-100">{p.code}</p>
+                <p className="text-[11px] text-slate-400">{descriptionProduit(p.code) || "Sachets donnés"}</p>
               </div>
               <div className="flex items-center gap-1.5">
-                <button type="button" aria-label={`Retirer un sachet ${p.nom}`} className={bouton} disabled={n <= 0} onClick={() => fixer(p.code, n - 1)}>
+                <button type="button" aria-label={`Retirer un sachet ${p.code}`} className={bouton} disabled={n <= 0} onClick={() => fixer(p.code, n - 1)}>
                   <Minus size={16} />
                 </button>
                 <input
@@ -588,13 +589,13 @@ export function ChampEchantillon({
                   max={5000}
                   step={1}
                   placeholder="0"
-                  aria-label={`Sachets d'échantillon ${p.nom}`}
+                  aria-label={`Sachets d'échantillon ${p.code}`}
                   value={n > 0 ? String(n) : ""}
                   onChange={(e) => fixer(p.code, e.target.value === "" ? 0 : Number(e.target.value))}
                   onWheel={(e) => (e.target as HTMLInputElement).blur()}
                   className="h-11 w-20 rounded-xl border border-slate-300 bg-white text-center text-base font-bold tabular-nums text-slate-900 placeholder:text-slate-300 focus:border-[#359980] focus:outline-none focus:ring-2 focus:ring-[#359980]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 />
-                <button type="button" aria-label={`Ajouter un sachet ${p.nom}`} className={bouton} onClick={() => fixer(p.code, n + 1)}>
+                <button type="button" aria-label={`Ajouter un sachet ${p.code}`} className={bouton} onClick={() => fixer(p.code, n + 1)}>
                   <Plus size={16} />
                 </button>
               </div>

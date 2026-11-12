@@ -1889,3 +1889,6 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Accueil commercial : deux grandes cartes (dégradé bleu « Nouveau recensement », vert « Visite de réassort »), icône, sous-titre, flèche.
 - Performances : récap (cartons, filets, sachets) puis tableau par produit aux colonnes alignées, avec l'équivalent en cartons ; message « Aucune vente » quand la période est vide.
 - Échantillon : une ligne par produit, nom à gauche, boutons − / + et champ de largeur fixe à droite, total des sachets en bas.
+
+## Noms des produits (12 novembre 2026, 3)
+- Performances et échantillons : « HYPO » (eau de javel) et « HTC » (nettoyant toilettes) affichés par leur code + description (lib/utils/produit-libelle.ts).

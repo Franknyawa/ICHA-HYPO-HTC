@@ -1,4 +1,5 @@
 import { Boxes, Layers, Package } from "lucide-react";
+import { descriptionProduit } from "@/lib/utils/produit-libelle";
 
 const COULEUR_CLASSES: Record<string, { bar: string; text: string; bg: string; badge: string }> = {
   vert: { bar: "bg-green-500", text: "text-green-700 dark:text-green-400", bg: "bg-green-50 dark:bg-green-950/40", badge: "bg-green-600 text-white" },
@@ -88,7 +89,10 @@ function Recap({ detail }: { detail: DetailQuantites }) {
           {produits.map((d) => (
             <div key={d.code} className="border-t border-slate-100 px-3 py-2 dark:border-slate-800">
               <div className="grid grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,1fr))] items-center gap-1 text-sm tabular-nums">
-                <span className="truncate font-bold text-slate-800 dark:text-slate-100">{d.nom || d.code}</span>
+                <span className="min-w-0">
+                  <span className="block truncate font-extrabold text-slate-800 dark:text-slate-100">{d.code}</span>
+                  {descriptionProduit(d.code) && <span className="block text-[10px] font-medium leading-tight text-slate-400">{descriptionProduit(d.code)}</span>}
+                </span>
                 <span className="text-right font-semibold text-slate-700 dark:text-slate-200">{nb(d.cartons)}</span>
                 <span className="text-right font-semibold text-slate-700 dark:text-slate-200">{nb(d.filets)}</span>
                 <span className="text-right font-semibold text-slate-700 dark:text-slate-200">{nb(d.sachets)}</span>
