@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronDown, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ChevronDown, Minus, Plus, type LucideIcon } from "lucide-react";
 
 const VERT = "#359980";
 
@@ -558,31 +558,55 @@ export function ChampEchantillon({
   valeur: EchantillonsSaisis;
   onChange: (v: EchantillonsSaisis) => void;
 }) {
+  const fixer = (code: string, n: number) => onChange({ ...valeur, [code]: Math.max(0, Math.min(5000, Math.floor(n) || 0)) });
+  const total = produits.reduce((t, p) => t + (valeur[p.code] || 0), 0);
+  const bouton =
+    "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 active:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200";
   return (
-    <Champ label="Échantillon" aide="Sachets donnés en échantillon : retirés du stock, jamais facturés.">
-      <div className="grid grid-cols-2 gap-2.5">
-        {produits.map((p) => (
-          <label key={p.code} className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">{p.nom || p.code}</span>
-            <div className="flex items-center gap-2">
-              <Saisie
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={5000}
-                step={1}
-                placeholder="0"
-                value={valeur[p.code] ? String(valeur[p.code]) : ""}
-                onChange={(e) => {
-                  const n = e.target.value === "" ? 0 : Math.max(0, Math.min(5000, Math.floor(Number(e.target.value) || 0)));
-                  onChange({ ...valeur, [p.code]: n });
-                }}
-              />
-              <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">sachets</span>
+    <div>
+      <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Échantillon</span>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+        {produits.map((p, i) => {
+          const n = valeur[p.code] || 0;
+          return (
+            <div
+              key={p.code}
+              className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3.5 py-3 ${i > 0 ? "border-t border-slate-100 dark:border-slate-800" : ""} ${n > 0 ? "bg-teal-50/60 dark:bg-slate-800/60" : ""}`}
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">{p.nom || p.code}</p>
+                <p className="text-[11px] text-slate-400">sachets donnés</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button type="button" aria-label={`Retirer un sachet ${p.nom}`} className={bouton} disabled={n <= 0} onClick={() => fixer(p.code, n - 1)}>
+                  <Minus size={16} />
+                </button>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={5000}
+                  step={1}
+                  placeholder="0"
+                  aria-label={`Sachets d'échantillon ${p.nom}`}
+                  value={n > 0 ? String(n) : ""}
+                  onChange={(e) => fixer(p.code, e.target.value === "" ? 0 : Number(e.target.value))}
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                  className="h-11 w-20 rounded-xl border border-slate-300 bg-white text-center text-base font-bold tabular-nums text-slate-900 placeholder:text-slate-300 focus:border-[#359980] focus:outline-none focus:ring-2 focus:ring-[#359980]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                />
+                <button type="button" aria-label={`Ajouter un sachet ${p.nom}`} className={bouton} onClick={() => fixer(p.code, n + 1)}>
+                  <Plus size={16} />
+                </button>
+              </div>
             </div>
-          </label>
-        ))}
+          );
+        })}
+        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-800">
+          <span className="font-medium text-slate-500 dark:text-slate-400">Total échantillons</span>
+          <span className="font-extrabold tabular-nums text-slate-800 dark:text-slate-100">{total.toLocaleString("fr-FR")} sachet{total > 1 ? "s" : ""}</span>
+        </div>
       </div>
-    </Champ>
+      <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Retirés du stock, jamais facturés.</p>
+    </div>
   );
 }

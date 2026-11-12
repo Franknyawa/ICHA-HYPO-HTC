@@ -37,7 +37,7 @@ export function couleurPerformance(pourcentage: number): "rouge" | "orange" | "v
   return "rouge";
 }
 
-export type DetailProduit = { code: string; cartons: number; filets: number; sachets: number };
+export type DetailProduit = { code: string; nom: string; cartons: number; filets: number; sachets: number; equivalent: number };
 export type DetailVentes = { cartons: number; filets: number; sachets: number; parProduit: DetailProduit[] };
 export type PerfPeriode = { realise: number; detail: DetailVentes };
 
@@ -57,9 +57,11 @@ async function ventesVendues(where: { commercialId?: string; binomeId?: string }
   const bureau = (await ventesBureau(depuis, jusqua)).filter(
     (b) => (!where.commercialId || b.commercialId === where.commercialId) && (!where.binomeId || b.binomeId === where.binomeId)
   );
+  const catalogue = await prisma.produit.findMany({ select: { code: true, nom: true, ...SELECT_CONV } });
+  const convDe = new Map(catalogue.map((p) => [p.code, p]));
   const parCode = new Map<string, DetailProduit>();
   const ajouter = (code: string, c: number, f: number, s: number) => {
-    const d = parCode.get(code) ?? { code, cartons: 0, filets: 0, sachets: 0 };
+    const d = parCode.get(code) ?? { code, nom: convDe.get(code)?.nom ?? code, cartons: 0, filets: 0, sachets: 0, equivalent: 0 };
     d.cartons += c;
     d.filets += f;
     d.sachets += s;
@@ -68,6 +70,10 @@ async function ventesVendues(where: { commercialId?: string; binomeId?: string }
   for (const l of lignes) ajouter(l.produit.code, l.nbCartons, l.nbFilets, l.nbSachets);
   for (const b of bureau) for (const q of b.qte) ajouter(q.code, q.nbCartons, q.nbFilets, q.nbSachets);
   const parProduit = [...parCode.values()].sort((x, y) => x.code.localeCompare(y.code));
+  for (const d of parProduit) {
+    const conv = convDe.get(d.code);
+    d.equivalent = conv ? arrondiCartons(cartonsEq({ nbCartons: d.cartons, nbFilets: d.filets, nbSachets: d.sachets }, conv)) : d.cartons;
+  }
   const somme = (k: "cartons" | "filets" | "sachets") => parProduit.reduce((t, d) => t + d[k], 0);
   return {
     realise: arrondiCartons(lignes.reduce((t, l) => t + cartonsEq(l, l.produit), 0) + bureau.reduce((t, b) => t + b.cartons, 0)),

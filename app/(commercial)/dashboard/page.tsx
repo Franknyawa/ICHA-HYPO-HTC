@@ -15,6 +15,7 @@ import { NotificationsBell } from "@/components/commercial/NotificationsBell";
 import { StatBar } from "@/components/StatBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
+  ChevronRight,
   ClipboardList,
   Package,
   Clock,
@@ -75,26 +76,36 @@ export default async function CommercialDashboardPage() {
       <div className="-mt-4 space-y-4 px-4">
         {/* Actions terrain */}
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <Link
-              href="/visites/new"
-              className="flex min-h-[132px] flex-col items-center justify-center gap-3 rounded-2xl bg-blue-700 px-3 py-5 text-center text-base font-extrabold leading-tight text-white shadow-lg shadow-blue-900/20 active:scale-[0.98]"
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15">
-                <ClipboardList size={26} />
-              </span>
-              Nouveau recensement
-            </Link>
-            <Link
-              href="/visites/reassort"
-              className="flex min-h-[132px] flex-col items-center justify-center gap-3 rounded-2xl bg-teal-700 px-3 py-5 text-center text-base font-extrabold leading-tight text-white shadow-lg shadow-teal-900/20 active:scale-[0.98]"
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15">
-                <Package size={26} />
-              </span>
-              Visite de réassort
-            </Link>
-          </div>
+          <Link
+            href="/visites/new"
+            className="relative flex items-center gap-4 overflow-hidden rounded-3xl p-5 text-white shadow-lg shadow-blue-900/25 transition-transform active:scale-[0.98]"
+            style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)" }}
+          >
+            <ClipboardList size={120} strokeWidth={1.2} className="pointer-events-none absolute -bottom-8 -right-8 text-white/[0.07]" aria-hidden />
+            <span className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30">
+              <ClipboardList size={28} />
+            </span>
+            <span className="relative min-w-0 flex-1">
+              <span className="block text-lg font-extrabold leading-tight">Nouveau recensement</span>
+              <span className="mt-0.5 block text-xs font-medium text-blue-100">Enregistrer une boutique et sa vente</span>
+            </span>
+            <ChevronRight size={22} className="relative shrink-0 text-white/80" aria-hidden />
+          </Link>
+          <Link
+            href="/visites/reassort"
+            className="relative flex items-center gap-4 overflow-hidden rounded-3xl p-5 text-white shadow-lg shadow-teal-900/25 transition-transform active:scale-[0.98]"
+            style={{ background: "linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)" }}
+          >
+            <Package size={120} strokeWidth={1.2} className="pointer-events-none absolute -bottom-8 -right-8 text-white/[0.07]" aria-hidden />
+            <span className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30">
+              <Package size={28} />
+            </span>
+            <span className="relative min-w-0 flex-1">
+              <span className="block text-lg font-extrabold leading-tight">Visite de réassort</span>
+              <span className="mt-0.5 block text-xs font-medium text-teal-50">Réapprovisionner un client existant</span>
+            </span>
+            <ChevronRight size={22} className="relative shrink-0 text-white/80" aria-hidden />
+          </Link>
           <Link
             href="/historique"
             className="block text-center text-xs font-medium text-slate-400 dark:text-slate-500 underline underline-offset-2"
