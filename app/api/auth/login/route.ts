@@ -12,13 +12,13 @@ import {
 // Node runtime requis : bcrypt et Prisma ne tournent pas sur l'Edge Runtime.
 export const runtime = "nodejs";
 
-const MAX_ATTEMPTS = 5;
-const WINDOW_MINUTES = 15;
+const MAX_ATTEMPTS = 8;
+const WINDOW_MINUTES = 10;
 // Plafond par adresse IP, plus large que celui par identifiant : plusieurs
 // commerciaux peuvent légitimement partager la même IP (même réseau mobile),
 // mais une IP qui enchaîne des dizaines d'échecs sur des comptes différents
 // est une tentative de devinette de mots de passe.
-const MAX_ATTEMPTS_PAR_IP = 30;
+const MAX_ATTEMPTS_PAR_IP = 120;
 
 // Hash factice, comparé quand l'identifiant n'existe pas (ou est
 // désactivé) : le temps de réponse est ainsi le même qu'avec un vrai
@@ -42,7 +42,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { username, password } = parsed.data;
+  // Les claviers de téléphone mettent une majuscule en tête et ajoutent parfois une espace : « Marie » = « marie ».
+  const username = parsed.data.username.trim();
+  const password = parsed.data.password;
   // x-forwarded-for peut contenir une chaîne "client, proxy1, proxy2" : seule
   // la première adresse est celle du client.
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest) {
   // Limitation des tentatives (§28 CDC) — sur les échecs récents pour cet identifiant.
   const since = new Date(Date.now() - WINDOW_MINUTES * 60 * 1000);
   const recentFailures = await prisma.loginAttempt.count({
-    where: { username, succes: false, createdAt: { gte: since } },
+    where: { username: { equals: username, mode: "insensitive" }, succes: false, createdAt: { gte: since } },
   });
 
   const recentFailuresIp = ip
@@ -62,17 +64,19 @@ export async function POST(req: NextRequest) {
   if (recentFailures >= MAX_ATTEMPTS || recentFailuresIp >= MAX_ATTEMPTS_PAR_IP) {
     return NextResponse.json(
       {
-        error:
-          "Trop de tentatives échouées. Réessaie dans quelques minutes.",
+        error: `Trop de tentatives échouées. Réessaie dans ${WINDOW_MINUTES} minutes (ou demande à l'administrateur de vérifier ton mot de passe).`,
       },
       { status: 429 }
     );
   }
 
-  const user = await prisma.user.findUnique({
-    where: { username },
-    include: { binome: { select: { nom: true } } },
-  });
+  // Identifiant exact d'abord, puis sans tenir compte des majuscules.
+  const user =
+    (await prisma.user.findUnique({ where: { username }, include: { binome: { select: { nom: true } } } })) ??
+    (await prisma.user.findFirst({
+      where: { username: { equals: username, mode: "insensitive" } },
+      include: { binome: { select: { nom: true } } },
+    }));
   const isValid =
     user && user.actif
       ? await verifyPassword(password, user.passwordHash)
@@ -81,7 +85,7 @@ export async function POST(req: NextRequest) {
   await prisma.loginAttempt.create({
     data: {
       userId: user?.id,
-      username,
+      username: user?.username ?? username,
       succes: Boolean(isValid),
       ip,
     },

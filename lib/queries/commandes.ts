@@ -44,7 +44,23 @@ function filtresRecherche(params: { search?: string; typeId?: string }): Prisma.
   return out;
 }
 
-function construireWhere(params: ListCommandesParams): Prisma.CommandeWhereInput {
+/**
+ * Commerciaux visés par le filtre « commercial » ou « binôme ». Une commande CLIENT DIVERS regroupe le détail de
+ * plusieurs commerciales sur une seule facture du jour : elle appartient à celle qui l'a ouverte, mais elle doit
+ * aussi sortir quand on filtre sur n'importe laquelle des commerciales qui y ont une ligne.
+ */
+async function porteeCommerciaux(params: { commercialId?: string; binomeId?: string }): Promise<string[] | undefined> {
+  if (params.commercialId) return [params.commercialId];
+  if (params.binomeId) return (await prisma.user.findMany({ where: { binomeId: params.binomeId }, select: { id: true } })).map((u) => u.id);
+  return undefined;
+}
+
+function filtreCommerciaux(ids?: string[]): Prisma.CommandeWhereInput[] {
+  if (!ids) return [];
+  return [{ OR: [{ commercialId: { in: ids } }, { origines: { some: { commercialId: { in: ids } } } }] }];
+}
+
+function construireWhere(params: ListCommandesParams, ids?: string[]): Prisma.CommandeWhereInput {
   // Livraison prévue un autre jour que le jour même, pour une commande pas encore partie.
   // Dans la liste principale, une commande prise AUJOURD'HUI reste toujours visible (même avec une livraison future).
   const aVenir: Prisma.CommandeWhereInput = {
@@ -53,7 +69,7 @@ function construireWhere(params: ListCommandesParams): Prisma.CommandeWhereInput
   };
   return {
     archivedAt: null,
-    AND: [...filtresRecherche(params), ...(params.livraison === "avenir" ? [aVenir] : [])],
+    AND: [...filtresRecherche(params), ...filtreCommerciaux(ids), ...(params.livraison === "avenir" ? [aVenir] : [])],
     // Écrit en positif (un NOT(...) renvoie NULL, donc masque la ligne, quand dateLivraisonPrevue est vide).
     ...(params.livraison === "courantes"
       ? {
@@ -67,8 +83,6 @@ function construireWhere(params: ListCommandesParams): Prisma.CommandeWhereInput
       : {}),
     ...(params.statut ? { statut: params.statut } : params.statuts ? { statut: { in: params.statuts } } : {}),
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),
-    ...(params.commercialId ? { commercialId: params.commercialId } : {}),
-    ...(params.binomeId ? { commercial: { binomeId: params.binomeId } } : {}),
     ...(params.dateFrom || params.dateTo
       ? {
           dateCommande: {
@@ -87,7 +101,7 @@ export async function listCommandes(params: ListCommandesParams) {
   if (params.pageSize) sp.set("pageSize", String(params.pageSize));
   const { page, pageSize, skip, take } = getPaginationParams(sp);
 
-  const where = construireWhere(params);
+  const where = construireWhere(params, await porteeCommerciaux(params));
 
   const [data, total] = await Promise.all([
     prisma.commande.findMany({
@@ -130,10 +144,8 @@ export async function countCommandesParStatut(
   await assurerMontantsConformes();
   const where: Prisma.CommandeWhereInput = {
     archivedAt: null,
-    AND: filtresRecherche(params),
+    AND: [...filtresRecherche(params), ...filtreCommerciaux(await porteeCommerciaux(params))],
     ...(params.villeId ? { pointVente: { villeId: params.villeId } } : {}),
-    ...(params.commercialId ? { commercialId: params.commercialId } : {}),
-    ...(params.binomeId ? { commercial: { binomeId: params.binomeId } } : {}),
     ...(params.dateFrom || params.dateTo
       ? {
           dateCommande: {
@@ -165,5 +177,5 @@ export async function countCommandesParStatut(
 /** Nombre de commandes correspondant aux filtres, sans charger les lignes (pastille « Livraisons à venir »). */
 export async function compterCommandes(params: ListCommandesParams) {
   await assurerMontantsConformes();
-  return prisma.commande.count({ where: construireWhere(params) });
+  return prisma.commande.count({ where: construireWhere(params, await porteeCommerciaux(params)) });
 }

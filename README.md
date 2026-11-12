@@ -1895,3 +1895,10 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 
 ## Performances : détail par produit avec cumul (12 novembre 2026, 4)
 - HYPO et HTC toujours listés (même à zéro), lignes cartons / filets / sachets, ligne « Cumul » + équivalent en cartons.
+
+## Audit affichage des commandes + connexion (12 novembre 2026, 5)
+- CORRIGÉ (tableau de bord admin) : « commandes en attente » (nombre, montant, liste « à traiter ») ne comptait pas les commandes sans date de livraison prévue, soit presque toutes les commandes terrain (NOT/NULL SQL). Écrit en positif.
+- CORRIGÉ (liste Commandes) : le filtre par commerciale / binôme inclut maintenant les factures CLIENT DIVERS où la commerciale a une ligne (la facture du jour n'appartenait qu'à celle qui l'avait ouverte).
+- CORRIGÉ (Rapports) : le détail CLIENT DIVERS est attribué à chaque commerciale (ses quantités, son montant) et non plus à la seule commerciale qui a ouvert la facture du jour. Le total ne change pas.
+- CORRIGÉ (connexion) : identifiant insensible aux majuscules et aux espaces (clavier de téléphone), clavier sans majuscule automatique, délai maximum de 25 s avec message clair, navigation complète après connexion, blocage 8 échecs / 10 min par compte, plafond IP relevé (réseau mobile partagé), création d'utilisateur insensible à la casse.
+- Tests : 83 tests automatiques, dont invariant « courantes + à venir = toutes les commandes ».

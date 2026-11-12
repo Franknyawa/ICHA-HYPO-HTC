@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Eye, EyeOff, User, Lock, ShieldCheck } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -16,7 +15,6 @@ const FAMILLES = [
 ];
 
 export default function LoginPage() {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -28,26 +26,39 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
+    // Réseau faible : on n'attend pas indéfiniment (sinon le bouton « tourne dans le vide »).
+    const controleur = new AbortController();
+    const minuteur = setTimeout(() => controleur.abort(), 25000);
+    let redirige = false;
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: username.trim(), password }),
+        signal: controleur.signal,
+        cache: "no-store",
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
-      if (!res.ok) {
-        setError(data.error ?? "Connexion impossible.");
+      if (!res.ok || !data?.redirectTo) {
+        setError(data?.error ?? `Le serveur ne répond pas correctement (code ${res.status}). Réessaie dans un instant.`);
         return;
       }
 
-      router.push(data.redirectTo);
-      router.refresh();
-    } catch {
-      setError("Erreur réseau. Vérifie ta connexion.");
+      // Navigation complète : le cookie de session est pris en compte à coup sûr (pas de page « en cache »
+      // qui renverrait vers la connexion), et on garde le bouton occupé jusqu'au changement de page.
+      redirige = true;
+      window.location.assign(data.redirectTo);
+    } catch (e) {
+      setError(
+        (e as Error)?.name === "AbortError"
+          ? "La connexion est trop lente. Rapproche-toi d'une meilleure zone réseau puis réessaie."
+          : "Erreur réseau. Vérifie ta connexion puis réessaie."
+      );
     } finally {
-      setLoading(false);
+      clearTimeout(minuteur);
+      if (!redirige) setLoading(false);
     }
   }
 
@@ -126,6 +137,9 @@ export default function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               placeholder="Ton identifiant"
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-base text-slate-800 placeholder:text-slate-400 transition-colors focus:border-[#359980] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#359980]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:bg-slate-900 dark:focus:ring-[#359980]/25"
               required
@@ -145,6 +159,9 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               placeholder="••••••••"
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-base text-slate-800 placeholder:text-slate-400 transition-colors focus:border-[#359980] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#359980]/25 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:bg-slate-900 dark:focus:ring-[#359980]/25"
               required

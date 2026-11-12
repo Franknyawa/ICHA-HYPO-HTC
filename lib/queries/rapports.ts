@@ -202,16 +202,36 @@ const SELECT_PV = {
   quartier: { select: { nom: true } },
 } satisfies Prisma.PointVenteSelect;
 
+const SELECT_PRODUIT_VENTE = {
+  id: true,
+  code: true,
+  nom: true,
+  gamme: true,
+  sachetsParCarton: true,
+  filetsParCarton: true,
+  prixSachet: true,
+  prixFilet: true,
+  prixCarton: true,
+} satisfies Prisma.ProduitSelect;
+
+const SELECT_COMMERCIAL_VENTE = { nom: true, prenom: true, role: true, binome: { select: { nom: true } } } satisfies Prisma.UserSelect;
+
 export async function chargerVentes(filters: RapportFilters) {
   const produitWhere = filtreProduit(filters);
+  // Commerciaux visés par le filtre : la commande CLIENT DIVERS regroupe le détail de plusieurs commerciales
+  // (une ligne « origine » par vente) ; elle compte pour chacune d'elles, pas seulement pour celle qui l'a ouverte.
+  const idsFiltre = filters.commercialId
+    ? [filters.commercialId]
+    : filters.binomeId
+      ? (await prisma.user.findMany({ where: { binomeId: filters.binomeId }, select: { id: true } })).map((u) => u.id)
+      : undefined;
   // « Ventes » = commandes VALIDÉES par l'admin (valeur = montant de la commande,
   // sachets et filets inclus ; quantités converties en cartons équivalents).
   const rows = await prisma.commande.findMany({
     where: {
       statut: { in: ["EN_LIVRAISON", "LIVREE"] },
       valideeAt: plageDates(filters) ?? { not: null },
-      ...(filters.commercialId ? { commercialId: filters.commercialId } : {}),
-      ...(filters.binomeId ? { commercial: { binomeId: filters.binomeId } } : {}),
+      ...(idsFiltre ? { OR: [{ commercialId: { in: idsFiltre } }, { origines: { some: { commercialId: { in: idsFiltre } } } }] } : {}),
       ...(filtrePointVente(filters) ? { pointVente: filtrePointVente(filters) } : {}),
       ...(produitWhere ? { lignes: { some: { produit: produitWhere } } } : {}),
     },
@@ -222,7 +242,7 @@ export async function chargerVentes(filters: RapportFilters) {
       dateCommande: true,
       montantTotal: true,
       commercialId: true,
-      commercial: { select: { nom: true, prenom: true, role: true, binome: { select: { nom: true } } } },
+      commercial: { select: SELECT_COMMERCIAL_VENTE },
       pointVenteId: true,
       pointVente: { select: SELECT_PV },
       client: { select: { nom: true } },
@@ -233,25 +253,60 @@ export async function chargerVentes(filters: RapportFilters) {
           nbCartons: true,
           montant: true,
           detail: true,
-          produit: {
-            select: {
-              id: true,
-              code: true,
-              nom: true,
-              gamme: true,
-              sachetsParCarton: true,
-              filetsParCarton: true,
-              prixSachet: true,
-              prixFilet: true,
-              prixCarton: true,
-            },
-          },
+          produit: { select: SELECT_PRODUIT_VENTE },
         },
       },
+      origines: { select: { commercialId: true, produitCode: true, nbSachets: true, nbFilets: true, montant: true } },
       paiements: { select: { montant: true } },
     },
   });
-  return rows.map((r) => ({ ...r, dateVente: r.valideeAt ?? r.dateCommande }));
+
+  // Éclate les commandes CLIENT DIVERS : une « vente » par commerciale, avec SES quantités et SON montant.
+  const avecOrigines = rows.filter((r) => r.origines.length > 0);
+  let produitParCode = new Map<string, Prisma.ProduitGetPayload<{ select: typeof SELECT_PRODUIT_VENTE }>>();
+  let commerciaux = new Map<string, Prisma.UserGetPayload<{ select: typeof SELECT_COMMERCIAL_VENTE }>>();
+  if (avecOrigines.length > 0) {
+    const ids = Array.from(new Set(avecOrigines.flatMap((r) => r.origines.map((o) => o.commercialId))));
+    const [produits, users] = await Promise.all([
+      prisma.produit.findMany({ select: SELECT_PRODUIT_VENTE }),
+      prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, ...SELECT_COMMERCIAL_VENTE } }),
+    ]);
+    produitParCode = new Map(produits.map((p) => [p.code, p]));
+    commerciaux = new Map(users.map((u) => [u.id, u]));
+  }
+
+  const sortie = [];
+  for (const { origines, ...r } of rows) {
+    if (origines.length === 0) {
+      sortie.push(r);
+      continue;
+    }
+    const total = Number(r.montantTotal) || 0;
+    const parCommerciale = new Map<string, typeof origines>();
+    for (const o of origines) parCommerciale.set(o.commercialId, [...(parCommerciale.get(o.commercialId) ?? []), o]);
+    for (const [commercialId, os] of Array.from(parCommerciale)) {
+      if (idsFiltre && !idsFiltre.includes(commercialId)) continue;
+      const user = commerciaux.get(commercialId);
+      if (!user) continue;
+      const montant = os.reduce((t, o) => t + Number(o.montant), 0);
+      const part = total > 0 ? montant / total : 0;
+      const lignes = os.flatMap((o) => {
+        const produit = produitParCode.get(o.produitCode);
+        return produit
+          ? [{ nbSachets: o.nbSachets, nbFilets: o.nbFilets, nbCartons: 0, montant: o.montant, detail: true, produit }]
+          : [];
+      });
+      sortie.push({
+        ...r,
+        commercialId,
+        commercial: user,
+        montantTotal: montant as unknown as typeof r.montantTotal,
+        lignes,
+        paiements: r.paiements.map((p) => ({ montant: (Number(p.montant) * part) as unknown as typeof p.montant })),
+      });
+    }
+  }
+  return sortie.map((r) => ({ ...r, dateVente: r.valideeAt ?? r.dateCommande }));
 }
 
 type VenteChargee = Awaited<ReturnType<typeof chargerVentes>>[number];

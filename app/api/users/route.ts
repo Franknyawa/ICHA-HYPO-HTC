@@ -60,7 +60,7 @@ async function POST_(req: NextRequest) {
 
     const { username, password, nom, prenom, role, binomeId } = parsed.data;
 
-    const existing = await prisma.user.findUnique({ where: { username } });
+    const existing = await prisma.user.findFirst({ where: { username: { equals: username.trim(), mode: "insensitive" } }, select: { id: true } });
     if (existing) {
       return NextResponse.json(
         { error: "Cet identifiant est déjà utilisé." },

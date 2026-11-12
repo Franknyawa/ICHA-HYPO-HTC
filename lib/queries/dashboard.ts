@@ -15,6 +15,20 @@ function livraisonAVenir() {
   };
 }
 
+/**
+ * Contraire de livraisonAVenir, écrit en positif. Un `...livraisonCourante()` ferait disparaître toutes les
+ * commandes SANS date de livraison prévue (SQL : NOT(NULL) = NULL), c'est-à-dire presque toutes les commandes terrain.
+ */
+function livraisonCourante() {
+  return {
+    OR: [
+      { dateLivraisonPrevue: null },
+      { dateLivraisonPrevue: { lte: finJour(jourDouala()) } },
+      { statut: { notIn: ["EN_ATTENTE", "EN_LIVRAISON"] as ("EN_ATTENTE" | "EN_LIVRAISON")[] } },
+    ],
+  };
+}
+
 function todayRange() {
   const jour = jourDouala();
   return { gte: debutJour(jour), lte: finJour(jour) };
@@ -45,7 +59,7 @@ export async function getDashboardKpis() {
   const validees = { valideeAt: today, statut: { in: ["EN_LIVRAISON", "LIVREE"] as ("EN_LIVRAISON" | "LIVREE")[] } };
   const [commandesValidees, commandesEnAttente, lignesValidees, indecisARelancer, livraisonsAVenir] = await Promise.all([
     prisma.commande.count({ where: validees }),
-    prisma.commande.count({ where: { statut: "EN_ATTENTE", archivedAt: null, NOT: livraisonAVenir() } }),
+    prisma.commande.count({ where: { statut: "EN_ATTENTE", archivedAt: null, ...livraisonCourante() } }),
     prisma.commandeLigne.findMany({
       where: { commande: validees },
       select: {
@@ -251,7 +265,7 @@ export type BilanCommandesEnCours = {
 export async function getCommandesEnCours(): Promise<BilanCommandesEnCours> {
   await assurerMontantsConformes();
   const commandes = await prisma.commande.findMany({
-    where: { statut: { in: ["EN_ATTENTE", "EN_LIVRAISON"] }, archivedAt: null, NOT: livraisonAVenir() },
+    where: { statut: { in: ["EN_ATTENTE", "EN_LIVRAISON"] }, archivedAt: null, ...livraisonCourante() },
     select: {
       statut: true,
       montantTotal: true,
@@ -514,8 +528,8 @@ export async function getCommandesDuJour(): Promise<CommandesDuJour> {
         },
       },
     }),
-    prisma.commande.count({ where: { statut: "EN_ATTENTE", archivedAt: null, NOT: livraisonAVenir() } }),
-    prisma.commande.aggregate({ where: { statut: "EN_ATTENTE", archivedAt: null, NOT: livraisonAVenir() }, _sum: { montantTotal: true } }),
+    prisma.commande.count({ where: { statut: "EN_ATTENTE", archivedAt: null, ...livraisonCourante() } }),
+    prisma.commande.aggregate({ where: { statut: "EN_ATTENTE", archivedAt: null, ...livraisonCourante() }, _sum: { montantTotal: true } }),
   ]);
 
   type Acc = ProduitDuJour & { vue: Set<number>; vuLivree: Set<number> };
