@@ -11,7 +11,7 @@ import { getRemiseBureauPct } from "@/lib/services/remise-bureau";
 import { calculerLignesCommande, ErreurCalcul } from "@/lib/services/commande-calcul";
 import { enregistrerEchantillons } from "@/lib/services/echantillons";
 import { echantillonsSchema } from "@/lib/validations/visite";
-import { chargerPrixClient } from "@/lib/services/prix-client";
+import { chargerPrixClient, enregistrerPrixClient, prixClientSchema, verifierPrixClient } from "@/lib/services/prix-client";
 import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
@@ -60,6 +60,8 @@ const schema = z
         precisionGps: z.number().min(0).max(99999).optional(),
       })
       .optional(),
+    /** Prix négociés du NOUVEAU client, fixés dès son recensement : valables dès cette première commande. */
+    prixNegocies: prixClientSchema.optional(),
     /** Achat par un « client divers » : aucun client créé. */
     clientDivers: z.boolean().optional(),
     lieuDivers: z.object({ villeId: z.string().uuid(), quartierNom: z.string().trim().max(120).optional() }).optional(),
@@ -109,6 +111,16 @@ async function POST_(req: NextRequest) {
     }
     const tarifBureau = !!d.tarifBureau && (session.role === "ADMIN" || session.role === "SUPER_ADMIN");
     const remiseBureauPct = tarifBureau ? await getRemiseBureauPct() : 0;
+
+    if (d.prixNegocies) {
+      if (!d.nouveauPointVente) return NextResponse.json({ error: "Les prix négociés se fixent à la création du client ; pour un client existant, utilisez sa fiche." }, { status: 400 });
+      const erreurPrix = verifierPrixClient(d.prixNegocies);
+      if (erreurPrix) return NextResponse.json({ error: erreurPrix }, { status: 400 });
+      const ids = d.prixNegocies.produits.map((p) => p.produitId);
+      if (new Set(ids).size !== ids.length || (await prisma.produit.count({ where: { id: { in: ids } } })) !== ids.length) {
+        return NextResponse.json({ error: "Produit inconnu ou en double dans les prix négociés." }, { status: 400 });
+      }
+    }
 
     const lignesUtiles = d.lignes.filter((l) => l.nbSachets + l.nbFilets + l.nbCartons > 0);
     if (lignesUtiles.length === 0) return NextResponse.json({ error: "Indiquez au moins une quantité." }, { status: 400 });
@@ -165,6 +177,8 @@ async function POST_(req: NextRequest) {
         });
         pointVenteId = cree.id;
         typeId = n.typeId ?? null;
+        // Prix négociés enregistrés AVANT le calcul : la toute première commande les applique déjà.
+        if (d.prixNegocies) await enregistrerPrixClient(tx, cree.id, d.prixNegocies, session.userId);
       }
       if (!pointVenteId && !lignesUtiles.every((l) => l.detail)) throw new ErreurMetier("Point de vente manquant.", 400);
 

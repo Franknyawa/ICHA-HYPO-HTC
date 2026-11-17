@@ -1910,3 +1910,10 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Les commandes déjà saisies gardent leur prix. L'appli terrain reçoit les prix via /api/referentiels (cache 5 min) et les applique à l'écran de réassort.
 - Journal : action « PRIX_CLIENT ». Tables : prix_client, paliers_prix_client.
 - Tests : 97 tests automatiques (calcul, permissions, validation, commande bureau, modification, vente terrain, référentiels).
+
+### Prix négociés dès le recensement (17 novembre 2026, 2)
+- Formulaire « Nouvelle commande » du bureau, mode « Nouveau client » : bloc « Prix négociés avec ce client (facultatif) » (prix du carton + paliers par produit). Les prix sont enregistrés AVANT le calcul : la première commande les applique déjà (champ `prixNegocies` de POST /api/commandes, refusé pour un client existant ; grille invalide = 400 et aucun client créé).
+- Éditeur partagé : components/admin/PrixClientEditeur.tsx (fiche client + recensement).
+- Fusion de doublons : le client conservé reprend les prix négociés d'un doublon pour les produits où il n'en a pas.
+- Audit : recalcul global des montants (prix figés par ligne) inchangé pour les commandes négociées ; demi-carton, CLIENT DIVERS, journal vérifiés. 108 tests.
+- Limite : le recensement fait par un commercial sur le terrain n'a pas de prix négociés (le commercial ne les règle pas) ; le superviseur les fixe ensuite sur la fiche.

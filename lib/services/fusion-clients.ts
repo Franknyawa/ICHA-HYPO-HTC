@@ -64,6 +64,29 @@ export async function fusionnerClients(opts: { principalId: string; doublonIds: 
         },
       });
 
+      // Prix négociés : le client conservé garde les siens ; pour un produit sans prix propre, il reprend ceux d'un doublon.
+      const [prixP, paliersP, prixD, paliersD] = await Promise.all([
+        tx.prixClient.findMany({ where: { pointVenteId: principal.id } }),
+        tx.palierPrixClient.findMany({ where: { pointVenteId: principal.id } }),
+        tx.prixClient.findMany({ where: { pointVenteId: { in: autres.map((a) => a.id) } } }),
+        tx.palierPrixClient.findMany({ where: { pointVenteId: { in: autres.map((a) => a.id) } } }),
+      ]);
+      const ordre = new Map(sources.map((x, i) => [x.id, i]));
+      const parAnciennete = <T extends { pointVenteId: string }>(l: T[]) => [...l].sort((a, b) => (ordre.get(a.pointVenteId) ?? 0) - (ordre.get(b.pointVenteId) ?? 0));
+      const produitsPrincipal = new Set([...prixP.map((x) => x.produitId), ...paliersP.map((x) => x.produitId)]);
+      const adoptes = new Map<string, string>(); // produit -> doublon dont on reprend les prix
+      for (const x of parAnciennete([...prixD, ...paliersD])) {
+        if (!produitsPrincipal.has(x.produitId) && !adoptes.has(x.produitId)) adoptes.set(x.produitId, x.pointVenteId);
+      }
+      for (const x of prixD) {
+        if (adoptes.get(x.produitId) === x.pointVenteId) await tx.prixClient.create({ data: { pointVenteId: principal.id, produitId: x.produitId, prixCarton: x.prixCarton, updatedById: x.updatedById } });
+      }
+      for (const x of paliersD) {
+        if (adoptes.get(x.produitId) === x.pointVenteId) {
+          await tx.palierPrixClient.create({ data: { pointVenteId: principal.id, produitId: x.produitId, minCartons: x.minCartons, maxCartons: x.maxCartons, prixCarton: x.prixCarton } });
+        }
+      }
+
       // Doublons : archivés, avec trace de la fusion dans le repère.
       for (const d of autres) {
         await tx.pointVente.update({

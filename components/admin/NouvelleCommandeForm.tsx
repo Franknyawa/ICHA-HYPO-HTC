@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Crosshair, Search, UserPlus, Users, X } from "lucide-react";
+import { BadgePercent, Crosshair, Search, UserPlus, Users, X } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/client/apiFetch";
+import { PrixClientEditeur, erreurPrix, etatVide, payloadPrix, versTarifs, nbProduitsNegocies, type EtatPrix } from "@/components/admin/PrixClientEditeur";
 import { preparerCommande, type ProduitForm, type QuantitesParCode } from "@/lib/utils/commande-terrain";
 import type { PalierTarif, PrixClientTarif, PrixTypeTarif } from "@/lib/utils/tarifs";
 import { BlocPaiement, QuantitesProduit, QuantitesDetail, CaseVenteDetail, ChampEchantillon, payloadEchantillons, type EchantillonsSaisis, type ModePaiementTerrain } from "@/components/commercial/form-ui";
@@ -170,7 +171,11 @@ export function NouvelleCommandeForm({
       annule = true;
     };
   }, [choisiId]);
-  const prixNegocies = negocie && negocie.id === choisiId ? negocie : null;
+  // Nouveau client : prix négociés saisis au recensement, appliqués dès la première commande.
+  const [prixSaisis, setPrixSaisis] = useState<EtatPrix>(() => etatVide(produitsRecus));
+  const produitsPrix = useMemo(() => produits.map((p) => ({ id: p.id, code: p.code, prixCarton: p.prixCarton })), [produits]);
+  const prixNouveau = useMemo(() => (mode === "NOUVEAU" ? versTarifs(produitsPrix, prixSaisis) : null), [mode, produitsPrix, prixSaisis]);
+  const prixNegocies = mode === "NOUVEAU" ? prixNouveau : negocie && negocie.id === choisiId ? negocie : null;
   const aPrixNegocies = !!prixNegocies && (prixNegocies.prixClient.length > 0 || prixNegocies.paliersClient.length > 0);
 
   const typeEffectif = mode === "DIVERS" ? null : mode === "EXISTANT" ? choisi?.typeId ?? null : typeId || null;
@@ -201,6 +206,10 @@ export function NouvelleCommandeForm({
     if (!soloDetail && !modif && mode !== "DIVERS") {
       if (mode === "EXISTANT" && !choisi) return setErreur("Choisissez le point de vente dans la liste.");
       if (mode === "NOUVEAU" && (nom.trim().length < 2 || !villeId)) return setErreur("Indiquez le nom du client et sa ville.");
+      if (mode === "NOUVEAU") {
+        const e = erreurPrix(produitsPrix, prixSaisis);
+        if (e) return setErreur(`Prix négociés — ${e}`);
+      }
     }
 
     setEnvoi(true);
@@ -227,6 +236,7 @@ export function NouvelleCommandeForm({
                   ...(gps ? { latitude: gps.lat, longitude: gps.lng, precisionGps: Math.round(gps.precision * 100) / 100 } : {}),
                 },
               }),
+          ...(!modif && !soloDetail && mode === "NOUVEAU" && payloadPrix(produitsPrix, prixSaisis) ? { prixNegocies: payloadPrix(produitsPrix, prixSaisis) } : {}),
           commercialId: commercialId && commercialId !== "BUREAU" ? commercialId : undefined,
           lignes: commande.lignes.map((l) => ({
             produitCode: l.produitCode,
@@ -432,6 +442,16 @@ export function NouvelleCommandeForm({
                     ))}
                   </select>
                 </Etiquette>
+              </div>
+              <div className="sm:col-span-2 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                <p className="flex items-center gap-1.5 text-sm font-bold text-slate-800 dark:text-slate-100">
+                  <BadgePercent size={15} className="text-[#359980]" /> Prix négociés avec ce client (facultatif)
+                  {nbProduitsNegocies(prixSaisis) > 0 && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">actifs</span>}
+                </p>
+                <p className="mb-3 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Si ce grossiste a un tarif propre, saisissez-le ici : il s&apos;applique dès cette première commande et à toutes les suivantes. Modifiable ensuite sur sa fiche.
+                </p>
+                <PrixClientEditeur produits={produitsPrix} etat={prixSaisis} onChange={setPrixSaisis} />
               </div>
             </div>
           )}
