@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { chargerPrixTousClients } from "@/lib/services/prix-client";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
@@ -73,6 +74,8 @@ export async function GET(_req: NextRequest) {
     }));
 
     const paliersNormalises = paliers.map((p) => ({ ...p, prixCarton: Number(p.prixCarton) }));
+    // Prix négociés par client (grossistes) : l'appli terrain les applique automatiquement, sans pouvoir les modifier.
+    const prixClients = await chargerPrixTousClients(prisma);
 
     return NextResponse.json(
       {
@@ -82,6 +85,7 @@ export async function GET(_req: NextRequest) {
         produits: produitsNormalises,
         prixParType: prixParTypeNormalise,
         paliers: paliersNormalises,
+        prixClients,
       },
       { headers: { "Cache-Control": "private, max-age=300" } }
     );

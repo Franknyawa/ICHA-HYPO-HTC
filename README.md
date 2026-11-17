@@ -1902,3 +1902,11 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - CORRIGÉ (Rapports) : le détail CLIENT DIVERS est attribué à chaque commerciale (ses quantités, son montant) et non plus à la seule commerciale qui a ouvert la facture du jour. Le total ne change pas.
 - CORRIGÉ (connexion) : identifiant insensible aux majuscules et aux espaces (clavier de téléphone), clavier sans majuscule automatique, délai maximum de 25 s avec message clair, navigation complète après connexion, blocage 8 échecs / 10 min par compte, plafond IP relevé (réseau mobile partagé), création d'utilisateur insensible à la casse.
 - Tests : 83 tests automatiques, dont invariant « courantes + à venir = toutes les commandes ».
+
+## Prix négociés par grossiste (17 novembre 2026)
+- Chaque client (point de vente) peut avoir ses propres prix : prix du carton fixe et/ou paliers de quantité, par produit. Fiche point de vente > « Prix négociés de ce client » (super admin, admin, superviseur ; jamais le commercial).
+- Ordre de calcul du carton : palier du client qui couvre la quantité > prix fixe du client > (sans prix fixe) paliers généraux > prix du type de boutique > prix de base. Un client sans prix négocié ne change pas.
+- Le serveur a le dernier mot : commandes bureau (création + modification), relances, et ventes/commandes terrain (/api/visites) sont recalculées avec les prix négociés ; l'acompte est plafonné au nouveau total. CLIENT DIVERS exclu.
+- Les commandes déjà saisies gardent leur prix. L'appli terrain reçoit les prix via /api/referentiels (cache 5 min) et les applique à l'écran de réassort.
+- Journal : action « PRIX_CLIENT ». Tables : prix_client, paliers_prix_client.
+- Tests : 97 tests automatiques (calcul, permissions, validation, commande bureau, modification, vente terrain, référentiels).

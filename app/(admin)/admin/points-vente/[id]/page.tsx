@@ -7,6 +7,7 @@ import { libelleRepondant } from "@/lib/utils/repondant";
 import { ArchiveButton } from "@/components/admin/ArchiveButton";
 import { ImprimerButton } from "@/components/admin/ImprimerButton";
 import { PointVenteForm } from "@/components/admin/PointVenteForm";
+import { PrixClientManager } from "@/components/admin/PrixClientManager";
 import { requireAdminPage } from "@/lib/auth/rbac";
 import { peutAcceder, peutModifier } from "@/lib/auth/permissions";
 
@@ -52,7 +53,8 @@ function Tel({ tel }: { tel: string | null }) {
  */
 export default async function PointVenteDetailPage({ params }: { params: { id: string } }) {
   const session = await requireAdminPage("points-vente");
-  if (!peutModifier(session.role)) redirect("/admin/points-vente");
+  if (!peutModifier(session.role) && session.role !== "SUPERVISEUR") redirect("/admin/points-vente");
+  const estAdmin = peutModifier(session.role);
 
   const [pv, brut, photos, villes, quartiers, types, aCommandeValidee] = await Promise.all([
     getPointVenteDetail(params.id),
@@ -124,7 +126,7 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
               )}
             </div>
             <div className="flex flex-wrap gap-2 print:hidden">
-              {aCommandeValidee > 0 && pv.nom !== "CLIENT DIVERS" && (
+              {estAdmin && aCommandeValidee > 0 && pv.nom !== "CLIENT DIVERS" && (
                 <Link href={`/admin/clients/${pv.id}`} className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">
                   <Users2 size={15} />
                   Fiche client (mouvements)
@@ -188,6 +190,8 @@ export default async function PointVenteDetailPage({ params }: { params: { id: s
           types={types}
         />
         )}
+
+        {pv.nom !== "CLIENT DIVERS" && <PrixClientManager pointVenteId={pv.id} />}
 
         <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
           <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">

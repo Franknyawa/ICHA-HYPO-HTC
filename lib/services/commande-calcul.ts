@@ -27,7 +27,16 @@ export class ErreurCalcul extends Error {
  */
 export function calculerLignesCommande(
   entrees: EntreeLigne[],
-  ref: { produits: Produit[]; prixParType: PrixParType[]; paliers: PalierPrix[]; typeId: string | null; remiseBureauPct?: number }
+  ref: {
+    produits: Produit[];
+    prixParType: PrixParType[];
+    paliers: PalierPrix[];
+    typeId: string | null;
+    remiseBureauPct?: number;
+    /** Prix négociés avec le client (grossiste) de la commande. */
+    prixClient?: { produitId: string; prixCarton: unknown }[];
+    paliersClient?: { produitId: string; minCartons: number; maxCartons: number | null; prixCarton: unknown }[];
+  }
 ): LigneCalculee[] {
   const produitParCode = new Map(ref.produits.map((p) => [p.code, p]));
   const ctx = {
@@ -40,6 +49,13 @@ export function calculerLignesCommande(
       prixCarton: Number(x.prixCarton),
     })),
     paliers: ref.paliers.map((x) => ({
+      produitId: x.produitId,
+      minCartons: x.minCartons,
+      maxCartons: x.maxCartons,
+      prixCarton: Number(x.prixCarton),
+    })),
+    prixClient: (ref.prixClient ?? []).map((x) => ({ produitId: x.produitId, prixCarton: Number(x.prixCarton) })),
+    paliersClient: (ref.paliersClient ?? []).map((x) => ({
       produitId: x.produitId,
       minCartons: x.minCartons,
       maxCartons: x.maxCartons,

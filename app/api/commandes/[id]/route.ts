@@ -7,6 +7,7 @@ import { applyStockMovement, InsufficientStockError } from "@/lib/services/stock
 import { convertToSachets } from "@/lib/services/produits";
 import { rafraichirAlerteLivraison } from "@/lib/jobs/alertes";
 import { calculerLignesCommande, ErreurCalcul } from "@/lib/services/commande-calcul";
+import { chargerPrixClient } from "@/lib/services/prix-client";
 import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
@@ -250,7 +251,8 @@ async function PUT_(req: NextRequest, { params }: { params: { id: string } }) {
       prisma.prixParType.findMany(),
       prisma.palierPrix.findMany(),
     ]);
-    const lignes = calculerLignesCommande(d.lignes, { produits, prixParType, paliers, typeId: existante.pointVente.typeId });
+    const negocie = await chargerPrixClient(prisma, existante.pointVenteId);
+    const lignes = calculerLignesCommande(d.lignes, { produits, prixParType, paliers, typeId: existante.pointVente.typeId, ...negocie });
     if (lignes.length === 0) return NextResponse.json({ error: "Indiquez au moins une quantité." }, { status: 400 });
 
     // Ventes au détail déjà enregistrées à un autre prix (tarif personnel du bureau) : on garde ce prix,

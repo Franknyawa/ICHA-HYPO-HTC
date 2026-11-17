@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Crosshair, Search, UserPlus, Users, X } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/client/apiFetch";
 import { preparerCommande, type ProduitForm, type QuantitesParCode } from "@/lib/utils/commande-terrain";
-import type { PalierTarif, PrixTypeTarif } from "@/lib/utils/tarifs";
+import type { PalierTarif, PrixClientTarif, PrixTypeTarif } from "@/lib/utils/tarifs";
 import { BlocPaiement, QuantitesProduit, QuantitesDetail, CaseVenteDetail, ChampEchantillon, payloadEchantillons, type EchantillonsSaisis, type ModePaiementTerrain } from "@/components/commercial/form-ui";
 import { formatFcfa } from "@/lib/utils/format";
 import { trierProduits } from "@/lib/utils/produits-ordre";
@@ -154,14 +154,33 @@ export function NouvelleCommandeForm({
     );
   }
 
+  // Prix négociés du client choisi (grossiste) : appliqués automatiquement, le serveur recalcule de toute façon.
+  const [negocie, setNegocie] = useState<{ id: string; prixClient: PrixClientTarif[]; paliersClient: PalierTarif[] } | null>(null);
+  const choisiId = mode === "EXISTANT" ? choisi?.id ?? null : null;
+  useEffect(() => {
+    if (!choisiId) return;
+    let annule = false;
+    fetch(`/api/points-vente/${choisiId}/prix`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!annule && d) setNegocie({ id: choisiId, prixClient: d.prixClient ?? [], paliersClient: d.paliersClient ?? [] });
+      })
+      .catch(() => {});
+    return () => {
+      annule = true;
+    };
+  }, [choisiId]);
+  const prixNegocies = negocie && negocie.id === choisiId ? negocie : null;
+  const aPrixNegocies = !!prixNegocies && (prixNegocies.prixClient.length > 0 || prixNegocies.paliersClient.length > 0);
+
   const typeEffectif = mode === "DIVERS" ? null : mode === "EXISTANT" ? choisi?.typeId ?? null : typeId || null;
   const commande = useMemo(
-    () => preparerCommande(produits, quantites, { typeId: typeEffectif, prixParType, paliers }, detailActif ? quantitesDetail : undefined, remiseActive),
-    [produits, quantites, typeEffectif, prixParType, paliers, detailActif, quantitesDetail, remiseActive]
+    () => preparerCommande(produits, quantites, { typeId: typeEffectif, prixParType, paliers, prixClient: prixNegocies?.prixClient, paliersClient: prixNegocies?.paliersClient }, detailActif ? quantitesDetail : undefined, remiseActive),
+    [produits, quantites, typeEffectif, prixParType, paliers, prixNegocies, detailActif, quantitesDetail, remiseActive]
   );
   const sousTotauxDetail = useMemo(
-    () => preparerCommande(produits, {}, { typeId: typeEffectif, prixParType, paliers }, quantitesDetail, remiseActive).sousTotauxDetail,
-    [produits, typeEffectif, prixParType, paliers, quantitesDetail, remiseActive]
+    () => preparerCommande(produits, {}, { typeId: typeEffectif, prixParType, paliers, prixClient: prixNegocies?.prixClient, paliersClient: prixNegocies?.paliersClient }, quantitesDetail, remiseActive).sousTotauxDetail,
+    [produits, typeEffectif, prixParType, paliers, prixNegocies, quantitesDetail, remiseActive]
   );
 
   function majDetail(code: string, cle: "sachets" | "filets" | "cartons", v: number) {
@@ -502,6 +521,7 @@ export function NouvelleCommandeForm({
         <section className="rounded-2xl bg-[#1e3a8a] p-5 text-white shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-white/80">Total de la commande</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">{formatFcfa(commande.total)}</p>
+          {aPrixNegocies && <p className="mt-1 text-xs font-medium text-white/80">Prix négociés de ce client appliqués.</p>}
           {erreur && <p className="mt-3 rounded-lg bg-white/15 px-3 py-2 text-sm">{erreur}</p>}
           <button
             type="submit"

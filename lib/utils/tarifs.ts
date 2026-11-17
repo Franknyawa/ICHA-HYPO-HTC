@@ -7,6 +7,10 @@
 //   2. prix spécifique au type de boutique (s'il existe),
 //   3. grille tarifaire : le prix du CARTON dépend alors de la quantité de
 //      cartons commandée pour ce produit (s'il existe un palier qui la couvre).
+//   4. prix négociés avec CE client (grossiste), prioritaires sur tout le reste :
+//        - sa grille par quantité, si un de ses paliers couvre la quantité ;
+//        - sinon son prix de carton fixe (les grilles générales ne s'appliquent plus) ;
+//        - sinon (il n'a que des paliers qui ne couvrent pas la quantité) les règles générales.
 
 export type ConversionTarif = {
   sachetsParCarton?: number | null;
@@ -35,6 +39,9 @@ export type PalierTarif = {
   prixCarton: number;
 };
 
+/** Prix du carton négocié avec un client précis. */
+export type PrixClientTarif = { produitId: string; prixCarton: number };
+
 export type Quantites = { sachets: number; filets: number; cartons: number };
 export type PrixUnitaires = { sachet: number; filet: number; carton: number };
 
@@ -49,7 +56,15 @@ export function palierPour(paliers: PalierTarif[], produitId: string, cartons: n
 
 export function prixUnitaires(
   produit: ProduitTarif,
-  opts: { typeId?: string | null; prixParType?: PrixTypeTarif[]; paliers?: PalierTarif[]; cartons?: number }
+  opts: {
+    typeId?: string | null;
+    prixParType?: PrixTypeTarif[];
+    paliers?: PalierTarif[];
+    cartons?: number;
+    /** Prix négociés avec le client (déjà limités à ce client). */
+    prixClient?: PrixClientTarif[];
+    paliersClient?: PalierTarif[];
+  }
 ): PrixUnitaires {
   let sachet = produit.prixSachet;
   let filet = produit.prixFilet ?? 0;
@@ -64,8 +79,16 @@ export function prixUnitaires(
     }
   }
 
-  const palier = palierPour(opts.paliers ?? [], produit.id, opts.cartons ?? 0);
-  if (palier) carton = palier.prixCarton;
+  const fixeClient = opts.prixClient?.find((x) => x.produitId === produit.id);
+  if (fixeClient) carton = fixeClient.prixCarton;
+
+  const palierClient = palierPour(opts.paliersClient ?? [], produit.id, opts.cartons ?? 0);
+  if (palierClient) {
+    carton = palierClient.prixCarton;
+  } else if (!fixeClient) {
+    const palier = palierPour(opts.paliers ?? [], produit.id, opts.cartons ?? 0);
+    if (palier) carton = palier.prixCarton;
+  }
 
   return { sachet, filet, carton };
 }
@@ -156,7 +179,13 @@ export function valeurCatalogueLigne(
 export function calculerLigne(
   produit: ProduitTarif,
   q: Quantites,
-  opts: { typeId?: string | null; prixParType?: PrixTypeTarif[]; paliers?: PalierTarif[] }
+  opts: {
+    typeId?: string | null;
+    prixParType?: PrixTypeTarif[];
+    paliers?: PalierTarif[];
+    prixClient?: PrixClientTarif[];
+    paliersClient?: PalierTarif[];
+  }
 ) {
   const quantites = normaliserCartons(q, produit);
   const prix = prixUnitaires(produit, { ...opts, cartons: quantites.cartons });

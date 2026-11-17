@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { chargerPrixClient } from "@/lib/services/prix-client";
 import { prisma } from "@/lib/prisma";
 import { requireModule } from "@/lib/auth/rbac";
 import { handleApiError } from "@/lib/api-errors";
@@ -55,7 +56,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         prisma.palierPrix.findMany(),
       ]);
       const parCode = new Map(produits.map((p) => [p.code, p]));
+      const negocie = await chargerPrixClient(prisma, existant.pointVenteId);
       const ctx = {
+        ...negocie,
+        prixClient: negocie.prixClient.map((x) => ({ produitId: x.produitId, prixCarton: Number(x.prixCarton) })),
+        paliersClient: negocie.paliersClient.map((x) => ({ produitId: x.produitId, minCartons: x.minCartons, maxCartons: x.maxCartons, prixCarton: Number(x.prixCarton) })),
         typeId: existant.pointVente.typeId,
         prixParType: prixParType.map((x) => ({ produitId: x.produitId, typeId: x.typeId, prixSachet: Number(x.prixSachet), prixFilet: x.prixFilet === null ? null : Number(x.prixFilet), prixCarton: Number(x.prixCarton) })),
         paliers: paliers.map((x) => ({ produitId: x.produitId, minCartons: x.minCartons, maxCartons: x.maxCartons, prixCarton: Number(x.prixCarton) })),

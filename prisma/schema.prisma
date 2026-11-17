@@ -113,6 +113,8 @@ model Produit {
   createdAt         DateTime @default(now()) @map("created_at")
 
   paliersPrix    PalierPrix[]
+  prixClients    PrixClient[]
+  paliersClients PalierPrixClient[]
   venteLignes    VenteLigne[]
   commandeLignes CommandeLigne[]
   stock          Stock?
@@ -124,6 +126,36 @@ model Produit {
 
 /// Grille tarifaire : prix du carton selon la quantité commandée d'un produit
 /// (ex. 0–10 cartons = 9 000 F, 11–100 cartons = 8 500 F). maxCartons vide = sans limite haute.
+/// Prix du carton négocié avec UN client (grossiste), par produit. Prioritaire sur le type de boutique.
+model PrixClient {
+  id            String      @id @default(uuid())
+  pointVenteId  String      @map("point_vente_id")
+  pointVente    PointVente  @relation(fields: [pointVenteId], references: [id], onDelete: Cascade)
+  produitId     String      @map("produit_id")
+  produit       Produit     @relation(fields: [produitId], references: [id], onDelete: Cascade)
+  prixCarton    Decimal     @map("prix_carton") @db.Decimal(10, 2)
+  updatedById   String?     @map("updated_by_id")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  @@unique([pointVenteId, produitId])
+  @@map("prix_client")
+}
+
+/// Grille par quantité négociée avec UN client : le prix du carton dépend du nombre de cartons commandés.
+model PalierPrixClient {
+  id           String     @id @default(uuid())
+  pointVenteId String     @map("point_vente_id")
+  pointVente   PointVente @relation(fields: [pointVenteId], references: [id], onDelete: Cascade)
+  produitId    String     @map("produit_id")
+  produit      Produit    @relation(fields: [produitId], references: [id], onDelete: Cascade)
+  minCartons   Int        @map("min_cartons")
+  maxCartons   Int?       @map("max_cartons")
+  prixCarton   Decimal    @map("prix_carton") @db.Decimal(10, 2)
+
+  @@index([pointVenteId, produitId])
+  @@map("paliers_prix_client")
+}
+
 model PalierPrix {
   id          String  @id @default(uuid())
   produitId   String  @map("produit_id")
@@ -387,6 +419,8 @@ enum StatutClient {
 
 model PointVente {
   id            String    @id @default(uuid())
+  prixClients    PrixClient[]
+  paliersClients PalierPrixClient[]
   nom           String
   vendeur       String?
   telephoneVendeur String? @map("telephone_vendeur")

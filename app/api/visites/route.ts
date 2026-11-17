@@ -6,6 +6,7 @@ import { handleApiError } from "@/lib/api-errors";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import { createVisiteSchema } from "@/lib/validations/visite";
 import { InsufficientStockError } from "@/lib/services/stock";
+import { appliquerPrixNegocies } from "@/lib/services/prix-client";
 import { enregistrerEchantillons } from "@/lib/services/echantillons";
 import { texteLieu } from "@/lib/services/lieu-divers";
 import { ajouterVentesDetail, obtenirClientDivers } from "@/lib/services/client-divers";
@@ -118,6 +119,26 @@ export async function POST(req: NextRequest) {
         { error: "Date de visite invalide (dans le futur ou trop ancienne)." },
         { status: 400 }
       );
+    }
+
+    // Client avec prix négociés (grossiste) : les prix et montants sont refixés ici, côté serveur.
+    if (input.pointVenteId && !input.clientDivers) {
+      if (input.vente) {
+        const corrigees = await appliquerPrixNegocies(prisma, input.pointVenteId, input.vente.lignes);
+        if (corrigees) {
+          input.vente.lignes = corrigees;
+          input.vente.montantTotal = corrigees.reduce((t, l) => t + (l.montant ?? 0), 0);
+          // Un acompte annoncé au vieux prix ne doit pas faire refuser la visite : on le ramène au total.
+          if (input.vente.paiement && input.vente.paiement.montant > input.vente.montantTotal) input.vente.paiement.montant = input.vente.montantTotal;
+        }
+      }
+      if (input.commande) {
+        const corrigees = await appliquerPrixNegocies(prisma, input.pointVenteId, input.commande.lignes);
+        if (corrigees) {
+          input.commande.lignes = corrigees;
+          input.commande.montantTotal = corrigees.reduce((t, l) => t + (l.montant ?? 0), 0);
+        }
+      }
     }
 
     if (

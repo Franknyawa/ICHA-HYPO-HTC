@@ -14,7 +14,7 @@ import { genererBonCommandePdf, referenceBonCommande } from "@/lib/utils/bon-com
 import { BlocIndecis, ETAT_INDECIS_INITIAL, payloadIndecis, type EtatIndecis } from "@/components/commercial/BlocIndecis";
 import { lignesDocument, numeroBonCommande } from "@/lib/utils/documents";
 import { preparerCommande, type ProduitForm, type QuantitesParCode } from "@/lib/utils/commande-terrain";
-import type { PalierTarif, PrixTypeTarif } from "@/lib/utils/tarifs";
+import type { PalierTarif, PrixClientTarif, PrixTypeTarif } from "@/lib/utils/tarifs";
 import {
   EnTeteFormulaire,
   FOND_PAGE,
@@ -47,6 +47,8 @@ function ReassortContent() {
   const [produits, setProduits] = useState<ProduitForm[]>([]);
   const [prixParType, setPrixParType] = useState<PrixTypeTarif[]>([]);
   const [paliers, setPaliers] = useState<PalierTarif[]>([]);
+  // Prix négociés par client (grossistes) : appliqués automatiquement, non modifiables par le commercial.
+  const [prixClients, setPrixClients] = useState<Record<string, { prixClient: PrixClientTarif[]; paliersClient: PalierTarif[] }>>({});
   const [quantites, setQuantites] = useState<QuantitesParCode>({});
   const [detailActif, setDetailActif] = useState(false);
   const [quantitesDetail, setQuantitesDetail] = useState<QuantitesParCode>({});
@@ -71,6 +73,7 @@ function ReassortContent() {
         setProduits(trierProduits(d.produits ?? []));
         setPrixParType(d.prixParType ?? []);
         setPaliers(d.paliers ?? []);
+        setPrixClients(d.prixClients ?? {});
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Données indisponibles."));
     chargerMe()
@@ -121,7 +124,8 @@ function ReassortContent() {
   }
 
   // Prix : base → type de boutique du point de vente → grille tarifaire.
-  const ctxPrix = { typeId: pointVente?.typeId ?? null, prixParType, paliers };
+  const negocie = pointVente ? prixClients[pointVente.id] : undefined;
+  const ctxPrix = { typeId: pointVente?.typeId ?? null, prixParType, paliers, prixClient: negocie?.prixClient, paliersClient: negocie?.paliersClient };
   const commande = preparerCommande(produits, quantites, ctxPrix, detailActif ? quantitesDetail : undefined);
   const sousTotauxDetail = preparerCommande(produits, {}, ctxPrix, quantitesDetail).sousTotauxDetail;
   const lignes = commande.lignes;

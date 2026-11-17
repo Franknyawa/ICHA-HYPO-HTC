@@ -31,6 +31,7 @@ const REGLES: Regle[] = [
   ["PATCH", /^\/api\/clients\/[^/]+$/, "CLIENT_MODIFIE", "Client modifié", "CLIENT"],
   ["POST", /^\/api\/points-vente$/, "PV_CREE", "Point de vente créé", "POINT_VENTE"],
   ["PATCH", /^\/api\/points-vente\/[^/]+$/, "PV_MODIFIE", "Point de vente modifié", "POINT_VENTE"],
+  ["PUT", /^\/api\/points-vente\/[^/]+\/prix$/, "PRIX_CLIENT", "Prix négociés d'un client", "POINT_VENTE"],
   ["POST", /^\/api\/points-vente\/[^/]+\/archiver$/, "PV_ARCHIVE", "Point de vente archivé / restauré", "POINT_VENTE"],
   ["POST", /^\/api\/points-vente\/fusion$/, "PV_FUSION", "Fusion de clients en doublon", "POINT_VENTE"],
   ["POST", /^\/api\/stock\/[^/]+\/ajuster$/, "STOCK_AJUSTE", "Mouvement / ajustement de stock", "STOCK"],

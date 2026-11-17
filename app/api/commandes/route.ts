@@ -11,6 +11,7 @@ import { getRemiseBureauPct } from "@/lib/services/remise-bureau";
 import { calculerLignesCommande, ErreurCalcul } from "@/lib/services/commande-calcul";
 import { enregistrerEchantillons } from "@/lib/services/echantillons";
 import { echantillonsSchema } from "@/lib/validations/visite";
+import { chargerPrixClient } from "@/lib/services/prix-client";
 import { avecJournal } from "@/lib/services/journal";
 
 export const runtime = "nodejs";
@@ -167,7 +168,9 @@ async function POST_(req: NextRequest) {
       }
       if (!pointVenteId && !lignesUtiles.every((l) => l.detail)) throw new ErreurMetier("Point de vente manquant.", 400);
 
-      const toutes = calculerLignesCommande(lignesUtiles, { produits, prixParType, paliers, typeId, remiseBureauPct });
+      // Prix négociés avec ce client (grossiste), s'il en a : prioritaires sur le type de boutique.
+      const negocie = await chargerPrixClient(tx, pointVenteId);
+      const toutes = calculerLignesCommande(lignesUtiles, { produits, prixParType, paliers, typeId, remiseBureauPct, ...negocie });
       // Vente au détail : portée par la facture unique « CLIENT DIVERS » du jour, pas par ce client.
       const lignesDivers = toutes.filter((l) => l.detail);
       const lignes = toutes.filter((l) => !l.detail);

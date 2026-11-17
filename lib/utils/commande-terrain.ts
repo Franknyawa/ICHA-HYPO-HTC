@@ -6,6 +6,7 @@ import {
   calculerLigne,
   calculerLigneDetail,
   type PalierTarif,
+  type PrixClientTarif,
   type PrixTypeTarif,
   type ProduitTarif,
   type Quantites,
@@ -46,7 +47,7 @@ export type CommandePreparee = {
 export function preparerCommande(
   produits: ProduitForm[],
   quantites: QuantitesParCode,
-  ctx: { typeId?: string | null; prixParType?: PrixTypeTarif[]; paliers?: PalierTarif[] },
+  ctx: { typeId?: string | null; prixParType?: PrixTypeTarif[]; paliers?: PalierTarif[]; prixClient?: PrixClientTarif[]; paliersClient?: PalierTarif[] },
   detail?: QuantitesParCode,
   remiseBureauPct = 0
 ): CommandePreparee {
