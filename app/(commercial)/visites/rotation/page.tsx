@@ -9,6 +9,7 @@ import { PointVenteSearch, type ResultatRecherche } from "@/components/commercia
 import { compressImage } from "@/lib/utils/image";
 import { queuePendingVisite } from "@/lib/offline/db";
 import { syncPendingVisites } from "@/lib/offline/sync";
+import { quitterSessionExpiree } from "@/lib/offline/session-locale";
 import {
   EnTeteFormulaire,
   FOND_PAGE,
@@ -107,6 +108,15 @@ export default function RotationPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
+      if (res.status === 401) {
+        // Session expirée : la saisie n'est PAS perdue. Elle est gardée sur le téléphone et partira toute seule
+        // après la reconnexion (mêmes identifiants : aucun doublon possible).
+        await queuePendingVisite(visiteUuid, payload);
+        viderIds("visite-rotation");
+        await quitterSessionExpiree();
+        return;
+      }
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

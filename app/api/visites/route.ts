@@ -15,6 +15,19 @@ import type { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
 
+/** Envoi identique à un enregistrement très récent du même commercial : on renvoie l'existant (anti-doublon). */
+class DoublonEnvoi extends Error {
+  constructor(public venteId: string | null, public visiteId: string | null) {
+    super("Envoi déjà enregistré.");
+  }
+}
+const FENETRE_DOUBLON_VENTE_MS = 15 * 60 * 1000;
+const FENETRE_DOUBLON_CLIENT_MS = 48 * 60 * 60 * 1000;
+const norm = (t?: string | null) => (t ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+const chiffres = (t?: string | null) => (t ?? "").replace(/\D/g, "");
+const signature = (l: { produitCode: string; nbCartons?: number | null; nbSachets?: number | null; nbFilets?: number | null }) =>
+  `${l.produitCode}:${Number(l.nbCartons ?? 0)}:${Number(l.nbSachets ?? 0)}:${Number(l.nbFilets ?? 0)}`;
+
 // Une visite saisie hors ligne est synchronisée plus tard : on tolère donc
 // un passé assez long (60 jours), mais quasiment aucun futur (horloge d'un
 // téléphone légèrement en avance).
@@ -73,6 +86,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  let uuidEnvoi: string | undefined;
   try {
     const session = await requireAuth();
 
@@ -87,6 +101,7 @@ export async function POST(req: NextRequest) {
     }
 
     const input = parsed.data;
+    uuidEnvoi = input.uuidClient;
 
     // Idempotence au niveau visite : si ce uuidClient a déjà été synchronisé
     // (ex. double envoi après coupure réseau), on renvoie l'existant sans
@@ -194,6 +209,27 @@ export async function POST(req: NextRequest) {
           if (existingPv) pointVenteId = existingPv.id;
         }
 
+        // Même boutique ressaisie par le même commercial dans les 48 h (envoi recommencé sous un nouvel
+        // identifiant) : on réutilise la fiche existante au lieu d'en créer une seconde.
+        if (!pointVenteId) {
+          const candidats = await tx.pointVente.findMany({
+            where: {
+              createdById: session.userId,
+              villeId: npv.villeId,
+              nom: { equals: npv.nom.trim(), mode: "insensitive" },
+              archivedAt: null,
+              createdAt: { gte: new Date(Date.now() - FENETRE_DOUBLON_CLIENT_MS) },
+            },
+            take: 5,
+          });
+          const tel = chiffres(npv.telephoneVendeur ?? npv.telephonePatron);
+          const meme = candidats.find((c) => {
+            const telC = chiffres(c.telephoneVendeur ?? c.telephonePatron);
+            return norm(c.nom) === norm(npv.nom) && (!tel || !telC || tel === telC);
+          });
+          if (meme) pointVenteId = meme.id;
+        }
+
         if (!pointVenteId) {
           // Quartier en texte libre : find-or-create sous la ville choisie.
           let quartierId: string | undefined;
@@ -236,6 +272,28 @@ export async function POST(req: NextRequest) {
 
       if (!pointVenteId) {
         throw new Error("Point de vente manquant.");
+      }
+
+      // 1 bis. Même vente déjà enregistrée à l'instant (même commercial, même client, mêmes quantités) :
+      // c'est un renvoi sous un autre identifiant, pas une nouvelle vente.
+      if (input.vente && !input.clientDivers) {
+        const recentes = await tx.vente.findMany({
+          where: {
+            commercialId: session.userId,
+            pointVenteId,
+            createdAt: { gte: new Date(Date.now() - FENETRE_DOUBLON_VENTE_MS) },
+            uuidClient: { not: input.vente.uuidClient },
+          },
+          include: { lignes: { include: { produit: { select: { code: true } } } } },
+          take: 10,
+        });
+        const voulue = input.vente.lignes.map(signature).sort().join("|");
+        const doublon = recentes.find(
+          (v) =>
+            Math.abs(Number(v.montantTotal) - input.vente!.montantTotal) < 0.01 &&
+            v.lignes.map((l) => signature({ produitCode: l.produit.code, nbCartons: l.nbCartons, nbSachets: l.nbSachets, nbFilets: l.nbFilets })).sort().join("|") === voulue
+        );
+        if (doublon) throw new DoublonEnvoi(doublon.id, doublon.visiteId ?? null);
       }
 
       // 2. Visite
@@ -474,6 +532,27 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (error instanceof InsufficientStockError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    if (error instanceof DoublonEnvoi) {
+      const vente = error.venteId ? await prisma.vente.findUnique({ where: { id: error.venteId }, include: { lignes: true } }) : null;
+      const visite = error.visiteId ? await prisma.visite.findUnique({ where: { id: error.visiteId } }) : null;
+      return NextResponse.json({ visite, vente, doublonEvite: true }, { status: 200 });
+    }
+    // Deux envois simultanés du même identifiant (ex. envoi lent + renvoi automatique) : le second perd la course
+    // sur l'unicité ; on renvoie l'enregistrement du premier au lieu d'une erreur.
+    if ((error as { code?: string } | null)?.code === "P2002") {
+      try {
+        if (uuidEnvoi) {
+          // Le premier envoi finit peut-être sa transaction : on patiente quelques secondes avant de conclure.
+          for (let essai = 0; essai < 10; essai++) {
+            const visite = await prisma.visite.findUnique({ where: { uuidClient: uuidEnvoi }, include: { ventes: { include: { lignes: true, paiements: true } } } });
+            if (visite) return NextResponse.json(visite, { status: 200 });
+            await new Promise((r) => setTimeout(r, 400));
+          }
+        }
+      } catch {
+        /* retombe sur l'erreur normale */
+      }
     }
     return handleApiError(error);
   }

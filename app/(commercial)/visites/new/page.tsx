@@ -9,6 +9,7 @@ import { MapPin, Camera, CheckCircle2, Clock, Download, Store, ShoppingCart, Mes
 import { queuePendingVisite } from "@/lib/offline/db";
 import { chargerReferentiels, chargerMe } from "@/lib/offline/referentiels";
 import { syncPendingVisites } from "@/lib/offline/sync";
+import { quitterSessionExpiree } from "@/lib/offline/session-locale";
 import { compressImage } from "@/lib/utils/image";
 import { genererBonCommandePdf, referenceBonCommande } from "@/lib/utils/bon-commande-pdf";
 import { BlocIndecis, ETAT_INDECIS_INITIAL, payloadIndecis, type EtatIndecis } from "@/components/commercial/BlocIndecis";
@@ -430,6 +431,15 @@ export default function NouvelleVisitePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
+      if (res.status === 401) {
+        // Session expirée : la saisie n'est PAS perdue. Elle est gardée sur le téléphone et partira toute seule
+        // après la reconnexion (mêmes identifiants : aucun doublon possible).
+        await queuePendingVisite(visiteUuid, payload);
+        viderIds("visite-new");
+        await quitterSessionExpiree();
+        return;
+      }
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

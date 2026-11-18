@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { OfflineManager } from "@/components/commercial/OfflineManager";
+import { SessionGuard } from "@/components/commercial/SessionGuard";
 
 // Icône et manifest propres à l'application commerciale (logo sur fond bleu,
 // mention « Terrain ») : l'installation depuis l'espace terrain donne cette
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
 export default function CommercialLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <SessionGuard />
       <OfflineManager />
       {children}
     </>

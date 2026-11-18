@@ -1917,3 +1917,10 @@ Une commande n'entre dans « Commandes à encaisser » (Caisse) qu'une fois pass
 - Fusion de doublons : le client conservé reprend les prix négociés d'un doublon pour les produits où il n'en a pas.
 - Audit : recalcul global des montants (prix figés par ligne) inchangé pour les commandes négociées ; demi-carton, CLIENT DIVERS, journal vérifiés. 108 tests.
 - Limite : le recensement fait par un commercial sur le terrain n'a pas de prix négociés (le commercial ne les règle pas) ; le superviseur les fixe ensuite sur la fiche.
+
+## Session expirée et doublons (18 novembre 2026)
+- Session expirée à l'envoi d'un formulaire (401) : la saisie est mise en file d'attente sur le téléphone, puis connexion ; elle part automatiquement après reconnexion (mêmes identifiants, aucun doublon).
+- SessionGuard (espace terrain) : vérifie la session à l'ouverture, au retour dans l'app, au retour réseau et chaque minute. Session expirée = données locales du compte et pages en cache vidées (les visites en attente sont gardées), puis page de connexion avec message. Une absence de réseau n'est jamais prise pour une expiration.
+- Identifiants anti-doublon des formulaires : localStorage (survivent à la fermeture de l'appli), renouvelés après succès ou au bout de 12 h.
+- Serveur (/api/visites) : (1) même vente refaite sous de nouveaux identifiants par le même commercial pour le même client dans les 15 minutes = renvoyée, pas recréée ; (2) même boutique recensée deux fois par le même commercial (même nom, même ville, téléphones compatibles) dans les 48 h = fiche réutilisée ; (3) deux envois simultanés du même identifiant : le second attend et renvoie le premier au lieu d'une erreur.
+- Détection des doublons existants : voir les requêtes SQL fournies à la livraison.

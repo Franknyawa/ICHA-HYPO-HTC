@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff, User, Lock, ShieldCheck } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -20,6 +20,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [expiree, setExpiree] = useState(false);
+  useEffect(() => {
+    setExpiree(new URLSearchParams(window.location.search).get("expired") === "1");
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -177,6 +181,11 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {expiree && !error && (
+            <div role="status" className="rounded-xl border border-amber-300/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+              Ta session a expiré. Reconnecte-toi : les saisies non envoyées partiront automatiquement.
+            </div>
+          )}
           {error && (
             <p className="mb-5 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm font-medium text-alert dark:bg-red-950/40 dark:text-red-300">
               {error}
